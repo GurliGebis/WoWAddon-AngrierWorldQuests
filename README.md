@@ -1,0 +1,1 @@
+The addon adds a filterable lists of world quests and their rewards for the current zone to quest list on the right hand side of the world map. So you can easily look through all the ones available to you.

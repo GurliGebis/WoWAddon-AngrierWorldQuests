@@ -1,5 +1,6 @@
 ## Interface: 70000
 ## Title: Angry World Quests
+## Notes: Adds World Quests to the quests list
 ## Author: Ermad
 
 Core.lua

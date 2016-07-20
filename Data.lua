@@ -7,16 +7,6 @@ local cachedKnowledgeLevel
 local cachedPower = {}
 local cachedItems = {}
 
--- function Data:ItemArtifactPower(itemID)
--- 	local artifactPower = ItemIDs_ArtifactPower[itemID]
--- 	if artifactPower then
--- 		local name, currentAmount, texture, earnedThisWeek, weeklyMax, totalMax, isDiscovered, rarity = GetCurrencyInfo(KNOWLEDGE_CURRENCY_ID)
--- 		if currentAmount and KNOWLEDGE_MODIFIER[currentAmount] then
--- 			artifactPower = floor(artifactPower * (1 + KNOWLEDGE_MODIFIER[currentAmount]) / 5 + 0.5) * 5
--- 		end
--- 		return artifactPower
--- 	end
--- end
 function Data:ItemArtifactPower(itemID)
 	local currentKnowledge = select(2, GetCurrencyInfo(KNOWLEDGE_CURRENCY_ID))
 	if cachedKnowledgeLevel ~= currentKnowledge then
