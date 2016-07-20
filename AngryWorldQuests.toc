@@ -2,9 +2,11 @@
 ## Title: Angry World Quests
 ## Notes: Adds World Quests to the quests list
 ## Author: Ermad
+## SavedVariables: AngryWorldQuests_Config
 
 Core.lua
 
 QuestFrame.lua
 
 Data.lua
+Config.lua

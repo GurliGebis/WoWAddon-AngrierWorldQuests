@@ -23,6 +23,7 @@ local ModulePrototype = {}
 function ModulePrototype:RegisterEvent(event)
 	Addon:RegisterEvent(event, self)
 end
+Addon.ModulePrototype = ModulePrototype
 
 Addon.Modules = {}
 function Addon:NewModule(name)

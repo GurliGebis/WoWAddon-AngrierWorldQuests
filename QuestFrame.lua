@@ -10,41 +10,37 @@ local MAPID_HIGHMOUNTAIN = 1024
 local MAPID_SURAMAR = 1033
 local MAPID_ALL = { MAPID_DALARAN, MAPID_AZSUNA, MAPID_STORMHEIM, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_SURAMAR }
 
-local QUESTTYPE_GOLD = 0x1
-local QUESTTYPE_RESOURCE = 0x2
-local QUESTTYPE_ITEM = 0x4
-local QUESTTYPE_ARTIFACTPOWER = 0x8
-
-local config = {
-	showAtTop = true,
-	onlyCurrentZone = true,
-}
-
-local questsCollapsed = false
+local FILTER_COUNT = 6
+local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_orderhall_orderresources", "inv_misc_lockboxghostiron", "inv_misc_coin_01", "inv_box_01" }
+local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, "Order Resources", BONUS_ROLL_REWARD_ITEM, BONUS_ROLL_REWARD_MONEY, ITEMS }
+local FILTER_EMISSARY = 1
+local FILTER_ARTIFACT_POWER = 2
+local FILTER_ORDER_RESOURCES = 3
+local FILTER_LOOT = 4
+local FILTER_GOLD = 5
+local FILTER_ITEMS = 6
 
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
 
 local function HeaderButton_OnClick(self, button)
+	local questsCollapsed = Addon.Config.collapsed
 	PlaySound("igMainMenuOptionCheckBoxOn")
 	if ( button == "LeftButton" ) then
 		questsCollapsed = not questsCollapsed
+		Addon.Config:Set('collapsed', questsCollapsed)
 		QuestMapFrame_UpdateAll()
 	end
 end
 
 local function TitleButton_OnEnter(self)
 	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
-	local selected = self.questId == GetSuperTrackedQuestID()
-	local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questId)
-	local isSpellTarget = SpellCanTargetQuest() and IsQuestIDValidSpellTarget(self.questId)
-
 	local _, color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
 	for i = 1, NUM_WORLDMAP_TASK_POIS do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton:IsShown() and mapButton.questID == self.questID then
-			WorldMap_SetupWorldQuestButton(mapButton, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, true, isCriteria, isSpellTarget)
+			mapButton:LockHighlight()
 		end
 	end
 	
@@ -53,17 +49,13 @@ end
 
 local function TitleButton_OnLeave(self)
 	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
-	local selected = self.questId == GetSuperTrackedQuestID()
-	local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questId)
-	local isSpellTarget = SpellCanTargetQuest() and IsQuestIDValidSpellTarget(self.questId)
-
 	local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
 	for i = 1, NUM_WORLDMAP_TASK_POIS do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton:IsShown() and mapButton.questID == self.questID then
-			WorldMap_SetupWorldQuestButton(mapButton, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, selected, isCriteria, isSpellTarget)
+			mapButton:UnlockHighlight()
 		end
 	end
 
@@ -84,6 +76,29 @@ local function TitleButton_OnClick(self, button)
 				SetMapByID(self.mapID)
 			end
 		else
+		end
+	end
+end
+
+local function FilterButton_OnEnter(self)
+	local text = FILTER_NAMES[ self.index ]
+	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+	GameTooltip:SetText(text)
+	GameTooltip:Show()
+end
+
+local function FilterButton_OnLeave(self)
+	GameTooltip:Hide()
+end
+
+local function FilterButton_OnClick(self, button)
+	if button == 'RightButton' then
+		Addon.Config:ToggleFilter(self.index)
+	else
+		if Addon.Config:IsOnlyFilter(self.index) then
+			Addon.Config:SetNoFilter()
+		else
+			Addon.Config:SetOnlyFilter(self.index)
 		end
 	end
 end
@@ -125,12 +140,27 @@ local function GetTitleButton(index)
 end
 
 local filterButtons = {}
-local function GetFilterButton(index, parent)
-	if ( not titleButtons[index] ) then
-		local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+local function GetFilterButton(index)
+	if ( not filterButtons[index] ) then
+		local button = CreateFrame("Button", nil, QuestMapFrame.QuestsFrame.Contents)
+		button.index = index
+		
+		button:SetScript("OnEnter", FilterButton_OnEnter)
+		button:SetScript("OnLeave", FilterButton_OnLeave)
+		button:RegisterForClicks("LeftButtonUp","RightButtonUp")
 		button:SetScript("OnClick", FilterButton_OnClick)
-		button:SetHeight(16)
-		button:SetWidth(80)
+
+		button:SetSize(24, 24)
+		button:SetNormalAtlas("worldquest-tracker-ring")
+		button:SetHighlightAtlas("worldquest-tracker-ring")
+		button:GetHighlightTexture():SetAlpha(0.4)
+
+		local icon = button:CreateTexture(nil, "BACKGROUND", nil, -1)
+		icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+		icon:SetSize(16, 16)
+		icon:SetPoint("CENTER", 0, 1)
+		icon:SetTexture("Interface\\Icons\\"..(FILTER_ICONS[index] or "inv_misc_questionmark"))
+		button.Icon = icon
 
 		filterButtons[index] = button
 	end
@@ -145,13 +175,17 @@ local function GetMapAreaIDs()
 end
 
 local function QuestFrame_Update()
+	if not WorldMapFrame:IsShown() then return end
 	local currentMapID, continentMapID = GetMapAreaIDs()
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(currentMapID)
 	if not displayLocation or lockedQuestID then
 		for i = 1, #headerButtons do headerButtons[i]:Hide() end
 		for i = 1, #titleButtons do titleButtons[i]:Hide() end
+		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 		return
 	end
+
+	local questsCollapsed = Addon.Config.collapsed
 
 	local numEntries, numQuests = GetNumQuestLogEntries()
 
@@ -183,6 +217,7 @@ local function QuestFrame_Update()
 
 	local headerIndex = 0
 	local titleIndex = 0
+	local filterIndex = 0
 
 	headerIndex = headerIndex + 1
 	local button = GetHeaderButton(headerIndex)
@@ -195,7 +230,7 @@ local function QuestFrame_Update()
 	end
 	button:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
 	button:ClearAllPoints()
-	if ( prevButton and not config.showAtTop ) then
+	if ( prevButton and not Addon.Config.showAtTop ) then
 		button:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
 	elseif storyButton then
 		button:SetPoint("TOPLEFT", storyButton, "BOTTOMLEFT", 0, 0)
@@ -205,26 +240,33 @@ local function QuestFrame_Update()
 	button:Show()
 	prevButton = button
 
-	-- if not filterFrame then
-	-- 	local frame = CreateFrame("FRAME", nil, QuestMapFrame.QuestsFrame.Contents)
-	-- 	frame:SetSize(255, 16)
-	-- 	frame:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background" })
-	-- 	frame:SetBackdropColor( 0.616, 0.149, 0.114, 0.9)
-	-- 	filterFrame = frame
-
-	-- 	local filter1Button = GetFilterButton(1, frame)
-	-- 	filter1Button:SetText("Emissary")
-	-- 	filter1Button:ClearAllPoints()
-	-- 	filter1Button:SetPoint("LEFT", 0, 0)
-	-- end
-	-- filterFrame:ClearAllPoints()
-	-- filterFrame:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
-
-	-- prevButton = filterFrame
-
 	if (not questsCollapsed) then
+		local hasFilters = Addon.Config:HasFilters()
+		if Addon.Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
+		local selectedFilters = Addon.Config:GetFilterTable(FILTER_COUNT)
+		for i=FILTER_COUNT, 1, -1 do
+			local filterButton = GetFilterButton(i)
+			filterButton:Show()
+
+			filterButton:ClearAllPoints()
+			if i == FILTER_COUNT then
+				filterButton:SetPoint("RIGHT", 0, 0)
+				filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+			else
+				filterButton:SetPoint("RIGHT", GetFilterButton(i+1), "LEFT", 3, 0)
+				filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+			end
+
+			if selectedFilters[i] then
+				filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
+			else
+				filterButton:SetNormalAtlas("worldquest-tracker-ring")
+			end
+		end
+		filterIndex = FILTER_COUNT
+
 		local questMapIDs = { currentMapID }
-		if currentMapID == MAPID_BROKENISLES or (not config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
+		if currentMapID == MAPID_BROKENISLES or (not Addon.Config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
 			questMapIDs = MAPID_ALL
 		end
 
@@ -241,14 +283,15 @@ local function QuestFrame_Update()
 
 						if isWorldQuest and passFilters then
 							local isSuppressed = WorldMap_IsWorldQuestSuppressed(questID)
-							local isFiltered = false
 
-							if (not isSuppressed and not isFiltered) then
+							if (not isSuppressed) then
 								local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(questID)
 								local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(questID)
 								local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(questID)
 								local selected = questIDd == GetSuperTrackedQuestID()
 								C_TaskQuest.RequestPreloadRewardData(questID)
+								
+								local isFiltered = hasFilters
 
 								local totalHeight = 8
 								titleIndex = titleIndex + 1
@@ -265,11 +308,11 @@ local function QuestFrame_Update()
 								button.Text:SetText(title)
 								totalHeight = totalHeight + button.Text:GetHeight()
 
-								if ( IsWorldQuestHardWatched(questID) ) then -- TODO: Add support if world quest is tracked
-									button.Check:Show();
+								if ( IsWorldQuestHardWatched(questID) ) then
+									button.Check:Show()
 									button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0);
 								else
-									button.Check:Hide();
+									button.Check:Hide()
 								end
 
 								button.TaskIcon:Show()
@@ -296,6 +339,7 @@ local function QuestFrame_Update()
 
 								local money = GetQuestLogRewardMoney(questID)
 								if ( money > 0 ) then
+									isFiltered = hasFilters and not selectedFilters[FILTER_GOLD]
 									local gold = floor(money / (COPPER_PER_SILVER * SILVER_PER_GOLD) + 0.5)
 									tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
 									tagTexCoords = { 0, 0.25, 0, 1 }
@@ -305,6 +349,9 @@ local function QuestFrame_Update()
 								local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
 								for i = 1, numQuestCurrencies do
 									local name, texture, numItems = GetQuestLogRewardCurrencyInfo(i, questID)
+									if name == FILTER_NAMES[FILTER_ORDER_RESOURCES] then
+										isFiltered = hasFilters and not selectedFilters[FILTER_ORDER_RESOURCES]
+									end
 									tagText = numItems
 									tagTexture = texture
 								end
@@ -316,18 +363,19 @@ local function QuestFrame_Update()
 										local artifactPower = Addon.Data:ItemArtifactPower(itemID)
 										local iLevel = Addon.Data:RewardItemLevel(questID)
 										if artifactPower then
+											isFiltered = hasFilters and not selectedFilters[FILTER_ARTIFACT_POWER]
 											tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
 											tagText = artifactPower
 											tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
 										else
 											tagTexture = itemTexture
-											if quantity > 1 then
-												tagText = quantity
-											elseif iLevel then
+											if iLevel then
+												isFiltered = hasFilters and not selectedFilters[FILTER_LOOT]
 												tagText = iLevel
 												tagColor = BAG_ITEM_QUALITY_COLORS[quality]
 											else
-												tagText = nil
+												isFiltered = hasFilters and not selectedFilters[FILTER_ITEMS]
+												tagText = quantity > 1 and quantity
 											end
 										end
 									end
@@ -354,6 +402,16 @@ local function QuestFrame_Update()
 									button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
 								end
 
+								if selectedFilters[FILTER_EMISSARY] and #bounties and not isFiltered then
+									local isBounty = false
+									for _, bounty in ipairs(bounties) do
+										if bounty and IsQuestCriteriaForBounty(questID, bounty.questID) then
+											isBounty = true
+										end
+									end
+									if not isBounty then isFiltered = true end
+								end
+
 								button:SetHeight(totalHeight)
 								button:ClearAllPoints()
 								if ( prevButton ) then
@@ -361,9 +419,13 @@ local function QuestFrame_Update()
 								else
 									button:SetPoint("TOPLEFT", 1, -6)
 								end
-								button:Show()
-								prevButton = button
-
+								if isFiltered then
+									button:Hide()
+									titleIndex = titleIndex - 1
+								else
+									button:Show()
+									prevButton = button
+								end
 							end
 						end
 
@@ -374,7 +436,7 @@ local function QuestFrame_Update()
 		end
 	end
 
-	if config.showAtTop and firstButton then
+	if Addon.Config.showAtTop and firstButton then
 		firstButton:ClearAllPoints()
 		if titleIndex > 0 then
 			firstButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -6)
@@ -389,10 +451,19 @@ local function QuestFrame_Update()
 	for i = titleIndex + 1, #titleButtons do
 		titleButtons[i]:Hide()
 	end
-		
+	for i = filterIndex + 1, #filterButtons do
+		filterButtons[i]:Hide()
+	end
+	
 end
 
 function QF:Startup()
+	FILTER_NAMES[FILTER_ORDER_RESOURCES] = select(1, GetCurrencyInfo(1220)) -- Add in localized name of Order Resources
+
+	--Addon.Config:RegisterCallback('showAtTop', QuestMapFrame_UpdateAll) -- TODO: Fix callback when showAtTop is changed
+	Addon.Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
+	Addon.Config:RegisterCallback('selectedFilters', QuestFrame_Update)
+
 	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
 end
