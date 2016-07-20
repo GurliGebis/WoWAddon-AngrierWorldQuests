@@ -4,11 +4,11 @@ local QF = Addon:NewModule('QuestFrame')
 local MAPID_BROKENISLES = 1007
 local MAPID_DALARAN = 1014
 local MAPID_AZSUNA = 1015
-local MAPID_VALSHARAH = 1018
 local MAPID_STORMHEIM = 1017
-local MAPID_SURAMAR = 1033
+local MAPID_VALSHARAH = 1018
 local MAPID_HIGHMOUNTAIN = 1024
-local MAPID_ALL = { [MAPID_AZSUNA]=MAPID_AZSUNA, [MAPID_VALSHARAH]=MAPID_VALSHARAH, [MAPID_STORMHEIM]=MAPID_STORMHEIM, [MAPID_SURAMAR]=MAPID_SURAMAR, [MAPID_HIGHMOUNTAIN]=MAPID_HIGHMOUNTAIN, [MAPID_DALARAN]=MAPID_DALARAN }
+local MAPID_SURAMAR = 1033
+local MAPID_ALL = { MAPID_DALARAN, MAPID_AZSUNA, MAPID_STORMHEIM, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_SURAMAR }
 
 local QUESTTYPE_GOLD = 0x1
 local QUESTTYPE_RESOURCE = 0x2
@@ -16,7 +16,8 @@ local QUESTTYPE_ITEM = 0x4
 local QUESTTYPE_ARTIFACTPOWER = 0x8
 
 local config = {
-	showAtTop = true
+	showAtTop = true,
+	onlyCurrentZone = true,
 }
 
 local questsCollapsed = false
@@ -94,7 +95,7 @@ local function GetTitleButton(index)
 		title.TagText:Hide()
 
 		title.TaskIcon:ClearAllPoints()
-		title.TaskIcon:SetPoint("RIGHT", title.Text, "LEFT", -7, 0)
+		title.TaskIcon:SetPoint("CENTER", title.Text, "LEFT", -15, 0)
 
 		titleButtons[index] = title
 	end
@@ -114,8 +115,15 @@ local function GetFilterButton(index, parent)
 	return filterButtons[index]
 end
 
+local function GetMapAreaIDs()
+	local mapID = GetCurrentMapAreaID()
+	local contOffset = GetCurrentMapContinent()
+	local conts = { GetMapContinents() }
+	return mapID, conts[contOffset*2 - 1]
+end
+
 local function QuestFrame_Update()
-	local currentMapID = GetCurrentMapAreaID()
+	local currentMapID, continentMapID = GetMapAreaIDs()
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(currentMapID)
 	if not displayLocation or lockedQuestID then
 		for i = 1, #headerButtons do headerButtons[i]:Hide() end
@@ -193,14 +201,14 @@ local function QuestFrame_Update()
 	-- prevButton = filterFrame
 
 	if (not questsCollapsed) then
-		local questMapIDs = { [currentMapID] = currentMapID }
-		if currentMapID == MAPID_BROKENISLES then
+		local questMapIDs = { currentMapID }
+		if currentMapID == MAPID_BROKENISLES or (not config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
 			questMapIDs = MAPID_ALL
 		end
 
-		for _, mapID in pairs(questMapIDs) do
+		for _, mapID in ipairs(questMapIDs) do
 
-			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
+			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, continentMapID)
 			if (questsList and #questsList > 0) then
 				for i, questInfo in ipairs(questsList) do
 					local questID = questInfo.questId
@@ -242,6 +250,7 @@ local function QuestFrame_Update()
 								end
 
 								button.TaskIcon:Show()
+								button.TaskIcon:SetTexCoord(0, 1, 0, 1)
 								if worldQuestType == LE_QUEST_TAG_TYPE_PVP then
 									button.TaskIcon:SetAtlas("worldquest-icon-pvp-ffa", true)
 								elseif worldQuestType == LE_QUEST_TAG_TYPE_PET_BATTLE then
@@ -250,6 +259,11 @@ local function QuestFrame_Update()
 									button.TaskIcon:SetAtlas("worldquest-icon-dungeon", true)
 								elseif ( worldQuestType == LE_QUEST_TAG_TYPE_PROFESSION and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
 									button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
+								elseif isElite then
+									local tagCoords = QUEST_TAG_TCOORDS[QUEST_TAG_HEROIC]
+									button.TaskIcon:SetSize(16, 16)
+									button.TaskIcon:SetTexture("Interface\\QuestFrame\\QuestTypeIcons")
+									button.TaskIcon:SetTexCoord( unpack(tagCoords) )
 								else
 									button.TaskIcon:Hide()
 								end
@@ -259,7 +273,7 @@ local function QuestFrame_Update()
 
 								local money = GetQuestLogRewardMoney(questID)
 								if ( money > 0 ) then
-									local gold = floor(money / (COPPER_PER_SILVER * SILVER_PER_GOLD))
+									local gold = floor(money / (COPPER_PER_SILVER * SILVER_PER_GOLD) + 0.5)
 									tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
 									tagTexCoords = { 0, 0.25, 0, 1 }
 									tagText = BreakUpLargeNumbers(gold)
@@ -276,8 +290,8 @@ local function QuestFrame_Update()
 								if numQuestRewards > 0 then
 									local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
 									if itemName and itemTexture then
-										local artifactPower = Addon.Modules.Data:ItemArtifactPower(itemID)
-										local iLevel = Addon.Modules.Data:RewardItemLevel(questID)
+										local artifactPower = Addon.Data:ItemArtifactPower(itemID)
+										local iLevel = Addon.Data:RewardItemLevel(questID)
 										if artifactPower then
 											tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
 											tagText = artifactPower

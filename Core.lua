@@ -19,12 +19,25 @@ function Addon:RegisterEvent(event, callback)
 	end
 end
 
+local ModulePrototype = {}
+function ModulePrototype:RegisterEvent(event)
+	Addon:RegisterEvent(event, self)
+end
+
 Addon.Modules = {}
 function Addon:NewModule(name)
 	local object = {}
 	self.Modules[name] = object
+	setmetatable(object, {__index=ModulePrototype})
 	return object
 end
+setmetatable(Addon, {
+	__index = function(self, key)
+		if self.Modules[key] then
+			return self.Modules[key]
+		end
+	end
+})
 
 function Addon:ForAllModules(event, ...)
 	for name, module in pairs(Addon.Modules) do

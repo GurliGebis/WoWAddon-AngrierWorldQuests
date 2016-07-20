@@ -69,5 +69,5 @@ function Data:Startup()
 	fakeTooltip = CreateFrame('GameTooltip', 'ABQFakeTooltip', UIParent, 'GameTooltipTemplate')
 	fakeTooltip:Hide()
 
-	Addon:RegisterEvent('QUEST_LOG_UPDATE', self)
+	self:RegisterEvent('QUEST_LOG_UPDATE')
 end
