@@ -1,7 +1,23 @@
 local ADDON, Addon = ...
+
 local Listener = CreateFrame('Frame', ADDON .. 'Listener')
-Listener:SetScript('OnEvent', function(_, event) Addon[event](Addon) end)
-Listener:RegisterEvent('PLAYER_ENTERING_WORLD')
+local EventListeners = {}
+local function Addon_OnEvent(frame, event, ...)
+	if EventListeners[event] then
+		for _, callback in ipairs(EventListeners[event]) do
+			callback[event](callback, ...)
+		end
+	end
+end
+Listener:SetScript('OnEvent', Addon_OnEvent)
+function Addon:RegisterEvent(event, callback)
+	if EventListeners[event] == nil then
+		Listener:RegisterEvent(event)
+		EventListeners[event] = { callback }
+	else
+		table.insert(EventListeners[event], callback)
+	end
+end
 
 Addon.Modules = {}
 function Addon:NewModule(name)
@@ -18,6 +34,7 @@ function Addon:ForAllModules(event, ...)
 	end
 end
 
+Addon:RegisterEvent('PLAYER_ENTERING_WORLD', Addon)
 function Addon:PLAYER_ENTERING_WORLD()
 	self:ForAllModules('Startup')
 

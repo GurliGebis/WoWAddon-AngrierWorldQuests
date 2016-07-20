@@ -68,17 +68,17 @@ end
 local headerButtons = {}
 local function GetHeaderButton(index)
 	if ( not headerButtons[index] ) then
-		local header = CreateFrame("BUTTON", nil, QuestMapFrame.QuestsFrame.Contents, "QuestLogHeaderTemplate");
+		local header = CreateFrame("BUTTON", nil, QuestMapFrame.QuestsFrame.Contents, "QuestLogHeaderTemplate")
 		header:SetScript("OnClick", HeaderButton_OnClick)
-		headerButtons[index] = header;
+		headerButtons[index] = header
 	end
-	return headerButtons[index];
+	return headerButtons[index]
 end
 
 local titleButtons = {}
 local function GetTitleButton(index)
 	if ( not titleButtons[index] ) then
-		local title = CreateFrame("BUTTON", nil, QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate");
+		local title = CreateFrame("BUTTON", nil, QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
 		title:SetScript("OnEnter", TitleButton_OnEnter)
 		title:SetScript("OnLeave", TitleButton_OnLeave)
 		title:SetScript("OnClick", TitleButton_OnClick)
@@ -96,12 +96,33 @@ local function GetTitleButton(index)
 		title.TaskIcon:ClearAllPoints()
 		title.TaskIcon:SetPoint("RIGHT", title.Text, "LEFT", -7, 0)
 
-		titleButtons[index] = title;
+		titleButtons[index] = title
 	end
-	return titleButtons[index];
+	return titleButtons[index]
+end
+
+local filterButtons = {}
+local function GetFilterButton(index, parent)
+	if ( not titleButtons[index] ) then
+		local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+		button:SetScript("OnClick", FilterButton_OnClick)
+		button:SetHeight(16)
+		button:SetWidth(80)
+
+		filterButtons[index] = button
+	end
+	return filterButtons[index]
 end
 
 local function QuestFrame_Update()
+	local currentMapID = GetCurrentMapAreaID()
+	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(currentMapID)
+	if not displayLocation or lockedQuestID then
+		for i = 1, #headerButtons do headerButtons[i]:Hide() end
+		for i = 1, #titleButtons do titleButtons[i]:Hide() end
+		return
+	end
+
 	local numEntries, numQuests = GetNumQuestLogEntries()
 
 	local headerIndex, titleIndex = 0, 0
@@ -154,11 +175,27 @@ local function QuestFrame_Update()
 	button:Show()
 	prevButton = button
 
+	-- if not filterFrame then
+	-- 	local frame = CreateFrame("FRAME", nil, QuestMapFrame.QuestsFrame.Contents)
+	-- 	frame:SetSize(255, 16)
+	-- 	frame:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background" })
+	-- 	frame:SetBackdropColor( 0.616, 0.149, 0.114, 0.9)
+	-- 	filterFrame = frame
+
+	-- 	local filter1Button = GetFilterButton(1, frame)
+	-- 	filter1Button:SetText("Emissary")
+	-- 	filter1Button:ClearAllPoints()
+	-- 	filter1Button:SetPoint("LEFT", 0, 0)
+	-- end
+	-- filterFrame:ClearAllPoints()
+	-- filterFrame:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
+
+	-- prevButton = filterFrame
+
 	if (not questsCollapsed) then
-		local currentMapID = GetCurrentMapAreaID()
-		local questMapIDs = MAPID_ALL
-		if questMapIDs[currentMapID] then
-			questMapIDs = { [currentMapID] = currentMapID }
+		local questMapIDs = { [currentMapID] = currentMapID }
+		if currentMapID == MAPID_BROKENISLES then
+			questMapIDs = MAPID_ALL
 		end
 
 		for _, mapID in pairs(questMapIDs) do
@@ -217,7 +254,8 @@ local function QuestFrame_Update()
 									button.TaskIcon:Hide()
 								end
 
-								local tagText, tagTexture, tagTexCoords
+								local tagText, tagTexture, tagTexCoords, tagColor
+								tagColor = {r=1, g=1, b=1}
 
 								local money = GetQuestLogRewardMoney(questID)
 								if ( money > 0 ) then
@@ -238,11 +276,22 @@ local function QuestFrame_Update()
 								if numQuestRewards > 0 then
 									local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
 									if itemName and itemTexture then
-										tagTexture = itemTexture
-										if quantity > 1 then
-											tagText = quantity
+										local artifactPower = Addon.Modules.Data:ItemArtifactPower(itemID)
+										local iLevel = Addon.Modules.Data:RewardItemLevel(questID)
+										if artifactPower then
+											tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
+											tagText = artifactPower
+											tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
 										else
-											tagText = nil
+											tagTexture = itemTexture
+											if quantity > 1 then
+												tagText = quantity
+											elseif iLevel then
+												tagText = iLevel
+												tagColor = BAG_ITEM_QUALITY_COLORS[quality]
+											else
+												tagText = nil
+											end
 										end
 									end
 								end
@@ -250,6 +299,7 @@ local function QuestFrame_Update()
 								if tagTexture and tagText then
 									button.TagText:Show()
 									button.TagText:SetText(tagText)
+									button.TagText:SetTextColor(tagColor.r, tagColor.g, tagColor.b )
 									button.TagTexture:Show()
 									button.TagTexture:SetTexture(tagTexture)
 								elseif tagTexture then
@@ -307,4 +357,5 @@ end
 
 function QF:Startup()
 	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
+	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
 end
