@@ -19,10 +19,9 @@ local config = {
 	showAtTop = true
 }
 
-local questsCollapsed = true
+local questsCollapsed = false
 
-local TitleButton_TextColor = { font="QuestDifficulty_Standard", r=1, g=0.82, b=0 }
-local TitleButton_TextHightlightColor = { font="QuestDifficulty_Standard", r=1, g=1, b=0.1 }
+local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
 
 local function HeaderButton_OnClick(self, button)
 	PlaySound("igMainMenuOptionCheckBoxOn")
@@ -33,14 +32,16 @@ local function HeaderButton_OnClick(self, button)
 end
 
 local function TitleButton_OnEnter(self, button)
-	local color = TitleButton_TextHightlightColor
+	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
+	local _, color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 	
 	TaskPOI_OnEnter(self, button)
 end
 
 local function TitleButton_OnLeave(self, button)
-	local color = TitleButton_TextColor
+	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
+	local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
 	TaskPOI_OnLeave(self, button)
@@ -81,12 +82,26 @@ local function GetTitleButton(index)
 		title:SetScript("OnEnter", TitleButton_OnEnter)
 		title:SetScript("OnLeave", TitleButton_OnLeave)
 		title:SetScript("OnClick", TitleButton_OnClick)
+
+		title.TagTexture:SetSize(16, 16)
+		title.TagTexture:ClearAllPoints()
+		title.TagTexture:SetPoint("TOP", title.Text, "CENTER", 0, 8)
+		title.TagTexture:SetPoint("RIGHT", 0, 0)
+
+		title.TagText = title:CreateFontString(nil, nil, "GameFontNormalLeft")
+		title.TagText:SetTextColor(1, 1, 1)
+		title.TagText:SetPoint("RIGHT", title.TagTexture , "LEFT", -3, 0)
+		title.TagText:Hide()
+
+		title.TaskIcon:ClearAllPoints()
+		title.TaskIcon:SetPoint("RIGHT", title.Text, "LEFT", -7, 0)
+
 		titleButtons[index] = title;
 	end
 	return titleButtons[index];
 end
 
-local function draw()
+local function QuestFrame_Update()
 	local numEntries, numQuests = GetNumQuestLogEntries()
 
 	local headerIndex, titleIndex = 0, 0
@@ -163,6 +178,10 @@ local function draw()
 
 							if (not isSuppressed and not isFiltered) then
 								local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(questID)
+								local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(questID)
+								local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(questID)
+								local selected = questIDd == GetSuperTrackedQuestID()
+								C_TaskQuest.RequestPreloadRewardData(questID)
 
 								local totalHeight = 8
 								titleIndex = titleIndex + 1
@@ -172,20 +191,81 @@ local function draw()
 								button.mapID = mapID
 								button.numObjectives = questInfo.numObjectives
 
-								local color = TitleButton_TextColor
+								local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 								button.Text:SetTextColor( color.r, color.g, color.b )
 
 								button.Text:SetText(title)
 								totalHeight = totalHeight + button.Text:GetHeight()
 
-								if ( false ) then -- TODO: Add support if world quest is tracked
+								if ( IsWorldQuestHardWatched(questID) ) then -- TODO: Add support if world quest is tracked
 									button.Check:Show();
 									button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0);
 								else
 									button.Check:Hide();
 								end
 
-								button.TagTexture:Hide()
+								button.TaskIcon:Show()
+								if worldQuestType == LE_QUEST_TAG_TYPE_PVP then
+									button.TaskIcon:SetAtlas("worldquest-icon-pvp-ffa", true)
+								elseif worldQuestType == LE_QUEST_TAG_TYPE_PET_BATTLE then
+									button.TaskIcon:SetAtlas("worldquest-icon-petbattle", true)
+								elseif worldQuestType == LE_QUEST_TAG_TYPE_DUNGEON then
+									button.TaskIcon:SetAtlas("worldquest-icon-dungeon", true)
+								elseif ( worldQuestType == LE_QUEST_TAG_TYPE_PROFESSION and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
+									button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
+								else
+									button.TaskIcon:Hide()
+								end
+
+								local tagText, tagTexture, tagTexCoords
+
+								local money = GetQuestLogRewardMoney(questID)
+								if ( money > 0 ) then
+									local gold = floor(money / (COPPER_PER_SILVER * SILVER_PER_GOLD))
+									tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
+									tagTexCoords = { 0, 0.25, 0, 1 }
+									tagText = BreakUpLargeNumbers(gold)
+								end	
+
+								local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
+								for i = 1, numQuestCurrencies do
+									local name, texture, numItems = GetQuestLogRewardCurrencyInfo(i, questID)
+									tagText = numItems
+									tagTexture = texture
+								end
+
+								local numQuestRewards = GetNumQuestLogRewards(questID);
+								if numQuestRewards > 0 then
+									local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
+									if itemName and itemTexture then
+										tagTexture = itemTexture
+										if quantity > 1 then
+											tagText = quantity
+										else
+											tagText = nil
+										end
+									end
+								end
+
+								if tagTexture and tagText then
+									button.TagText:Show()
+									button.TagText:SetText(tagText)
+									button.TagTexture:Show()
+									button.TagTexture:SetTexture(tagTexture)
+								elseif tagTexture then
+									button.TagText:Hide()
+									button.TagText:SetText("")
+									button.TagTexture:Show()
+									button.TagTexture:SetTexture(tagTexture)
+								else
+									button.TagText:Hide()
+									button.TagTexture:Hide()
+								end
+								if tagTexCoords then
+									button.TagTexture:SetTexCoord( unpack(tagTexCoords) )
+								else
+									button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
+								end
 
 								button:SetHeight(totalHeight)
 								button:ClearAllPoints()
@@ -207,7 +287,7 @@ local function draw()
 		end
 	end
 
-	if config.showAtTop then
+	if config.showAtTop and firstButton then
 		firstButton:ClearAllPoints()
 		if titleIndex > 0 then
 			firstButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -6)
@@ -226,5 +306,5 @@ local function draw()
 end
 
 function QF:Startup()
-	hooksecurefunc("QuestMapFrame_UpdateAll", draw)
+	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
 end
