@@ -32,18 +32,40 @@ local function HeaderButton_OnClick(self, button)
 	end
 end
 
-local function TitleButton_OnEnter(self, button)
+local function TitleButton_OnEnter(self)
 	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
+	local selected = self.questId == GetSuperTrackedQuestID()
+	local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questId)
+	local isSpellTarget = SpellCanTargetQuest() and IsQuestIDValidSpellTarget(self.questId)
+
 	local _, color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
+
+	for i = 1, NUM_WORLDMAP_TASK_POIS do
+		local mapButton = _G["WorldMapFrameTaskPOI"..i]
+		if mapButton and mapButton:IsShown() and mapButton.questID == self.questID then
+			WorldMap_SetupWorldQuestButton(mapButton, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, true, isCriteria, isSpellTarget)
+		end
+	end
 	
 	TaskPOI_OnEnter(self, button)
 end
 
-local function TitleButton_OnLeave(self, button)
+local function TitleButton_OnLeave(self)
 	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
+	local selected = self.questId == GetSuperTrackedQuestID()
+	local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questId)
+	local isSpellTarget = SpellCanTargetQuest() and IsQuestIDValidSpellTarget(self.questId)
+
 	local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
+
+	for i = 1, NUM_WORLDMAP_TASK_POIS do
+		local mapButton = _G["WorldMapFrameTaskPOI"..i]
+		if mapButton and mapButton:IsShown() and mapButton.questID == self.questID then
+			WorldMap_SetupWorldQuestButton(mapButton, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, selected, isCriteria, isSpellTarget)
+		end
+	end
 
 	TaskPOI_OnLeave(self, button)
 end
@@ -218,7 +240,7 @@ local function QuestFrame_Update()
 						local passFilters = WorldMap_DoesWorldQuestInfoPassFilters(questInfo)
 
 						if isWorldQuest and passFilters then
-							local isSuppressed = WorldMap_IsWorldQuestSuppressed (questID)
+							local isSuppressed = WorldMap_IsWorldQuestSuppressed(questID)
 							local isFiltered = false
 
 							if (not isSuppressed and not isFiltered) then
@@ -235,6 +257,7 @@ local function QuestFrame_Update()
 								button.questID = questID
 								button.mapID = mapID
 								button.numObjectives = questInfo.numObjectives
+								button.inProgress = questInfo.inProgress
 
 								local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 								button.Text:SetTextColor( color.r, color.g, color.b )
