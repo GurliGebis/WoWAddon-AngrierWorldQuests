@@ -7,6 +7,7 @@ local configDefaults = {
 	showAtTop = true,
 	onlyCurrentZone = true,
 	selectedFilters = 0,
+	hidePOI = false,
 }
 local callbacks = {}
 
@@ -144,17 +145,18 @@ end
 local function Panel_OnDefaults(self)
 	Config:Set('onlyCurrentZone', configDefaults['onlyCurrentZone'])
 	Config:Set('showAtTop', configDefaults['showAtTop'])
+	Config:Set('hidePOI', configDefaults['hidePOI'])
 end
 
 local function CheckBox_Update(self)
 	if Config:Get(self.configKey) then
 		SetDesaturation(self.Check, false)
 		self.Check:Show()
-		PlaySound("igMainMenuOptionCheckBoxOn")
+		return true
 	else
 		SetDesaturation(self.Check, false)
 		self.Check:Hide()
-		PlaySound("igMainMenuOptionCheckBoxOff")
+		return false
 	end
 end
 
@@ -172,7 +174,11 @@ local function CheckBox_OnMouseUp(self)
 	self.Text:SetPoint("LEFT", self.CheckBG, "RIGHT")
 	self.Text:SetPoint("RIGHT")
 
-	CheckBox_Update(self)
+	if CheckBox_Update(self) then
+		PlaySound("igMainMenuOptionCheckBoxOn")
+	else
+		PlaySound("igMainMenuOptionCheckBoxOff")
+	end
 end
 
 local function CheckBox_Create(self)
@@ -210,7 +216,7 @@ local function CheckBox_Create(self)
 	return checkframe
 end
 
-local panelInit, check_showAtTop, check_onlyCurrentZone
+local panelInit, check_showAtTop, check_onlyCurrentZone, check_hidePOI
 local function Panel_OnRefresh(self)
 	if not panelInit then
 		local label = self:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -231,13 +237,19 @@ local function Panel_OnRefresh(self)
 		check_onlyCurrentZone.Text:SetText("Only current zone")
 		check_onlyCurrentZone:SetPoint("TOPLEFT", check_showAtTop, "BOTTOMLEFT", 0, -6)
 		check_onlyCurrentZone:SetPoint("RIGHT", 0, 0)
-		CheckBox_Update(check_onlyCurrentZone)
+
+		check_hidePOI = CheckBox_Create(self)
+		check_hidePOI.configKey = "hidePOI"
+		check_hidePOI.Text:SetText("Hide untracked World Quest POI on the world map")
+		check_hidePOI:SetPoint("TOPLEFT", check_onlyCurrentZone, "BOTTOMLEFT", 0, -6)
+		check_hidePOI:SetPoint("RIGHT", 0, 0)
 
 		panelInit = true
 	end
 	
 	CheckBox_Update(check_showAtTop)
 	CheckBox_Update(check_onlyCurrentZone)
+	CheckBox_Update(check_hidePOI)
 end
 
 function Config:CreatePanel()

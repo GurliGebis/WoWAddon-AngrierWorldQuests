@@ -11,12 +11,12 @@ local MAPID_SURAMAR = 1033
 local MAPID_ALL = { MAPID_DALARAN, MAPID_AZSUNA, MAPID_STORMHEIM, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_SURAMAR }
 
 local FILTER_COUNT = 6
-local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_orderhall_orderresources", "inv_misc_lockboxghostiron", "inv_misc_coin_01", "inv_box_01" }
-local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, "Order Resources", BONUS_ROLL_REWARD_ITEM, BONUS_ROLL_REWARD_MONEY, ITEMS }
+local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01" }
+local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS }
 local FILTER_EMISSARY = 1
 local FILTER_ARTIFACT_POWER = 2
-local FILTER_ORDER_RESOURCES = 3
-local FILTER_LOOT = 4
+local FILTER_LOOT = 3
+local FILTER_ORDER_RESOURCES = 4
 local FILTER_GOLD = 5
 local FILTER_ITEMS = 6
 
@@ -39,7 +39,10 @@ local function TitleButton_OnEnter(self)
 
 	for i = 1, NUM_WORLDMAP_TASK_POIS do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
-		if mapButton and mapButton:IsShown() and mapButton.questID == self.questID then
+		if mapButton and mapButton.questID == self.questID then
+			if Addon.Config.hidePOI then
+				mapButton:Show()
+			end
 			mapButton:LockHighlight()
 		end
 	end
@@ -54,8 +57,11 @@ local function TitleButton_OnLeave(self)
 
 	for i = 1, NUM_WORLDMAP_TASK_POIS do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
-		if mapButton and mapButton:IsShown() and mapButton.questID == self.questID then
+		if mapButton and mapButton.questID == self.questID then
 			mapButton:UnlockHighlight()
+			if Addon.Config.hidePOI then
+				mapButton:SetShown( IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID )
+			end
 		end
 	end
 
@@ -63,19 +69,28 @@ local function TitleButton_OnLeave(self)
 end
 
 local function TitleButton_OnClick(self, button)
-	PlaySound("igMainMenuOptionCheckBoxOn");
-	if ( IsShiftKeyDown() ) then
-		if IsWorldQuestHardWatched(self.questID) or (IsWorldQuestWatched(self.questID) and GetSuperTrackedQuestID() == self.questID) then
-			BonusObjectiveTracker_UntrackWorldQuest(self.questID);
-		else
-			BonusObjectiveTracker_TrackWorldQuest(self.questID, true);
+	PlaySound("igMainMenuOptionCheckBoxOn")
+	if IsModifiedClick("CHATLINK") and ChatEdit_GetActiveWindow() then
+		local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(self.questID)
+		-- ChatEdit_InsertLink( string.format("|cffffff00|Hquest:%d:110|h[%s]|h|r", self.questID, title) )
+		ChatEdit_InsertLink( string.format("[%s]", title) )
+	elseif ( button == "RightButton" ) then
+		if ( self.mapID ) then
+			SetMapByID(self.mapID)
 		end
 	else
-		if ( button == "RightButton" ) then
-			if ( self.mapID ) then
-				SetMapByID(self.mapID)
+		if IsShiftKeyDown() then
+			if IsWorldQuestHardWatched(self.questID) or (IsWorldQuestWatched(self.questID) and GetSuperTrackedQuestID() == self.questID) then
+				BonusObjectiveTracker_UntrackWorldQuest(self.questID)
+			else
+				BonusObjectiveTracker_TrackWorldQuest(self.questID, true)
 			end
 		else
+			if IsWorldQuestHardWatched(self.questID) then
+				SetSuperTrackedQuestID(self.questID);
+			else
+				BonusObjectiveTracker_TrackWorldQuest(self.questID)
+			end
 		end
 	end
 end
@@ -169,9 +184,17 @@ end
 
 local function GetMapAreaIDs()
 	local mapID = GetCurrentMapAreaID()
-	local contOffset = GetCurrentMapContinent()
+	local contIndex = 0
+	local mapHeirarchy = GetMapHierarchy()
+	for _, mapInfo in ipairs(mapHeirarchy) do
+		if mapInfo['isContinent'] then
+			contIndex = mapInfo['id']
+		else
+			mapID = mapInfo['id']
+		end
+	end
 	local conts = { GetMapContinents() }
-	return mapID, conts[contOffset*2 - 1]
+	return mapID, conts[contIndex*2 - 1]
 end
 
 local function QuestFrame_Update()
@@ -287,8 +310,6 @@ local function QuestFrame_Update()
 							if (not isSuppressed) then
 								local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(questID)
 								local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(questID)
-								local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(questID)
-								local selected = questIDd == GetSuperTrackedQuestID()
 								C_TaskQuest.RequestPreloadRewardData(questID)
 								
 								local isFiltered = hasFilters
@@ -300,7 +321,6 @@ local function QuestFrame_Update()
 								button.questID = questID
 								button.mapID = mapID
 								button.numObjectives = questInfo.numObjectives
-								button.inProgress = questInfo.inProgress
 
 								local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 								button.Text:SetTextColor( color.r, color.g, color.b )
@@ -308,7 +328,7 @@ local function QuestFrame_Update()
 								button.Text:SetText(title)
 								totalHeight = totalHeight + button.Text:GetHeight()
 
-								if ( IsWorldQuestHardWatched(questID) ) then
+								if ( IsWorldQuestHardWatched(questID) or GetSuperTrackedQuestID() == questID ) then
 									button.Check:Show()
 									button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0);
 								else
@@ -402,7 +422,7 @@ local function QuestFrame_Update()
 									button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
 								end
 
-								if selectedFilters[FILTER_EMISSARY] and #bounties and not isFiltered then
+								if selectedFilters[FILTER_EMISSARY] and not isFiltered then
 									local isBounty = false
 									for _, bounty in ipairs(bounties) do
 										if bounty and IsQuestCriteriaForBounty(questID, bounty.questID) then
@@ -457,13 +477,39 @@ local function QuestFrame_Update()
 	
 end
 
+local function MapFrame_Update()
+	if Addon.Config.hidePOI then
+		for i = 1, NUM_WORLDMAP_TASK_POIS do
+			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
+			if taskPOI.worldQuest and not (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
+				taskPOI:Hide()
+			end
+		end
+	end
+end
+
+function QF:QUEST_WATCH_LIST_CHANGED()
+	QuestFrame_Update()
+	MapFrame_Update()
+end
+
+function QF:SUPER_TRACKED_QUEST_CHANGED()
+	QuestFrame_Update()
+	MapFrame_Update()
+end
+
 function QF:Startup()
 	FILTER_NAMES[FILTER_ORDER_RESOURCES] = select(1, GetCurrencyInfo(1220)) -- Add in localized name of Order Resources
 
-	--Addon.Config:RegisterCallback('showAtTop', QuestMapFrame_UpdateAll) -- TODO: Fix callback when showAtTop is changed
+	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
+	self:RegisterEvent("SUPER_TRACKED_QUEST_CHANGED")
+
+	Addon.Config:RegisterCallback('showAtTop', function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
 	Addon.Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
 	Addon.Config:RegisterCallback('selectedFilters', QuestFrame_Update)
+	Addon.Config:RegisterCallback('hidePOI', function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 
 	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
+	hooksecurefunc("WorldMap_UpdateQuestBonusObjectives", MapFrame_Update)
 end
