@@ -32,13 +32,7 @@ function Addon:NewModule(name)
 	setmetatable(object, {__index=ModulePrototype})
 	return object
 end
-setmetatable(Addon, {
-	__index = function(self, key)
-		if self.Modules[key] then
-			return self.Modules[key]
-		end
-	end
-})
+setmetatable(Addon, {__index = Addon.Modules})
 
 function Addon:ForAllModules(event, ...)
 	for name, module in pairs(Addon.Modules) do

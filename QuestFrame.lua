@@ -71,7 +71,7 @@ local function TitleButton_OnEnter(self)
 
 	DisplayMyTaskPOI(self)
 	
-	TaskPOI_OnEnter(self, button)
+	TaskPOI_OnEnter(self)
 end
 
 local function TitleButton_OnLeave(self)
@@ -91,7 +91,7 @@ local function TitleButton_OnLeave(self)
 
 	myTaskPOI:Hide()
 
-	TaskPOI_OnLeave(self, button)
+	TaskPOI_OnLeave(self)
 end
 
 local function TitleButton_OnClick(self, button)
@@ -178,6 +178,8 @@ local function GetTitleButton(index)
 
 		title.TimeIcon = title:CreateTexture(nil, "OVERLAY")
 		title.TimeIcon:SetAtlas("worldquest-icon-clock")
+
+		title.UpdateTooltip = TaskPOI_OnEnter
 
 		titleButtons[index] = title
 	end

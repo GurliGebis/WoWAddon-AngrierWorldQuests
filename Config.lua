@@ -148,6 +148,7 @@ local function Panel_OnDefaults(self)
 	Config:Set('onlyCurrentZone', configDefaults['onlyCurrentZone'])
 	Config:Set('showAtTop', configDefaults['showAtTop'])
 	Config:Set('hidePOI', configDefaults['hidePOI'])
+	Config:Set('showContinentPOI', configDefaults['showContinentPOI'])
 end
 
 local function CheckBox_Update(self)
