@@ -7,6 +7,7 @@ local configDefaults = {
 	showAtTop = true,
 	onlyCurrentZone = true,
 	selectedFilters = 0,
+	timeFilterDuration = 6,
 	hidePOI = false,
 }
 local callbacks = {}
@@ -29,7 +30,7 @@ setmetatable(Config, {
 })
 
 function Config:Get(key)
-	if AngryWorldQuests_Config[key] == nil then
+	if AngryWorldQuests_Config == nil or AngryWorldQuests_Config[key] == nil then
 		return configDefaults[key]
 	else
 		return AngryWorldQuests_Config[key]

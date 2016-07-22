@@ -10,15 +10,17 @@ local MAPID_HIGHMOUNTAIN = 1024
 local MAPID_SURAMAR = 1033
 local MAPID_ALL = { MAPID_DALARAN, MAPID_AZSUNA, MAPID_STORMHEIM, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_SURAMAR }
 
-local FILTER_COUNT = 6
-local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01" }
-local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS }
+local FILTER_COUNT = 7
+local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2" }
+local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN }
 local FILTER_EMISSARY = 1
 local FILTER_ARTIFACT_POWER = 2
 local FILTER_LOOT = 3
 local FILTER_ORDER_RESOURCES = 4
 local FILTER_GOLD = 5
 local FILTER_ITEMS = 6
+local FILTER_TIME = 7
+local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS }
 
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
 
@@ -149,6 +151,9 @@ local function GetTitleButton(index)
 		title.TaskIcon:ClearAllPoints()
 		title.TaskIcon:SetPoint("CENTER", title.Text, "LEFT", -15, 0)
 
+		title.TimeIcon = title:CreateTexture(nil, "OVERLAY")
+		title.TimeIcon:SetAtlas("worldquest-icon-clock")
+
 		titleButtons[index] = title
 	end
 	return titleButtons[index]
@@ -267,20 +272,20 @@ local function QuestFrame_Update()
 		local hasFilters = Addon.Config:HasFilters()
 		if Addon.Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
 		local selectedFilters = Addon.Config:GetFilterTable(FILTER_COUNT)
-		for i=FILTER_COUNT, 1, -1 do
-			local filterButton = GetFilterButton(i)
+		for i=#FILTER_ORDER, 1, -1 do
+			local filterButton = GetFilterButton(FILTER_ORDER[i])
 			filterButton:Show()
 
 			filterButton:ClearAllPoints()
-			if i == FILTER_COUNT then
-				filterButton:SetPoint("RIGHT", 0, 0)
+			if i == #FILTER_ORDER then
+				filterButton:SetPoint("RIGHT", 1, 0)
 				filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
 			else
-				filterButton:SetPoint("RIGHT", GetFilterButton(i+1), "LEFT", 3, 0)
+				filterButton:SetPoint("RIGHT", GetFilterButton( FILTER_ORDER[i+1] ), "LEFT", 5, 0)
 				filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
 			end
 
-			if selectedFilters[i] then
+			if selectedFilters[FILTER_ORDER[i]] then
 				filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
 			else
 				filterButton:SetNormalAtlas("worldquest-tracker-ring")
@@ -310,6 +315,7 @@ local function QuestFrame_Update()
 							if (not isSuppressed) then
 								local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(questID)
 								local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(questID)
+								local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
 								C_TaskQuest.RequestPreloadRewardData(questID)
 								
 								local isFiltered = hasFilters
@@ -330,11 +336,12 @@ local function QuestFrame_Update()
 
 								if ( IsWorldQuestHardWatched(questID) or GetSuperTrackedQuestID() == questID ) then
 									button.Check:Show()
-									button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0);
+									button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0)
 								else
 									button.Check:Hide()
 								end
 
+								local hasIcon = true
 								button.TaskIcon:Show()
 								button.TaskIcon:SetTexCoord(0, 1, 0, 1)
 								if worldQuestType == LE_QUEST_TAG_TYPE_PVP then
@@ -351,7 +358,22 @@ local function QuestFrame_Update()
 									button.TaskIcon:SetTexture("Interface\\QuestFrame\\QuestTypeIcons")
 									button.TaskIcon:SetTexCoord( unpack(tagCoords) )
 								else
+									hasIcon = false
 									button.TaskIcon:Hide()
+								end
+
+
+								if ( timeLeftMinutes and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
+									button.TimeIcon:Show()
+									if hasIcon then
+										button.TimeIcon:SetSize(14, 14)
+										button.TimeIcon:SetPoint("CENTER", button.TaskIcon, "BOTTOMLEFT", 0, 0)
+									else
+										button.TimeIcon:SetSize(16, 16)
+										button.TimeIcon:SetPoint("CENTER", button.Text, "LEFT", -15, 0)
+									end
+								else
+									button.TimeIcon:Hide()
 								end
 
 								local tagText, tagTexture, tagTexCoords, tagColor
@@ -422,6 +444,12 @@ local function QuestFrame_Update()
 									button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
 								end
 
+								if selectedFilters[FILTER_TIME] then
+									if timeLeftMinutes and timeLeftMinutes <= (Addon.Config.timeFilterDuration * 60) then
+										isFiltered = false
+									end
+								end
+
 								if selectedFilters[FILTER_EMISSARY] and not isFiltered then
 									local isBounty = false
 									for _, bounty in ipairs(bounties) do
@@ -488,6 +516,10 @@ local function MapFrame_Update()
 	end
 end
 
+function UpdateTimeRemainingName()
+	FILTER_NAMES[FILTER_TIME] = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Addon.Config.timeFilterDuration))
+end
+
 function QF:QUEST_WATCH_LIST_CHANGED()
 	QuestFrame_Update()
 	MapFrame_Update()
@@ -500,14 +532,16 @@ end
 
 function QF:Startup()
 	FILTER_NAMES[FILTER_ORDER_RESOURCES] = select(1, GetCurrencyInfo(1220)) -- Add in localized name of Order Resources
+	UpdateTimeRemainingName()
 
 	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
 	self:RegisterEvent("SUPER_TRACKED_QUEST_CHANGED")
 
 	Addon.Config:RegisterCallback('showAtTop', function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
+	Addon.Config:RegisterCallback('hidePOI', function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 	Addon.Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
 	Addon.Config:RegisterCallback('selectedFilters', QuestFrame_Update)
-	Addon.Config:RegisterCallback('hidePOI', function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
+	Addon.Config:RegisterCallback('timeFilterDuration', function() UpdateTimeRemainingName(); QuestFrame_Update() end)
 
 	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
