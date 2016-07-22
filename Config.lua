@@ -5,6 +5,7 @@ local configVersion = 1
 local configDefaults = {
 	collapsed = false,
 	showAtTop = true,
+	showContinentPOI = false,
 	onlyCurrentZone = true,
 	selectedFilters = 0,
 	timeFilterDuration = 6,
@@ -229,21 +230,27 @@ local function Panel_OnRefresh(self)
 
 		check_showAtTop = CheckBox_Create(self)
 		check_showAtTop.configKey = "showAtTop"
-		check_showAtTop.Text:SetText("Show at top")
+		check_showAtTop.Text:SetText("Display at the top of the Quest Log")
 		check_showAtTop:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, 0)
 		check_showAtTop:SetPoint("RIGHT", 0, 0)
 
 		check_onlyCurrentZone = CheckBox_Create(self)
 		check_onlyCurrentZone.configKey = "onlyCurrentZone"
-		check_onlyCurrentZone.Text:SetText("Only current zone")
+		check_onlyCurrentZone.Text:SetText("Only show World Quests for the current zone")
 		check_onlyCurrentZone:SetPoint("TOPLEFT", check_showAtTop, "BOTTOMLEFT", 0, -6)
 		check_onlyCurrentZone:SetPoint("RIGHT", 0, 0)
 
 		check_hidePOI = CheckBox_Create(self)
 		check_hidePOI.configKey = "hidePOI"
-		check_hidePOI.Text:SetText("Hide untracked World Quest POI on the world map")
+		check_hidePOI.Text:SetText("Hide untracked World Quest POI icons on the world map")
 		check_hidePOI:SetPoint("TOPLEFT", check_onlyCurrentZone, "BOTTOMLEFT", 0, -6)
 		check_hidePOI:SetPoint("RIGHT", 0, 0)
+
+		check_showContinentPOI = CheckBox_Create(self)
+		check_showContinentPOI.configKey = "showContinentPOI"
+		check_showContinentPOI.Text:SetText("Show hovered World Quest POI icon on the Broken Isles continent map")
+		check_showContinentPOI:SetPoint("TOPLEFT", check_hidePOI, "BOTTOMLEFT", 0, -6)
+		check_showContinentPOI:SetPoint("RIGHT", 0, 0)
 
 		panelInit = true
 	end
@@ -251,6 +258,7 @@ local function Panel_OnRefresh(self)
 	CheckBox_Update(check_showAtTop)
 	CheckBox_Update(check_onlyCurrentZone)
 	CheckBox_Update(check_hidePOI)
+	CheckBox_Update(check_showContinentPOI)
 end
 
 function Config:CreatePanel()

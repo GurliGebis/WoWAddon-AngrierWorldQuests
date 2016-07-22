@@ -22,6 +22,8 @@ local FILTER_ITEMS = 6
 local FILTER_TIME = 7
 local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS }
 
+local myTaskPOI
+
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
 
 local function HeaderButton_OnClick(self, button)
@@ -31,6 +33,24 @@ local function HeaderButton_OnClick(self, button)
 		questsCollapsed = not questsCollapsed
 		Addon.Config:Set('collapsed', questsCollapsed)
 		QuestMapFrame_UpdateAll()
+	end
+end
+
+local function DisplayMyTaskPOI(self)
+	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Addon.Config.showContinentPOI then
+		local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
+		local selected = self.questID == GetSuperTrackedQuestID()
+		local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questID)
+		local isSpellTarget = SpellCanTargetQuest() and IsQuestIDValidSpellTarget(self.questID)
+		myTaskPOI.worldQuest = true
+		myTaskPOI.Texture:SetDrawLayer("OVERLAY")
+		WorldMap_SetupWorldQuestButton(myTaskPOI, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, selected, isCriteria, isSpellTarget)
+		WorldMapPOIFrame_AnchorPOI(myTaskPOI, self.infoX, self.infoY, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST);
+		myTaskPOI.questID = self.questID;
+		myTaskPOI.numObjectives = self.numObjectives
+		myTaskPOI:Show()
+	else
+		myTaskPOI:Hide()
 	end
 end
 
@@ -48,6 +68,8 @@ local function TitleButton_OnEnter(self)
 			mapButton:LockHighlight()
 		end
 	end
+
+	DisplayMyTaskPOI(self)
 	
 	TaskPOI_OnEnter(self, button)
 end
@@ -66,6 +88,8 @@ local function TitleButton_OnLeave(self)
 			end
 		end
 	end
+
+	myTaskPOI:Hide()
 
 	TaskPOI_OnLeave(self, button)
 end
@@ -94,6 +118,7 @@ local function TitleButton_OnClick(self, button)
 				BonusObjectiveTracker_TrackWorldQuest(self.questID)
 			end
 		end
+		DisplayMyTaskPOI(self)
 	end
 end
 
@@ -204,6 +229,7 @@ end
 
 local function QuestFrame_Update()
 	if not WorldMapFrame:IsShown() then return end
+	myTaskPOI:Hide()
 	local currentMapID, continentMapID = GetMapAreaIDs()
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(currentMapID)
 	if not displayLocation or lockedQuestID then
@@ -327,6 +353,8 @@ local function QuestFrame_Update()
 								button.questID = questID
 								button.mapID = mapID
 								button.numObjectives = questInfo.numObjectives
+								button.infoX = questInfo.x
+								button.infoY = questInfo.y
 
 								local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 								button.Text:SetTextColor( color.r, color.g, color.b )
@@ -546,4 +574,7 @@ function QF:Startup()
 	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
 	hooksecurefunc("WorldMap_UpdateQuestBonusObjectives", MapFrame_Update)
+
+	myTaskPOI = WorldMap_GetOrCreateTaskPOI("AWQ")
+	myTaskPOI:Hide()
 end

@@ -1,3 +1,7 @@
+## v0.3.1
+
+* Added new option to show hovered World Quest POI icon on the Broken Isles continent map
+
 ## v0.3.0
 
 * Added a new filter for quests with low time remaining. 6 hours currently, will add a config option later.
