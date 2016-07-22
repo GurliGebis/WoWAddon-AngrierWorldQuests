@@ -229,6 +229,78 @@ local function GetMapAreaIDs()
 	return mapID, conts[contIndex*2 - 1]
 end
 
+local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
+	if bounties == nil then
+		local currentMapID, continentMapID = GetMapAreaIDs()
+		bounties = GetQuestBountyInfoForMapID(currentMapID)
+	end
+	if hasFilters == nil then
+		hasFilters = Addon.Config:HasFilters()
+		if Addon.Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
+	end
+	if selectedFilters == nil then
+		selectedFilters = Addon.Config:GetFilterTable(FILTER_COUNT)
+	end
+
+	local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(self.questID)
+	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
+	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(self.questID)
+	C_TaskQuest.RequestPreloadRewardData(self.questID)
+
+	local isFiltered = hasFilters
+
+	if hasFilters then
+		local money = GetQuestLogRewardMoney(self.questID)
+		if ( money > 0 ) then
+			isFiltered = hasFilters and not selectedFilters[FILTER_GOLD]
+		end	
+
+		local numQuestCurrencies = GetNumQuestLogRewardCurrencies(self.questID)
+		for i = 1, numQuestCurrencies do
+			local name, texture, numItems = GetQuestLogRewardCurrencyInfo(i, self.questID)
+			if name == FILTER_NAMES[FILTER_ORDER_RESOURCES] then
+				isFiltered = hasFilters and not selectedFilters[FILTER_ORDER_RESOURCES]
+			end
+		end
+
+		local numQuestRewards = GetNumQuestLogRewards(questID);
+		if numQuestRewards > 0 then
+			local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, self.questID)
+			if itemName and itemTexture then
+				local artifactPower = Addon.Data:ItemArtifactPower(itemID)
+				local iLevel = Addon.Data:RewardItemLevel(self.questID)
+				if artifactPower then
+					isFiltered = hasFilters and not selectedFilters[FILTER_ARTIFACT_POWER]
+				else
+					if iLevel then
+						isFiltered = hasFilters and not selectedFilters[FILTER_LOOT]
+					else
+						isFiltered = hasFilters and not selectedFilters[FILTER_ITEMS]
+					end
+				end
+			end
+		end
+
+		if selectedFilters[FILTER_TIME] then
+			if timeLeftMinutes and timeLeftMinutes <= (Addon.Config.timeFilterDuration * 60) then
+				isFiltered = false
+			end
+		end
+	end
+
+	if selectedFilters[FILTER_EMISSARY] and not isFiltered then
+		local isBounty = false
+		for _, bounty in ipairs(bounties) do
+			if bounty and IsQuestCriteriaForBounty(self.questID, bounty.questID) then
+				isBounty = true
+			end
+		end
+		if not isBounty then isFiltered = true end
+	end
+
+	return isFiltered
+end
+
 local function QuestFrame_Update()
 	if not WorldMapFrame:IsShown() then return end
 	myTaskPOI:Hide()
@@ -345,8 +417,6 @@ local function QuestFrame_Update()
 								local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(questID)
 								local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
 								C_TaskQuest.RequestPreloadRewardData(questID)
-								
-								local isFiltered = hasFilters
 
 								local totalHeight = 8
 								titleIndex = titleIndex + 1
@@ -411,7 +481,6 @@ local function QuestFrame_Update()
 
 								local money = GetQuestLogRewardMoney(questID)
 								if ( money > 0 ) then
-									isFiltered = hasFilters and not selectedFilters[FILTER_GOLD]
 									local gold = floor(money / (COPPER_PER_SILVER * SILVER_PER_GOLD) + 0.5)
 									tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
 									tagTexCoords = { 0, 0.25, 0, 1 }
@@ -421,9 +490,6 @@ local function QuestFrame_Update()
 								local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
 								for i = 1, numQuestCurrencies do
 									local name, texture, numItems = GetQuestLogRewardCurrencyInfo(i, questID)
-									if name == FILTER_NAMES[FILTER_ORDER_RESOURCES] then
-										isFiltered = hasFilters and not selectedFilters[FILTER_ORDER_RESOURCES]
-									end
 									tagText = numItems
 									tagTexture = texture
 								end
@@ -435,18 +501,15 @@ local function QuestFrame_Update()
 										local artifactPower = Addon.Data:ItemArtifactPower(itemID)
 										local iLevel = Addon.Data:RewardItemLevel(questID)
 										if artifactPower then
-											isFiltered = hasFilters and not selectedFilters[FILTER_ARTIFACT_POWER]
 											tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
 											tagText = artifactPower
 											tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
 										else
 											tagTexture = itemTexture
 											if iLevel then
-												isFiltered = hasFilters and not selectedFilters[FILTER_LOOT]
 												tagText = iLevel
 												tagColor = BAG_ITEM_QUALITY_COLORS[quality]
 											else
-												isFiltered = hasFilters and not selectedFilters[FILTER_ITEMS]
 												tagText = quantity > 1 and quantity
 											end
 										end
@@ -474,21 +537,7 @@ local function QuestFrame_Update()
 									button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
 								end
 
-								if selectedFilters[FILTER_TIME] then
-									if timeLeftMinutes and timeLeftMinutes <= (Addon.Config.timeFilterDuration * 60) then
-										isFiltered = false
-									end
-								end
-
-								if selectedFilters[FILTER_EMISSARY] and not isFiltered then
-									local isBounty = false
-									for _, bounty in ipairs(bounties) do
-										if bounty and IsQuestCriteriaForBounty(questID, bounty.questID) then
-											isBounty = true
-										end
-									end
-									if not isBounty then isFiltered = true end
-								end
+								local isFiltered = TaskPOI_IsFiltered(button, bounties, hasFilters, selectedFilters)
 
 								button:SetHeight(totalHeight)
 								button:ClearAllPoints()
@@ -539,7 +588,20 @@ local function MapFrame_Update()
 	if Addon.Config.hidePOI then
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
 			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
-			if taskPOI.worldQuest and not (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
+			if taskPOI.worldQuest and (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
+				taskPOI:Hide()
+			end
+		end
+	end
+	if Addon.Config.hideFilteredPOI then
+		bounties = GetQuestBountyInfoForMapID(GetCurrentMapAreaID())
+		local hasFilters = Addon.Config:HasFilters()
+		if Addon.Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
+		local selectedFilters = Addon.Config:GetFilterTable(FILTER_COUNT)
+
+		for i = 1, NUM_WORLDMAP_TASK_POIS do
+			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
+			if taskPOI.worldQuest and TaskPOI_IsFiltered(taskPOI, bounties, hasFilters, selectedFilters) then
 				taskPOI:Hide()
 			end
 		end
@@ -569,8 +631,15 @@ function QF:Startup()
 
 	Addon.Config:RegisterCallback('showAtTop', function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
 	Addon.Config:RegisterCallback('hidePOI', function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
+	Addon.Config:RegisterCallback('hideFilteredPOI', function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 	Addon.Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
-	Addon.Config:RegisterCallback('selectedFilters', QuestFrame_Update)
+	Addon.Config:RegisterCallback('selectedFilters', function() 
+		QuestFrame_Update()
+		if Addon.Config.hideFilteredPOI then
+			WorldMap_UpdateQuestBonusObjectives()
+			MapFrame_Update()
+		end
+	end)
 	Addon.Config:RegisterCallback('timeFilterDuration', function() UpdateTimeRemainingName(); QuestFrame_Update() end)
 
 	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)

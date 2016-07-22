@@ -10,6 +10,7 @@ local configDefaults = {
 	selectedFilters = 0,
 	timeFilterDuration = 6,
 	hidePOI = false,
+	hideFilteredPOI = false,
 }
 local callbacks = {}
 
@@ -149,6 +150,7 @@ local function Panel_OnDefaults(self)
 	Config:Set('showAtTop', configDefaults['showAtTop'])
 	Config:Set('hidePOI', configDefaults['hidePOI'])
 	Config:Set('showContinentPOI', configDefaults['showContinentPOI'])
+	Config:Set('hideFilteredPOI', configDefaults['hideFilteredPOI'])
 end
 
 local function CheckBox_Update(self)
@@ -241,10 +243,16 @@ local function Panel_OnRefresh(self)
 		check_onlyCurrentZone:SetPoint("TOPLEFT", check_showAtTop, "BOTTOMLEFT", 0, -6)
 		check_onlyCurrentZone:SetPoint("RIGHT", 0, 0)
 
+		check_hideFilteredPOI = CheckBox_Create(self)
+		check_hideFilteredPOI.configKey = "hideFilteredPOI"
+		check_hideFilteredPOI.Text:SetText("Hide filtered World Quest POI icons on the world map")
+		check_hideFilteredPOI:SetPoint("TOPLEFT", check_onlyCurrentZone, "BOTTOMLEFT", 0, -6)
+		check_hideFilteredPOI:SetPoint("RIGHT", 0, 0)
+
 		check_hidePOI = CheckBox_Create(self)
 		check_hidePOI.configKey = "hidePOI"
 		check_hidePOI.Text:SetText("Hide untracked World Quest POI icons on the world map")
-		check_hidePOI:SetPoint("TOPLEFT", check_onlyCurrentZone, "BOTTOMLEFT", 0, -6)
+		check_hidePOI:SetPoint("TOPLEFT", check_hideFilteredPOI, "BOTTOMLEFT", 0, -6)
 		check_hidePOI:SetPoint("RIGHT", 0, 0)
 
 		check_showContinentPOI = CheckBox_Create(self)
@@ -259,6 +267,7 @@ local function Panel_OnRefresh(self)
 	CheckBox_Update(check_showAtTop)
 	CheckBox_Update(check_onlyCurrentZone)
 	CheckBox_Update(check_hidePOI)
+	CheckBox_Update(check_hideFilteredPOI)
 	CheckBox_Update(check_showContinentPOI)
 end
 

@@ -1,3 +1,7 @@
+## v0.4.0
+
+* Added option to hide filtered World Quest POI icons on the world map
+
 ## v0.3.1
 
 * Added new option to show hovered World Quest POI icon on the Broken Isles continent map
