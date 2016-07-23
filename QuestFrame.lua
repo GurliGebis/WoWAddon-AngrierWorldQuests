@@ -216,6 +216,7 @@ local function FilterButton_ShowMenu(self)
 end
 
 local function FilterButton_OnClick(self, button)
+	PlaySound("igMainMenuOptionCheckBoxOn")
 	if button == 'RightButton' and self.index == FILTER_EMISSARY then
 		FilterButton_ShowMenu(self)
 	else
@@ -639,6 +640,8 @@ local function QuestFrame_Update()
 			end
 
 		end
+	else
+		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 	end
 
 	if Addon.Config.showAtTop and firstButton then
