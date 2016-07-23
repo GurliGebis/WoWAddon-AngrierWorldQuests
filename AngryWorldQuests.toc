@@ -8,5 +8,6 @@ Core.lua
 
 QuestFrame.lua
 
+Locale.lua
 Data.lua
 Config.lua

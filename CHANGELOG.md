@@ -1,5 +1,6 @@
 ## v0.5.1
 
+* Added ability to filter to only Loot Upgrades, can access it by right clicking the Loot filter.
 * Specific Emissary Quest filter is reset when it is unselected.
 
 ## v0.5.0

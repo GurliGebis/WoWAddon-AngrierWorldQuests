@@ -158,6 +158,9 @@ local function FilterButton_OnEnter(self)
 		local title = GetQuestLogTitle(GetQuestLogIndexByID(Addon.Config.filterEmissary))
 		if title then text = text..": "..title end
 	end
+	if self.index == FILTER_LOOT then
+		if Addon.Config.filterLoot == 1 then text = string.format("%s (%s)", text, Addon.Locale.UPGRADES) end
+	end
 	if self.index == FILTER_TIME then
 		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Addon.Config.timeFilterDuration))
 	end
@@ -173,7 +176,10 @@ end
 local filterMenu
 local function FilterMenu_OnClick(self, filterIndex)
 	if filterIndex == FILTER_EMISSARY then
-		Addon.Config:Set('filterEmissary', self.value)
+		Addon.Config:Set('filterEmissary', self.value, true)
+	end
+	if filterIndex == FILTER_LOOT then
+		Addon.Config:Set('filterLoot', self.value, true)
 	end
 	if IsShiftKeyDown() then
 		Addon.Config:SetFilter(filterIndex, true)
@@ -202,6 +208,18 @@ local function FilterMenu_Initialize(self, level)
 			info.checked = info.value == value
 			UIDropDownMenu_AddButton(info, level)
 		end
+	elseif self.index == FILTER_LOOT then
+		local value = Addon.Config.filterLoot
+
+		info.text = ALL
+		info.value = 0
+		info.checked = info.value == value
+		UIDropDownMenu_AddButton(info, level)
+
+		info.text = Addon.Locale.UPGRADES
+		info.value = 1
+		info.checked = info.value == value
+		UIDropDownMenu_AddButton(info, level)
 	end
 end
 
@@ -218,14 +236,16 @@ end
 local function FilterButton_OnClick(self, button)
 	HideDropDownMenu(1)
 	PlaySound("igMainMenuOptionCheckBoxOn")
-	if button == 'RightButton' and self.index == FILTER_EMISSARY then
+	if button == 'RightButton' and (self.index == FILTER_EMISSARY or self.index == FILTER_LOOT) then
 		FilterButton_ShowMenu(self)
 	else
 		if IsShiftKeyDown() then
 			if self.index == FILTER_EMISSARY then Addon.Config:Set('filterEmissary', 0, true) end
+			if self.index == FILTER_LOOT then Addon.Config:Set('filterLoot', 0, true) end
 			Addon.Config:ToggleFilter(self.index)
 		else
 			Addon.Config:Set('filterEmissary', 0, true)
+			Addon.Config:Set('filterLoot', 0, true)
 			if Addon.Config:IsOnlyFilter(self.index) then
 				Addon.Config:SetNoFilter()
 			else
@@ -349,7 +369,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 					isFiltered = hasFilters and not selectedFilters[FILTER_ARTIFACT_POWER]
 				else
 					if iLevel then
-						isFiltered = hasFilters and not selectedFilters[FILTER_LOOT]
+						isFiltered = hasFilters and (not selectedFilters[FILTER_LOOT] or (Addon.Config.filterLoot == 1 and not Addon.Data:RewardIsUpgrade(self.questID)))
 					else
 						isFiltered = hasFilters and not selectedFilters[FILTER_ITEMS]
 					end

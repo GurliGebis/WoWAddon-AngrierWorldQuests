@@ -11,6 +11,7 @@ local configDefaults = {
 	selectedFilters = 0,
 	disabledFilters = 0,
 	filterEmissary = 0,
+	filterLoot = 0,
 	timeFilterDuration = 6,
 	hidePOI = false,
 	hideFilteredPOI = false,
