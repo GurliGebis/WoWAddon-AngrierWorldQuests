@@ -8,6 +8,7 @@ local configDefaults = {
 	showContinentPOI = false,
 	onlyCurrentZone = true,
 	selectedFilters = 0,
+	disabledFilters = 0,
 	timeFilterDuration = 6,
 	hidePOI = false,
 	hideFilteredPOI = false,
@@ -41,13 +42,13 @@ function Config:Get(key)
 	end
 end
 
-function Config:Set(key, newValue)
+function Config:Set(key, newValue, silent)
 	if configDefaults[key] == newValue then
 		AngryWorldQuests_Config[key] = nil
 	else
 		AngryWorldQuests_Config[key] = newValue
 	end
-	if callbacks[key] then
+	if callbacks[key] and not silent then
 		for _, func in ipairs(callbacks[key]) do
 			func(key, newValue)
 		end
@@ -55,10 +56,20 @@ function Config:Set(key, newValue)
 end
 
 function Config:RegisterCallback(key, func)
-	if callbacks[key] then
-		table.insert(callbacks, func)
+	if type(key) == "table" then
+		for _, key2 in ipairs(key) do
+			if callbacks[key2] then
+				table.insert(callbacks, func)
+			else
+				callbacks[key2] = { func }
+			end
+		end
 	else
-		callbacks[key] = { func }
+		if callbacks[key] then
+			table.insert(callbacks, func)
+		else
+			callbacks[key] = { func }
+		end
 	end
 end
 
@@ -98,6 +109,12 @@ function Config:GetFilterTable(numFilters)
 		ret[i] = bit.band(value, mask) == mask
 	end
 	return ret
+end
+
+function Config:GetFilterDisabled(index)
+	local value = self:Get('disabledFilters')
+	local mask = 2^(index-1)
+	return bit.band(value, mask) == mask
 end
 
 function Config:SetFilter(index, newValue)
@@ -142,6 +159,7 @@ end
 
 local function Panel_OnCancel(self)
 	for key, value in pairs(panelOriginalConfig) do
+		if key == "disabledFilters" then AngryWorldQuests_Config["selectedFilters"] = nil end
 		Config:Set(key, value)
 	end
 	wipe(panelOriginalConfig)
@@ -154,7 +172,30 @@ local function Panel_OnDefaults(self)
 	Config:Set('showContinentPOI', configDefaults['showContinentPOI'])
 	Config:Set('hideFilteredPOI', configDefaults['hideFilteredPOI'])
 	Config:Set('timeFilterDuration', configDefaults['timeFilterDuration'])
+	Config:Set('disabledFilters', configDefaults['disabledFilters'])
 	wipe(panelOriginalConfig)
+end
+
+local function FilterCheckBox_Update(self)
+	local value = Config:Get("disabledFilters")
+	local mask = 2^(self.filterIndex-1)
+	self:SetChecked( bit.band(value,mask) == 0 )
+end
+
+local function FilterCheckBox_OnClick(self)
+	local key = "disabledFilters"
+	if panelOriginalConfig[key] == nil then
+		panelOriginalConfig[key] = Config[key]
+	end
+	local value = Config:Get("disabledFilters")
+	local mask = 2^(self.filterIndex-1)
+	if self:GetChecked() then
+		value = bit.band(value, bit.bnot(mask))
+	else
+		value = bit.bor(value, mask)
+	end
+	AngryWorldQuests_Config["selectedFilters"] = nil
+	Config:Set(key, value)
 end
 
 local function CheckBox_Update(self)
@@ -169,15 +210,9 @@ local function CheckBox_OnClick(self)
 	Config:Set(key, self:GetChecked())
 end
 
-local function CheckBox_Create(self)
-	local check = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
-	check:SetScript("OnClick", CheckBox_OnClick)
-	return check
-end
-
 local function DropDown_OnClick(self)
 	local dropdown = self:GetParent().dropdown
-	local key = dropdown.configKeym
+	local key = dropdown.configKey
 	if panelOriginalConfig[key] == nil then
 		panelOriginalConfig[key] = Config[key]
 	end
@@ -218,56 +253,81 @@ local function DropDown_Create(self)
 	return dropdown
 end
 
-local panelInit, check_showAtTop, check_onlyCurrentZone, check_hideFilteredPOI, check_hidePOI, check_showContinentPOI, drop_timeFilterDuration
+local panelInit, checkboxes, dropdowns, filterCheckboxes
 local function Panel_OnRefresh(self)
 	if not panelInit then
+
 		local label = self:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 		label:SetPoint("TOPLEFT", 16, -16)
 		label:SetJustifyH("LEFT")
 		label:SetJustifyV("TOP")
 		label:SetText( Addon.Name )
 
-		check_showAtTop = CheckBox_Create(self)
-		check_showAtTop.configKey = "showAtTop"
-		check_showAtTop.Text:SetText("Display at the top of the Quest Log")
-		check_showAtTop:SetPoint("TOPLEFT", label, "BOTTOMLEFT", -2, -8)
+		checkboxes = {}
+		dropdowns = {}
+		filterCheckboxes = {}
 
-		check_onlyCurrentZone = CheckBox_Create(self)
-		check_onlyCurrentZone.configKey = "onlyCurrentZone"
-		check_onlyCurrentZone.Text:SetText("Only show World Quests for the current zone")
-		check_onlyCurrentZone:SetPoint("TOPLEFT", check_showAtTop, "BOTTOMLEFT", 0, -8)
+		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "hideFilteredPOI", "hidePOI", "showContinentPOI", }
+		local checkboxes_text = {
+			showAtTop = "Display at the top of the Quest Log", 
+			onlyCurrentZone = "Only show World Quests for the current zone", 
+			hideFilteredPOI = "Hide filtered World Quest POI icons on the world map", 
+			hidePOI = "Hide untracked World Quest POI icons on the world map", 
+			showContinentPOI = "Show hovered World Quest POI icon on the Broken Isles map",
+		}
 
-		check_hideFilteredPOI = CheckBox_Create(self)
-		check_hideFilteredPOI.configKey = "hideFilteredPOI"
-		check_hideFilteredPOI.Text:SetText("Hide filtered World Quest POI icons on the world map")
-		check_hideFilteredPOI:SetPoint("TOPLEFT", check_onlyCurrentZone, "BOTTOMLEFT", 0, -8)
+		for i,key in ipairs(checkboxes_order) do
+			checkboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
+			checkboxes[i]:SetScript("OnClick", CheckBox_OnClick)
+			checkboxes[i].configKey = key
+			checkboxes[i].Text:SetText(checkboxes_text[key])
+			if i == 1 then
+				checkboxes[i]:SetPoint("TOPLEFT", label, "BOTTOMLEFT", -2, -8)
+			else
+				checkboxes[i]:SetPoint("TOPLEFT", checkboxes[i-1], "BOTTOMLEFT", 0, -8)
+			end
+		end
 
-		check_hidePOI = CheckBox_Create(self)
-		check_hidePOI.configKey = "hidePOI"
-		check_hidePOI.Text:SetText("Hide untracked World Quest POI icons on the world map")
-		check_hidePOI:SetPoint("TOPLEFT", check_hideFilteredPOI, "BOTTOMLEFT", 0, -8)
+		dropdowns[1] = DropDown_Create(self)
+		dropdowns[1].Text:SetText("Time Remaining Filter Duration")
+		dropdowns[1].configKey = "timeFilterDuration"
+		dropdowns[1]:SetPoint("TOPLEFT", checkboxes[5], "BOTTOMLEFT", -13, -24)
 
-		check_showContinentPOI = CheckBox_Create(self)
-		check_showContinentPOI.configKey = "showContinentPOI"
-		check_showContinentPOI.Text:SetText("Show hovered World Quest POI icon on the Broken Isles continent map")
-		check_showContinentPOI:SetPoint("TOPLEFT", check_hidePOI, "BOTTOMLEFT", 0, -8)
+		local label2 = self:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		label2:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 435, -5)
+		label2:SetJustifyH("LEFT")
+		label2:SetJustifyV("TOP")
+		label2:SetText("Enabled Filters")
 
-		drop_timeFilterDuration = DropDown_Create(self)
-		drop_timeFilterDuration.Text:SetText("Time Remaining Filter Duration")
-		drop_timeFilterDuration.configKey = "timeFilterDuration"
-		drop_timeFilterDuration:SetPoint("TOPLEFT", check_showContinentPOI, "BOTTOMLEFT", -13, -24)
+		for i,index in ipairs(Addon.QuestFrame.FilterOrder) do
+			filterCheckboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
+			filterCheckboxes[i]:SetScript("OnClick", FilterCheckBox_OnClick)
+			filterCheckboxes[i].filterIndex = index
+			filterCheckboxes[i].Text:SetFontObject("GameFontHighlightSmall")
+			filterCheckboxes[i].Text:SetPoint("LEFT", filterCheckboxes[i], "RIGHT", 0, 1)
+			filterCheckboxes[i].Text:SetText( Addon.QuestFrame.FilterNames[index] )
+			if i == 1 then
+				filterCheckboxes[1]:SetPoint("TOPLEFT", label2, "BOTTOMLEFT", 0, -5)
+			else
+				filterCheckboxes[i]:SetPoint("TOPLEFT", filterCheckboxes[i-1], "BOTTOMLEFT", 0, 4)
+			end
+		end
 
 		panelInit = true
 	end
 	
-	CheckBox_Update(check_showAtTop)
-	CheckBox_Update(check_onlyCurrentZone)
-	CheckBox_Update(check_hidePOI)
-	CheckBox_Update(check_hideFilteredPOI)
-	CheckBox_Update(check_showContinentPOI)
+	for _, check in ipairs(checkboxes) do
+		CheckBox_Update(check)
+	end
 
-	UIDropDownMenu_Initialize(drop_timeFilterDuration, DropDown_Initialize)
-	UIDropDownMenu_SetSelectedValue(drop_timeFilterDuration, Config:Get('timeFilterDuration'))
+	for _, dropdown in ipairs(dropdowns) do
+		UIDropDownMenu_Initialize(dropdown, DropDown_Initialize)
+		UIDropDownMenu_SetSelectedValue(dropdown, Config:Get(dropdown.configKey))
+	end
+	
+	for _, check in ipairs(filterCheckboxes) do
+		FilterCheckBox_Update(check)
+	end
 
 end
 

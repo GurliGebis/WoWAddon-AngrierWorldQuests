@@ -21,6 +21,8 @@ local FILTER_GOLD = 5
 local FILTER_ITEMS = 6
 local FILTER_TIME = 7
 local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS }
+QF.FilterNames = FILTER_NAMES
+QF.FilterOrder = FILTER_ORDER
 
 local myTaskPOI
 
@@ -124,6 +126,9 @@ end
 
 local function FilterButton_OnEnter(self)
 	local text = FILTER_NAMES[ self.index ]
+	if self.index == FILTER_TIME then
+		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Addon.Config.timeFilterDuration))
+	end
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 	GameTooltip:SetText(text)
 	GameTooltip:Show()
@@ -345,7 +350,6 @@ local function QuestFrame_Update()
 
 	local headerIndex = 0
 	local titleIndex = 0
-	local filterIndex = 0
 
 	headerIndex = headerIndex + 1
 	local button = GetHeaderButton(headerIndex)
@@ -372,26 +376,32 @@ local function QuestFrame_Update()
 		local hasFilters = Addon.Config:HasFilters()
 		if Addon.Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
 		local selectedFilters = Addon.Config:GetFilterTable(FILTER_COUNT)
+
+		local prevFilter
 		for i=#FILTER_ORDER, 1, -1 do
 			local filterButton = GetFilterButton(FILTER_ORDER[i])
-			filterButton:Show()
-
-			filterButton:ClearAllPoints()
-			if i == #FILTER_ORDER then
-				filterButton:SetPoint("RIGHT", 1, 0)
-				filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+			if Addon.Config:GetFilterDisabled(FILTER_ORDER[i]) then
+				filterButton:Hide()
 			else
-				filterButton:SetPoint("RIGHT", GetFilterButton( FILTER_ORDER[i+1] ), "LEFT", 5, 0)
-				filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
-			end
+				filterButton:Show()
 
-			if selectedFilters[FILTER_ORDER[i]] then
-				filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
-			else
-				filterButton:SetNormalAtlas("worldquest-tracker-ring")
+				filterButton:ClearAllPoints()
+				if prevFilter then
+					filterButton:SetPoint("RIGHT", prevFilter, "LEFT", 5, 0)
+					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+				else
+					filterButton:SetPoint("RIGHT", 1, 0)
+					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+				end
+
+				if selectedFilters[FILTER_ORDER[i]] then
+					filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
+				else
+					filterButton:SetNormalAtlas("worldquest-tracker-ring")
+				end
+				prevFilter = filterButton
 			end
 		end
-		filterIndex = FILTER_COUNT
 
 		local questMapIDs = { currentMapID }
 		if currentMapID == MAPID_BROKENISLES or (not Addon.Config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
@@ -578,9 +588,6 @@ local function QuestFrame_Update()
 	for i = titleIndex + 1, #titleButtons do
 		titleButtons[i]:Hide()
 	end
-	for i = filterIndex + 1, #filterButtons do
-		filterButtons[i]:Hide()
-	end
 	
 end
 
@@ -608,10 +615,6 @@ local function MapFrame_Update()
 	end
 end
 
-function UpdateTimeRemainingName()
-	FILTER_NAMES[FILTER_TIME] = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Addon.Config.timeFilterDuration))
-end
-
 function QF:QUEST_WATCH_LIST_CHANGED()
 	QuestFrame_Update()
 	MapFrame_Update()
@@ -624,23 +627,21 @@ end
 
 function QF:Startup()
 	FILTER_NAMES[FILTER_ORDER_RESOURCES] = select(1, GetCurrencyInfo(1220)) -- Add in localized name of Order Resources
-	UpdateTimeRemainingName()
 
 	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
 	self:RegisterEvent("SUPER_TRACKED_QUEST_CHANGED")
 
 	Addon.Config:RegisterCallback('showAtTop', function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
-	Addon.Config:RegisterCallback('hidePOI', function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
-	Addon.Config:RegisterCallback('hideFilteredPOI', function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
+	Addon.Config:RegisterCallback({'hidePOI', 'hideFilteredPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 	Addon.Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
-	Addon.Config:RegisterCallback('selectedFilters', function() 
+	Addon.Config:RegisterCallback({'selectedFilters', 'disabledFilters'}, function() 
 		QuestFrame_Update()
 		if Addon.Config.hideFilteredPOI then
 			WorldMap_UpdateQuestBonusObjectives()
 			MapFrame_Update()
 		end
 	end)
-	Addon.Config:RegisterCallback('timeFilterDuration', function() UpdateTimeRemainingName(); QuestFrame_Update() end)
+	Addon.Config:RegisterCallback('timeFilterDuration', QuestFrame_Update)
 
 	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)

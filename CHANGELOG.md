@@ -1,3 +1,7 @@
+## v0.5.0
+
+* Added option to disable certain filters
+
 ## v0.4.2
 
 * Small bug fixes
