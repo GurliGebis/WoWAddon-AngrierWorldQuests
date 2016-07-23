@@ -1,5 +1,6 @@
 local ADDON, Addon = ...
 local QF = Addon:NewModule('QuestFrame')
+local Config
 
 local MAPID_BROKENISLES = 1007
 local MAPID_DALARAN = 1014
@@ -45,7 +46,7 @@ local function GetMapAreaIDs()
 	end
 	local conts = { GetMapContinents() }
 	local contID = conts[contIndex*2 - 1]
-	if Addon.Config.showEverywhere and contID ~= MAPID_BROKENISLES then
+	if Config.showEverywhere and contID ~= MAPID_BROKENISLES then
 		return MAPID_BROKENISLES, MAPID_BROKENISLES
 	else
 		return mapID, MAPID_BROKENISLES
@@ -57,17 +58,17 @@ end
 -- =================
 
 local function HeaderButton_OnClick(self, button)
-	local questsCollapsed = Addon.Config.collapsed
+	local questsCollapsed = Config.collapsed
 	PlaySound("igMainMenuOptionCheckBoxOn")
 	if ( button == "LeftButton" ) then
 		questsCollapsed = not questsCollapsed
-		Addon.Config:Set('collapsed', questsCollapsed)
+		Config:Set('collapsed', questsCollapsed)
 		QuestMapFrame_UpdateAll()
 	end
 end
 
 local function DisplayMyTaskPOI(self)
-	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Addon.Config.showContinentPOI then
+	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showContinentPOI then
 		local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
 		local selected = self.questID == GetSuperTrackedQuestID()
 		local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questID)
@@ -92,7 +93,7 @@ local function TitleButton_OnEnter(self)
 	for i = 1, NUM_WORLDMAP_TASK_POIS do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton.questID == self.questID then
-			if Addon.Config.hidePOI then
+			if Config.hidePOI then
 				mapButton:Show()
 			end
 			mapButton:LockHighlight()
@@ -113,7 +114,7 @@ local function TitleButton_OnLeave(self)
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton.questID == self.questID then
 			mapButton:UnlockHighlight()
-			if Addon.Config.hidePOI then
+			if Config.hidePOI then
 				mapButton:SetShown( IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID )
 			end
 		end
@@ -154,15 +155,15 @@ end
 
 local function FilterButton_OnEnter(self)
 	local text = FILTER_NAMES[ self.index ]
-	if self.index == FILTER_EMISSARY and Addon.Config.filterEmissary then
-		local title = GetQuestLogTitle(GetQuestLogIndexByID(Addon.Config.filterEmissary))
+	if self.index == FILTER_EMISSARY and Config.filterEmissary then
+		local title = GetQuestLogTitle(GetQuestLogIndexByID(Config.filterEmissary))
 		if title then text = text..": "..title end
 	end
 	if self.index == FILTER_LOOT then
-		if Addon.Config.filterLoot == 1 then text = string.format("%s (%s)", text, Addon.Locale.UPGRADES) end
+		if Config.filterLoot == 1 then text = string.format("%s (%s)", text, Addon.Locale.UPGRADES) end
 	end
 	if self.index == FILTER_TIME then
-		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Addon.Config.timeFilterDuration))
+		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Config.timeFilterDuration))
 	end
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 	GameTooltip:SetText(text)
@@ -176,22 +177,22 @@ end
 local filterMenu
 local function FilterMenu_OnClick(self, filterIndex)
 	if filterIndex == FILTER_EMISSARY then
-		Addon.Config:Set('filterEmissary', self.value, true)
+		Config:Set('filterEmissary', self.value, true)
 	end
 	if filterIndex == FILTER_LOOT then
-		Addon.Config:Set('filterLoot', self.value, true)
+		Config:Set('filterLoot', self.value, true)
 	end
 	if IsShiftKeyDown() then
-		Addon.Config:SetFilter(filterIndex, true)
+		Config:SetFilter(filterIndex, true)
 	else
-		Addon.Config:SetOnlyFilter(filterIndex)
+		Config:SetOnlyFilter(filterIndex)
 	end
 end
 
 local function FilterMenu_Initialize(self, level)
 	local info = { func = FilterMenu_OnClick, arg1 = self.index }
 	if self.index == FILTER_EMISSARY then
-		local value = Addon.Config.filterEmissary
+		local value = Config.filterEmissary
 		if GetQuestLogIndexByID(value) == 0 then value = 0 end
 
 		info.text = ALL
@@ -209,7 +210,7 @@ local function FilterMenu_Initialize(self, level)
 			UIDropDownMenu_AddButton(info, level)
 		end
 	elseif self.index == FILTER_LOOT then
-		local value = Addon.Config.filterLoot
+		local value = Config.filterLoot
 
 		info.text = ALL
 		info.value = 0
@@ -240,16 +241,16 @@ local function FilterButton_OnClick(self, button)
 		FilterButton_ShowMenu(self)
 	else
 		if IsShiftKeyDown() then
-			if self.index == FILTER_EMISSARY then Addon.Config:Set('filterEmissary', 0, true) end
-			if self.index == FILTER_LOOT then Addon.Config:Set('filterLoot', 0, true) end
-			Addon.Config:ToggleFilter(self.index)
+			if self.index == FILTER_EMISSARY then Config:Set('filterEmissary', 0, true) end
+			if self.index == FILTER_LOOT then Config:Set('filterLoot', 0, true) end
+			Config:ToggleFilter(self.index)
 		else
-			Addon.Config:Set('filterEmissary', 0, true)
-			Addon.Config:Set('filterLoot', 0, true)
-			if Addon.Config:IsOnlyFilter(self.index) then
-				Addon.Config:SetNoFilter()
+			Config:Set('filterEmissary', 0, true)
+			Config:Set('filterLoot', 0, true)
+			if Config:IsOnlyFilter(self.index) then
+				Config:SetNoFilter()
 			else
-				Addon.Config:SetOnlyFilter(self.index)
+				Config:SetOnlyFilter(self.index)
 			end
 		end
 		FilterButton_OnEnter(self)
@@ -331,11 +332,11 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 		bounties = GetQuestBountyInfoForMapID(currentMapID)
 	end
 	if hasFilters == nil then
-		hasFilters = Addon.Config:HasFilters()
-		if Addon.Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
+		hasFilters = Config:HasFilters()
+		if Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
 	end
 	if selectedFilters == nil then
-		selectedFilters = Addon.Config:GetFilterTable(FILTER_COUNT)
+		selectedFilters = Config:GetFilterTable(FILTER_COUNT)
 	end
 
 	local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(self.questID)
@@ -369,7 +370,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 					isFiltered = hasFilters and not selectedFilters[FILTER_ARTIFACT_POWER]
 				else
 					if iLevel then
-						isFiltered = hasFilters and (not selectedFilters[FILTER_LOOT] or (Addon.Config.filterLoot == 1 and not Addon.Data:RewardIsUpgrade(self.questID)))
+						isFiltered = hasFilters and (not selectedFilters[FILTER_LOOT] or (Config.filterLoot == 1 and not Addon.Data:RewardIsUpgrade(self.questID)))
 					else
 						isFiltered = hasFilters and not selectedFilters[FILTER_ITEMS]
 					end
@@ -378,7 +379,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 		end
 
 		if selectedFilters[FILTER_TIME] then
-			if timeLeftMinutes and timeLeftMinutes <= (Addon.Config.timeFilterDuration * 60) then
+			if timeLeftMinutes and timeLeftMinutes <= (Config.timeFilterDuration * 60) then
 				isFiltered = false
 			end
 		end
@@ -386,7 +387,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 
 	if selectedFilters[FILTER_EMISSARY] and not isFiltered then
 		local isBounty = false
-		local bountyFilter = Addon.Config.filterEmissary
+		local bountyFilter = Config.filterEmissary
 		if GetQuestLogIndexByID(bountyFilter) == 0 then bountyFilter = 0 end
 		for _, bounty in ipairs(bounties) do
 			if bounty and IsQuestCriteriaForBounty(self.questID, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
@@ -411,7 +412,7 @@ local function QuestFrame_Update()
 		return
 	end
 
-	local questsCollapsed = Addon.Config.collapsed
+	local questsCollapsed = Config.collapsed
 
 	local numEntries, numQuests = GetNumQuestLogEntries()
 
@@ -455,7 +456,7 @@ local function QuestFrame_Update()
 	end
 	button:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
 	button:ClearAllPoints()
-	if ( prevButton and not Addon.Config.showAtTop ) then
+	if ( prevButton and not Config.showAtTop ) then
 		button:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
 	elseif storyButton then
 		button:SetPoint("TOPLEFT", storyButton, "BOTTOMLEFT", 0, 0)
@@ -466,14 +467,14 @@ local function QuestFrame_Update()
 	prevButton = button
 
 	if (not questsCollapsed) then
-		local hasFilters = Addon.Config:HasFilters()
-		if Addon.Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
-		local selectedFilters = Addon.Config:GetFilterTable(FILTER_COUNT)
+		local hasFilters = Config:HasFilters()
+		if Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
+		local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
 
 		local prevFilter
 		for i=#FILTER_ORDER, 1, -1 do
 			local filterButton = GetFilterButton(FILTER_ORDER[i])
-			if Addon.Config:GetFilterDisabled(FILTER_ORDER[i]) then
+			if Config:GetFilterDisabled(FILTER_ORDER[i]) then
 				filterButton:Hide()
 			else
 				filterButton:Show()
@@ -497,7 +498,7 @@ local function QuestFrame_Update()
 		end
 
 		local questMapIDs = { currentMapID }
-		if currentMapID == MAPID_BROKENISLES or (not Addon.Config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
+		if currentMapID == MAPID_BROKENISLES or (not Config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
 			questMapIDs = MAPID_ALL
 		end
 
@@ -668,7 +669,7 @@ local function QuestFrame_Update()
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 	end
 
-	if Addon.Config.showAtTop and firstButton then
+	if Config.showAtTop and firstButton then
 		firstButton:ClearAllPoints()
 		if titleIndex > 0 then
 			firstButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -6)
@@ -687,7 +688,7 @@ local function QuestFrame_Update()
 end
 
 local function MapFrame_Update()
-	if Addon.Config.hidePOI then
+	if Config.hidePOI then
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
 			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
 			if taskPOI.worldQuest and (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
@@ -695,17 +696,27 @@ local function MapFrame_Update()
 			end
 		end
 	end
-	if Addon.Config.hideFilteredPOI then
+	if Config.hideFilteredPOI then
 		bounties = GetQuestBountyInfoForMapID(GetCurrentMapAreaID())
-		local hasFilters = Addon.Config:HasFilters()
-		if Addon.Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
-		local selectedFilters = Addon.Config:GetFilterTable(FILTER_COUNT)
+		local hasFilters = Config:HasFilters()
+		if Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
+		local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
 
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
 			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
 			if taskPOI.worldQuest and TaskPOI_IsFiltered(taskPOI, bounties, hasFilters, selectedFilters) then
 				taskPOI:Hide()
 			end
+		end
+	end
+end
+
+function QF:UNIT_INVENTORY_CHANGED(unit)
+	if Config.filterLoot == 1 and unit == "player" then
+		QuestFrame_Update()
+		if Config.hideFilteredPOI then
+			WorldMap_UpdateQuestBonusObjectives()
+			MapFrame_Update()
 		end
 	end
 end
@@ -721,17 +732,20 @@ function QF:SUPER_TRACKED_QUEST_CHANGED()
 end
 
 function QF:Startup()
+	Config = Addon.Config
+
 	FILTER_NAMES[FILTER_ORDER_RESOURCES] = select(1, GetCurrencyInfo(1220)) -- Add in localized name of Order Resources
 
 	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
 	self:RegisterEvent("SUPER_TRACKED_QUEST_CHANGED")
+	self:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
-	Addon.Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
-	Addon.Config:RegisterCallback({'hidePOI', 'hideFilteredPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
-	Addon.Config:RegisterCallback({'onlyCurrentZone', 'timeFilterDuration'}, QuestFrame_Update)
-	Addon.Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary'}, function() 
+	Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
+	Config:RegisterCallback({'hidePOI', 'hideFilteredPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
+	Config:RegisterCallback({'onlyCurrentZone', 'timeFilterDuration'}, QuestFrame_Update)
+	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot'}, function() 
 		QuestFrame_Update()
-		if Addon.Config.hideFilteredPOI then
+		if Config.hideFilteredPOI then
 			WorldMap_UpdateQuestBonusObjectives()
 			MapFrame_Update()
 		end
