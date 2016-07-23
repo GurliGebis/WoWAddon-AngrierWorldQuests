@@ -167,8 +167,13 @@ end
 
 local filterMenu
 local function FilterMenu_OnClick(self, filterIndex)
-	if filterMenu.index == FILTER_EMISSARY then
+	if filterIndex == FILTER_EMISSARY then
 		Addon.Config:Set('filterEmissary', self.value)
+	end
+	if IsShiftKeyDown() then
+		Addon.Config:SetFilter(filterIndex, true)
+	else
+		Addon.Config:SetOnlyFilter(filterIndex)
 	end
 end
 
