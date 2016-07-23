@@ -51,13 +51,15 @@ function Data:RewardItemLevel(questID)
 	return cachedItems[questID]
 end
 
-function Data:QUEST_LOG_UPDATE(...)
-	wipe(cachedItems)
+function Data:UNIT_QUEST_LOG_CHANGED(arg1)
+	if arg1 == "player" then
+		wipe(cachedItems)
+	end
 end
 
 function Data:Startup()
 	fakeTooltip = CreateFrame('GameTooltip', 'ABQFakeTooltip', UIParent, 'GameTooltipTemplate')
 	fakeTooltip:Hide()
 
-	self:RegisterEvent('QUEST_LOG_UPDATE')
+	self:RegisterEvent('UNIT_QUEST_LOG_CHANGED')
 end

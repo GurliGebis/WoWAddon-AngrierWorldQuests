@@ -49,4 +49,6 @@ function Addon:PLAYER_ENTERING_WORLD()
 	Listener:UnregisterEvent('PLAYER_ENTERING_WORLD')
 end
 
+Addon.Name = GetAddOnMetadata(ADDON, "Title")
+Addon.Version = GetAddOnMetadata(ADDON, "X-Curse-Packaged-Version")
 _G[ADDON] = Addon

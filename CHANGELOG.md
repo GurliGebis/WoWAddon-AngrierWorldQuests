@@ -1,3 +1,7 @@
+## v0.4.1
+
+* Added option to adjust the duration for the low time remaining filter
+
 ## v0.4.0
 
 * Added option to hide filtered World Quest POI icons on the world map

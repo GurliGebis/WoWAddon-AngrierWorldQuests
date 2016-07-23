@@ -14,6 +14,8 @@ local configDefaults = {
 }
 local callbacks = {}
 
+local timeFilterDurationValues = { 1, 3, 6, 12, 24 }
+
 setmetatable(Config, {
 	__index = function(self, key)
 		if configDefaults[key] ~= nil then
@@ -151,77 +153,67 @@ local function Panel_OnDefaults(self)
 	Config:Set('hidePOI', configDefaults['hidePOI'])
 	Config:Set('showContinentPOI', configDefaults['showContinentPOI'])
 	Config:Set('hideFilteredPOI', configDefaults['hideFilteredPOI'])
+	wipe(panelOriginalConfig)
 end
 
 local function CheckBox_Update(self)
-	if Config:Get(self.configKey) then
-		SetDesaturation(self.Check, false)
-		self.Check:Show()
-		return true
-	else
-		SetDesaturation(self.Check, false)
-		self.Check:Hide()
-		return false
-	end
+	self:SetChecked( Config:Get(self.configKey) )
 end
 
-local function CheckBox_OnMouseDown(self)
-	self.Text:SetPoint("LEFT", self.CheckBG, "RIGHT", 1, -1)
-end
-
-local function CheckBox_OnMouseUp(self)
+local function CheckBox_OnClick(self)
 	local key = self.configKey
 	if panelOriginalConfig[key] == nil then
 		panelOriginalConfig[key] = Config[key]
 	end
-	Config:Set(key, not Config[key])
-
-	self.Text:SetPoint("LEFT", self.CheckBG, "RIGHT")
-	self.Text:SetPoint("RIGHT")
-
-	if CheckBox_Update(self) then
-		PlaySound("igMainMenuOptionCheckBoxOn")
-	else
-		PlaySound("igMainMenuOptionCheckBoxOff")
-	end
+	Config:Set(key, self:GetChecked())
 end
 
 local function CheckBox_Create(self)
-	local checkframe = CreateFrame("Button", nil, self)
-	checkframe:SetHeight(19)
-	checkframe:SetScript("OnMouseDown", CheckBox_OnMouseDown)
-	checkframe:SetScript("OnMouseUp", CheckBox_OnMouseUp)
-	checkframe:EnableMouse(true)
-
-	local checkbg = checkframe:CreateTexture(nil, "ARTWORK")
-	checkbg:SetWidth(24)
-	checkbg:SetHeight(24)
-	checkbg:SetPoint("TOPLEFT")
-	checkbg:SetTexture("Interface\\Buttons\\UI-CheckBox-Up")
-	checkframe.CheckBG = checkbg
-
-	local check = checkframe:CreateTexture(nil, "OVERLAY")
-	check:SetAllPoints(checkbg)
-	check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
-	checkframe.Check = check
-
-	local checktext = checkframe:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	checktext:SetJustifyH("LEFT")
-	checktext:SetHeight(18)
-	checktext:SetText("Collapse")
-	checktext:SetPoint("LEFT", checkbg, "RIGHT")
-	checktext:SetPoint("RIGHT")
-	checkframe.Text = checktext
-
-	local checkhighlight = checkframe:CreateTexture(nil, "HIGHLIGHT")
-	checkhighlight:SetTexture("Interface\\Buttons\\UI-CheckBox-Highlight")
-	checkhighlight:SetBlendMode("ADD")
-	checkhighlight:SetAllPoints(checkbg)
-
-	return checkframe
+	local check = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
+	check:SetScript("OnClick", CheckBox_OnClick)
+	return check
 end
 
-local panelInit, check_showAtTop, check_onlyCurrentZone, check_hidePOI
+local function DropDown_OnClick(self)
+	local dropdown = self:GetParent().dropdown
+	Config:Set(dropdown.configKey, self.value)
+	UIDropDownMenu_SetSelectedValue( dropdown, self.value )
+end
+
+local function DropDown_Initialize(self)
+	local key = self.configKey
+	local selectedValue = UIDropDownMenu_GetSelectedValue(self)
+	local info = UIDropDownMenu_CreateInfo()
+	info.func = DropDown_OnClick
+	info.dropdown = self
+
+	if key == 'timeFilterDuration' then
+		for _, hours in ipairs(timeFilterDurationValues) do
+			info.text = string.format(FORMATED_HOURS, hours)
+			info.value = hours
+			if ( selectedValue == info.value ) then
+				info.checked = 1
+			else
+				info.checked = nil
+			end
+			UIDropDownMenu_AddButton(info)
+		end
+	end
+end
+
+local DropDown_Index = 0
+local function DropDown_Create(self)
+	DropDown_Index = DropDown_Index + 1
+	local dropdown = CreateFrame("Frame", ADDON.."ConfigDropDown"..DropDown_Index, self, "UIDropDownMenuTemplate")
+	
+	local text = dropdown:CreateFontString(ADDON.."ConfigDropLabel"..DropDown_Index, "BACKGROUND", "GameFontNormal")
+	text:SetPoint("BOTTOMLEFT", dropdown, "TOPLEFT", 16, 3)
+	dropdown.Text = text
+	
+	return dropdown
+end
+
+local panelInit, check_showAtTop, check_onlyCurrentZone, check_hideFilteredPOI, check_hidePOI, check_showContinentPOI, drop_timeFilterDuration
 local function Panel_OnRefresh(self)
 	if not panelInit then
 		local label = self:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -229,37 +221,38 @@ local function Panel_OnRefresh(self)
 		label:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT", 10, -45)
 		label:SetJustifyH("LEFT")
 		label:SetJustifyV("TOP")
-		label:SetText(ADDON)
+		label:SetText( Addon.Name )
 
 		check_showAtTop = CheckBox_Create(self)
 		check_showAtTop.configKey = "showAtTop"
 		check_showAtTop.Text:SetText("Display at the top of the Quest Log")
-		check_showAtTop:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, 0)
-		check_showAtTop:SetPoint("RIGHT", 0, 0)
+		check_showAtTop:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 4, 0)
 
 		check_onlyCurrentZone = CheckBox_Create(self)
 		check_onlyCurrentZone.configKey = "onlyCurrentZone"
 		check_onlyCurrentZone.Text:SetText("Only show World Quests for the current zone")
-		check_onlyCurrentZone:SetPoint("TOPLEFT", check_showAtTop, "BOTTOMLEFT", 0, -6)
-		check_onlyCurrentZone:SetPoint("RIGHT", 0, 0)
+		check_onlyCurrentZone:SetPoint("TOPLEFT", check_showAtTop, "BOTTOMLEFT", 0, -8)
 
 		check_hideFilteredPOI = CheckBox_Create(self)
 		check_hideFilteredPOI.configKey = "hideFilteredPOI"
 		check_hideFilteredPOI.Text:SetText("Hide filtered World Quest POI icons on the world map")
-		check_hideFilteredPOI:SetPoint("TOPLEFT", check_onlyCurrentZone, "BOTTOMLEFT", 0, -6)
-		check_hideFilteredPOI:SetPoint("RIGHT", 0, 0)
+		check_hideFilteredPOI:SetPoint("TOPLEFT", check_onlyCurrentZone, "BOTTOMLEFT", 0, -8)
 
 		check_hidePOI = CheckBox_Create(self)
 		check_hidePOI.configKey = "hidePOI"
 		check_hidePOI.Text:SetText("Hide untracked World Quest POI icons on the world map")
-		check_hidePOI:SetPoint("TOPLEFT", check_hideFilteredPOI, "BOTTOMLEFT", 0, -6)
-		check_hidePOI:SetPoint("RIGHT", 0, 0)
+		check_hidePOI:SetPoint("TOPLEFT", check_hideFilteredPOI, "BOTTOMLEFT", 0, -8)
 
 		check_showContinentPOI = CheckBox_Create(self)
 		check_showContinentPOI.configKey = "showContinentPOI"
 		check_showContinentPOI.Text:SetText("Show hovered World Quest POI icon on the Broken Isles continent map")
-		check_showContinentPOI:SetPoint("TOPLEFT", check_hidePOI, "BOTTOMLEFT", 0, -6)
-		check_showContinentPOI:SetPoint("RIGHT", 0, 0)
+		check_showContinentPOI:SetPoint("TOPLEFT", check_hidePOI, "BOTTOMLEFT", 0, -8)
+
+		drop_timeFilterDuration = DropDown_Create(self)
+		drop_timeFilterDuration.Text:SetText("Time Filter Duration Remaining")
+		drop_timeFilterDuration.configKey = "timeFilterDuration"
+		drop_timeFilterDuration:SetPoint("TOPLEFT", check_showContinentPOI, "BOTTOMLEFT", -13, -24)
+		UIDropDownMenu_Initialize(drop_timeFilterDuration, DropDown_Initialize)
 
 		panelInit = true
 	end
@@ -269,11 +262,13 @@ local function Panel_OnRefresh(self)
 	CheckBox_Update(check_hidePOI)
 	CheckBox_Update(check_hideFilteredPOI)
 	CheckBox_Update(check_showContinentPOI)
+	UIDropDownMenu_SetSelectedValue(drop_timeFilterDuration, Config:Get('timeFilterDuration'))
+
 end
 
 function Config:CreatePanel()
 	local panel = CreateFrame("FRAME")
-	panel.name = ADDON
+	panel.name = Addon.Name
 	panel.okay = Panel_OnSave
 	panel.cancel = Panel_OnCancel
 	panel.default  = Panel_OnDefaults

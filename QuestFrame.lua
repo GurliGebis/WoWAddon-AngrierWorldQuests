@@ -263,7 +263,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 			end
 		end
 
-		local numQuestRewards = GetNumQuestLogRewards(questID);
+		local numQuestRewards = GetNumQuestLogRewards(self.questID)
 		if numQuestRewards > 0 then
 			local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, self.questID)
 			if itemName and itemTexture then
