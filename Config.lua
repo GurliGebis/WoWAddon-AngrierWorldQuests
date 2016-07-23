@@ -7,6 +7,7 @@ local configDefaults = {
 	showAtTop = true,
 	showContinentPOI = false,
 	onlyCurrentZone = true,
+	showEverywhere = false,
 	selectedFilters = 0,
 	disabledFilters = 0,
 	filterEmissary = 0,
@@ -168,6 +169,7 @@ end
 
 local function Panel_OnDefaults(self)
 	Config:Set('onlyCurrentZone', configDefaults['onlyCurrentZone'])
+	Config:Set('showEverywhere', configDefaults['showEverywhere'])
 	Config:Set('showAtTop', configDefaults['showAtTop'])
 	Config:Set('hidePOI', configDefaults['hidePOI'])
 	Config:Set('showContinentPOI', configDefaults['showContinentPOI'])
@@ -267,10 +269,11 @@ local function Panel_OnRefresh(self)
 		dropdowns = {}
 		filterCheckboxes = {}
 
-		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "hideFilteredPOI", "hidePOI", "showContinentPOI", }
+		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "hideFilteredPOI", "hidePOI", "showContinentPOI", }
 		local checkboxes_text = {
 			showAtTop = "Display at the top of the Quest Log", 
 			onlyCurrentZone = "Only show World Quests for the current zone", 
+			showEverywhere = "Show all World Quests on every map",
 			hideFilteredPOI = "Hide filtered World Quest POI icons on the world map", 
 			hidePOI = "Hide untracked World Quest POI icons on the world map", 
 			showContinentPOI = "Show hovered World Quest POI icon on the Broken Isles map",
@@ -291,7 +294,7 @@ local function Panel_OnRefresh(self)
 		dropdowns[1] = DropDown_Create(self)
 		dropdowns[1].Text:SetText("Time Remaining Filter Duration")
 		dropdowns[1].configKey = "timeFilterDuration"
-		dropdowns[1]:SetPoint("TOPLEFT", checkboxes[5], "BOTTOMLEFT", -13, -24)
+		dropdowns[1]:SetPoint("TOPLEFT", checkboxes[#checkboxes], "BOTTOMLEFT", -13, -24)
 
 		local label2 = self:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		label2:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 435, -5)

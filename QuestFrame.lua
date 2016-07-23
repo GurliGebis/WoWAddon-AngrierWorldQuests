@@ -32,7 +32,7 @@ local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [L
 --  Utility Functions
 -- ===================
 
-local function GetMapAreaIDs()
+function GetMapAreaIDs()
 	local mapID = GetCurrentMapAreaID()
 	local contIndex = 0
 	local mapHeirarchy = GetMapHierarchy()
@@ -44,7 +44,12 @@ local function GetMapAreaIDs()
 		end
 	end
 	local conts = { GetMapContinents() }
-	return mapID, conts[contIndex*2 - 1]
+	local contID = conts[contIndex*2 - 1]
+	if Addon.Config.showEverywhere and contID ~= MAPID_BROKENISLES then
+		return MAPID_BROKENISLES, MAPID_BROKENISLES
+	else
+		return mapID, MAPID_BROKENISLES
+	end
 end
 
 -- =================
@@ -205,11 +210,6 @@ local function FilterButton_ShowMenu(self)
 	end
 
 	filterMenu.index = self.index
-
-	filterMenu:ClearAllPoints()
-	filterMenu:SetPoint("TOPLEFT", self, "BOTTOMRIGHT", 0, 0)
-	filterMenu:Show()
-
 	UIDropDownMenu_Initialize(filterMenu, FilterMenu_Initialize, "MENU")
 	ToggleDropDownMenu(1, nil, filterMenu, self, 0, 0)
 
@@ -699,9 +699,9 @@ function QF:Startup()
 	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
 	self:RegisterEvent("SUPER_TRACKED_QUEST_CHANGED")
 
-	Addon.Config:RegisterCallback('showAtTop', function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
+	Addon.Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
 	Addon.Config:RegisterCallback({'hidePOI', 'hideFilteredPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
-	Addon.Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
+	Addon.Config:RegisterCallback({'onlyCurrentZone', 'timeFilterDuration'}, QuestFrame_Update)
 	Addon.Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary'}, function() 
 		QuestFrame_Update()
 		if Addon.Config.hideFilteredPOI then
@@ -709,7 +709,6 @@ function QF:Startup()
 			MapFrame_Update()
 		end
 	end)
-	Addon.Config:RegisterCallback('timeFilterDuration', QuestFrame_Update)
 
 	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
