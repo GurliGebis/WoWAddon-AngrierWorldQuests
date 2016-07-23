@@ -153,6 +153,7 @@ local function Panel_OnDefaults(self)
 	Config:Set('hidePOI', configDefaults['hidePOI'])
 	Config:Set('showContinentPOI', configDefaults['showContinentPOI'])
 	Config:Set('hideFilteredPOI', configDefaults['hideFilteredPOI'])
+	Config:Set('timeFilterDuration', configDefaults['timeFilterDuration'])
 	wipe(panelOriginalConfig)
 end
 
@@ -176,7 +177,11 @@ end
 
 local function DropDown_OnClick(self)
 	local dropdown = self:GetParent().dropdown
-	Config:Set(dropdown.configKey, self.value)
+	local key = dropdown.configKeym
+	if panelOriginalConfig[key] == nil then
+		panelOriginalConfig[key] = Config[key]
+	end
+	Config:Set(key, self.value)
 	UIDropDownMenu_SetSelectedValue( dropdown, self.value )
 end
 
@@ -217,8 +222,7 @@ local panelInit, check_showAtTop, check_onlyCurrentZone, check_hideFilteredPOI, 
 local function Panel_OnRefresh(self)
 	if not panelInit then
 		local label = self:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-		label:SetPoint("TOPLEFT", 10, -15)
-		label:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT", 10, -45)
+		label:SetPoint("TOPLEFT", 16, -16)
 		label:SetJustifyH("LEFT")
 		label:SetJustifyV("TOP")
 		label:SetText( Addon.Name )
@@ -226,7 +230,7 @@ local function Panel_OnRefresh(self)
 		check_showAtTop = CheckBox_Create(self)
 		check_showAtTop.configKey = "showAtTop"
 		check_showAtTop.Text:SetText("Display at the top of the Quest Log")
-		check_showAtTop:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 4, 0)
+		check_showAtTop:SetPoint("TOPLEFT", label, "BOTTOMLEFT", -2, -8)
 
 		check_onlyCurrentZone = CheckBox_Create(self)
 		check_onlyCurrentZone.configKey = "onlyCurrentZone"
@@ -249,10 +253,9 @@ local function Panel_OnRefresh(self)
 		check_showContinentPOI:SetPoint("TOPLEFT", check_hidePOI, "BOTTOMLEFT", 0, -8)
 
 		drop_timeFilterDuration = DropDown_Create(self)
-		drop_timeFilterDuration.Text:SetText("Time Filter Duration Remaining")
+		drop_timeFilterDuration.Text:SetText("Time Remaining Filter Duration")
 		drop_timeFilterDuration.configKey = "timeFilterDuration"
 		drop_timeFilterDuration:SetPoint("TOPLEFT", check_showContinentPOI, "BOTTOMLEFT", -13, -24)
-		UIDropDownMenu_Initialize(drop_timeFilterDuration, DropDown_Initialize)
 
 		panelInit = true
 	end
@@ -262,6 +265,8 @@ local function Panel_OnRefresh(self)
 	CheckBox_Update(check_hidePOI)
 	CheckBox_Update(check_hideFilteredPOI)
 	CheckBox_Update(check_showContinentPOI)
+
+	UIDropDownMenu_Initialize(drop_timeFilterDuration, DropDown_Initialize)
 	UIDropDownMenu_SetSelectedValue(drop_timeFilterDuration, Config:Get('timeFilterDuration'))
 
 end

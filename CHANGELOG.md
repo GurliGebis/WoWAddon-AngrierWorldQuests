@@ -1,3 +1,7 @@
+## v0.4.2
+
+* Small bug fixes
+
 ## v0.4.1
 
 * Added option to adjust the duration for the low time remaining filter
