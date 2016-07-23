@@ -28,6 +28,29 @@ local myTaskPOI
 
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
 
+-- ===================
+--  Utility Functions
+-- ===================
+
+local function GetMapAreaIDs()
+	local mapID = GetCurrentMapAreaID()
+	local contIndex = 0
+	local mapHeirarchy = GetMapHierarchy()
+	for _, mapInfo in ipairs(mapHeirarchy) do
+		if mapInfo['isContinent'] then
+			contIndex = mapInfo['id']
+		else
+			mapID = mapInfo['id']
+		end
+	end
+	local conts = { GetMapContinents() }
+	return mapID, conts[contIndex*2 - 1]
+end
+
+-- =================
+--  Event Functions
+-- =================
+
 local function HeaderButton_OnClick(self, button)
 	local questsCollapsed = Addon.Config.collapsed
 	PlaySound("igMainMenuOptionCheckBoxOn")
@@ -126,6 +149,10 @@ end
 
 local function FilterButton_OnEnter(self)
 	local text = FILTER_NAMES[ self.index ]
+	if self.index == FILTER_EMISSARY and Addon.Config.filterEmissary then
+		local title = GetQuestLogTitle(GetQuestLogIndexByID(Addon.Config.filterEmissary))
+		if title then text = text..": "..title end
+	end
 	if self.index == FILTER_TIME then
 		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Addon.Config.timeFilterDuration))
 	end
@@ -138,14 +165,63 @@ local function FilterButton_OnLeave(self)
 	GameTooltip:Hide()
 end
 
+local filterMenu
+local function FilterMenu_OnClick(self, filterIndex)
+	if filterMenu.index == FILTER_EMISSARY then
+		Addon.Config:Set('filterEmissary', self.value)
+	end
+end
+
+local function FilterMenu_Initialize(self, level)
+	local info = { func = FilterMenu_OnClick, arg1 = self.index }
+	if self.index == FILTER_EMISSARY then
+		local value = Addon.Config.filterEmissary
+
+		info.text = ALL
+		info.value = 0
+		info.checked = info.value == value
+		UIDropDownMenu_AddButton(info, level)
+
+		local currentMapID, continentMapID = GetMapAreaIDs()
+		local bounties = GetQuestBountyInfoForMapID(currentMapID)
+		for _, bounty in ipairs(bounties) do
+			info.text =  GetQuestLogTitle(GetQuestLogIndexByID(bounty.questID))
+			info.icon = bounty.icon
+			info.value = bounty.questID
+			info.checked = info.value == value
+			UIDropDownMenu_AddButton(info, level)
+		end
+	end
+end
+
+local function FilterButton_ShowMenu(self)
+	if not filterMenu then
+		filterMenu = CreateFrame("Button", "DropDownMenuTest", QuestMapFrame, "UIDropDownMenuTemplate")
+	end
+
+	filterMenu.index = self.index
+
+	filterMenu:ClearAllPoints()
+	filterMenu:SetPoint("TOPLEFT", self, "BOTTOMRIGHT", 0, 0)
+	filterMenu:Show()
+
+	UIDropDownMenu_Initialize(filterMenu, FilterMenu_Initialize, "MENU")
+	ToggleDropDownMenu(1, nil, filterMenu, self, 0, 0)
+
+end
+
 local function FilterButton_OnClick(self, button)
-	if button == 'RightButton' then
-		Addon.Config:ToggleFilter(self.index)
+	if button == 'RightButton' and self.index == FILTER_EMISSARY then
+		FilterButton_ShowMenu(self)
 	else
-		if Addon.Config:IsOnlyFilter(self.index) then
-			Addon.Config:SetNoFilter()
+		if IsShiftKeyDown() then
+			Addon.Config:ToggleFilter(self.index)
 		else
-			Addon.Config:SetOnlyFilter(self.index)
+			if Addon.Config:IsOnlyFilter(self.index) then
+				Addon.Config:SetNoFilter()
+			else
+				Addon.Config:SetOnlyFilter(self.index)
+			end
 		end
 	end
 end
@@ -219,21 +295,6 @@ local function GetFilterButton(index)
 	return filterButtons[index]
 end
 
-local function GetMapAreaIDs()
-	local mapID = GetCurrentMapAreaID()
-	local contIndex = 0
-	local mapHeirarchy = GetMapHierarchy()
-	for _, mapInfo in ipairs(mapHeirarchy) do
-		if mapInfo['isContinent'] then
-			contIndex = mapInfo['id']
-		else
-			mapID = mapInfo['id']
-		end
-	end
-	local conts = { GetMapContinents() }
-	return mapID, conts[contIndex*2 - 1]
-end
-
 local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 	if bounties == nil then
 		local currentMapID, continentMapID = GetMapAreaIDs()
@@ -295,8 +356,10 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 
 	if selectedFilters[FILTER_EMISSARY] and not isFiltered then
 		local isBounty = false
+		local bountyFilter = Addon.Config.filterEmissary
+		if GetQuestLogIndexByID(bountyFilter) == 0 then bountyFilter = 0 end
 		for _, bounty in ipairs(bounties) do
-			if bounty and IsQuestCriteriaForBounty(self.questID, bounty.questID) then
+			if bounty and IsQuestCriteriaForBounty(self.questID, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
 				isBounty = true
 			end
 		end
@@ -634,7 +697,7 @@ function QF:Startup()
 	Addon.Config:RegisterCallback('showAtTop', function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
 	Addon.Config:RegisterCallback({'hidePOI', 'hideFilteredPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 	Addon.Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
-	Addon.Config:RegisterCallback({'selectedFilters', 'disabledFilters'}, function() 
+	Addon.Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary'}, function() 
 		QuestFrame_Update()
 		if Addon.Config.hideFilteredPOI then
 			WorldMap_UpdateQuestBonusObjectives()

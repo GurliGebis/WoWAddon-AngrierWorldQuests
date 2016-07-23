@@ -9,6 +9,7 @@ local configDefaults = {
 	onlyCurrentZone = true,
 	selectedFilters = 0,
 	disabledFilters = 0,
+	filterEmissary = 0,
 	timeFilterDuration = 6,
 	hidePOI = false,
 	hideFilteredPOI = false,
@@ -210,8 +211,7 @@ local function CheckBox_OnClick(self)
 	Config:Set(key, self:GetChecked())
 end
 
-local function DropDown_OnClick(self)
-	local dropdown = self:GetParent().dropdown
+local function DropDown_OnClick(self, dropdown)
 	local key = dropdown.configKey
 	if panelOriginalConfig[key] == nil then
 		panelOriginalConfig[key] = Config[key]
@@ -225,7 +225,7 @@ local function DropDown_Initialize(self)
 	local selectedValue = UIDropDownMenu_GetSelectedValue(self)
 	local info = UIDropDownMenu_CreateInfo()
 	info.func = DropDown_OnClick
-	info.dropdown = self
+	info.arg1 = self
 
 	if key == 'timeFilterDuration' then
 		for _, hours in ipairs(timeFilterDurationValues) do

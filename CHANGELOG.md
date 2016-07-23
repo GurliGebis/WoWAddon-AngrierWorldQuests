@@ -1,5 +1,6 @@
 ## v0.5.0
 
+* Added ability to filter only certain Emissary Quests. Right click on Emissary filter to get a drop to select one. You now need to shift click on filters to select multiple ones.
 * Added option to disable certain filters
 
 ## v0.4.2
