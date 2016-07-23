@@ -32,7 +32,7 @@ local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [L
 --  Utility Functions
 -- ===================
 
-function GetMapAreaIDs()
+local function GetMapAreaIDs()
 	local mapID = GetCurrentMapAreaID()
 	local contIndex = 0
 	local mapHeirarchy = GetMapHierarchy()
@@ -186,6 +186,7 @@ local function FilterMenu_Initialize(self, level)
 	local info = { func = FilterMenu_OnClick, arg1 = self.index }
 	if self.index == FILTER_EMISSARY then
 		local value = Addon.Config.filterEmissary
+		if GetQuestLogIndexByID(value) == 0 then value = 0 end
 
 		info.text = ALL
 		info.value = 0
