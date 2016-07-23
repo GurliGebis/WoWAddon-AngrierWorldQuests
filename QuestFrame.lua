@@ -25,6 +25,9 @@ local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ARTIFACT_POWER, FILT
 QF.FilterNames = FILTER_NAMES
 QF.FilterOrder = FILTER_ORDER
 
+local FILTER_LOOT_ALL = 1
+local FILTER_LOOT_UPGRADES = 2
+
 local myTaskPOI
 
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
@@ -160,7 +163,9 @@ local function FilterButton_OnEnter(self)
 		if title then text = text..": "..title end
 	end
 	if self.index == FILTER_LOOT then
-		if Config.filterLoot == 1 then text = string.format("%s (%s)", text, Addon.Locale.UPGRADES) end
+		if Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades) then
+			text = string.format("%s (%s)", text, Addon.Locale.UPGRADES)
+		end
 	end
 	if self.index == FILTER_TIME then
 		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Config.timeFilterDuration))
@@ -211,14 +216,15 @@ local function FilterMenu_Initialize(self, level)
 		end
 	elseif self.index == FILTER_LOOT then
 		local value = Config.filterLoot
+		if value == 0 then value = Config.lootFilterUpgrades and FILTER_LOOT_UPGRADES or FILTER_LOOT_ALL end
 
 		info.text = ALL
-		info.value = 0
+		info.value = FILTER_LOOT_ALL
 		info.checked = info.value == value
 		UIDropDownMenu_AddButton(info, level)
 
 		info.text = Addon.Locale.UPGRADES
-		info.value = 1
+		info.value = FILTER_LOOT_UPGRADES
 		info.checked = info.value == value
 		UIDropDownMenu_AddButton(info, level)
 	end
@@ -370,7 +376,8 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 					isFiltered = hasFilters and not selectedFilters[FILTER_ARTIFACT_POWER]
 				else
 					if iLevel then
-						isFiltered = hasFilters and (not selectedFilters[FILTER_LOOT] or (Config.filterLoot == 1 and not Addon.Data:RewardIsUpgrade(self.questID)))
+						local upgradesOnly = Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)
+						isFiltered = hasFilters and (not selectedFilters[FILTER_LOOT] or (upgradesOnly and not Addon.Data:RewardIsUpgrade(self.questID)))
 					else
 						isFiltered = hasFilters and not selectedFilters[FILTER_ITEMS]
 					end
@@ -712,9 +719,9 @@ local function MapFrame_Update()
 end
 
 function QF:UNIT_INVENTORY_CHANGED(unit)
-	if Config.filterLoot == 1 and unit == "player" then
-		QuestFrame_Update()
-		if Config.hideFilteredPOI then
+	if (Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)) and unit == "player" then
+		QuestFrame_Update() 
+		if Config.hideFilteredPOI and WorldMapFrame:IsShown() then
 			WorldMap_UpdateQuestBonusObjectives()
 			MapFrame_Update()
 		end
@@ -742,10 +749,10 @@ function QF:Startup()
 
 	Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
 	Config:RegisterCallback({'hidePOI', 'hideFilteredPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
-	Config:RegisterCallback({'onlyCurrentZone', 'timeFilterDuration'}, QuestFrame_Update)
-	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot'}, function() 
+	Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
+	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'lootFilterUpgrades', 'timeFilterDuration'}, function() 
 		QuestFrame_Update()
-		if Config.hideFilteredPOI then
+		if Config.hideFilteredPOI and WorldMapFrame:IsShown() then
 			WorldMap_UpdateQuestBonusObjectives()
 			MapFrame_Update()
 		end

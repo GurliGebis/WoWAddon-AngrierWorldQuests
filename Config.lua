@@ -12,6 +12,7 @@ local configDefaults = {
 	disabledFilters = 0,
 	filterEmissary = 0,
 	filterLoot = 0,
+	lootFilterUpgrades = false,
 	timeFilterDuration = 6,
 	hidePOI = false,
 	hideFilteredPOI = false,
@@ -270,7 +271,7 @@ local function Panel_OnRefresh(self)
 		dropdowns = {}
 		filterCheckboxes = {}
 
-		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "hideFilteredPOI", "hidePOI", "showContinentPOI", }
+		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "hideFilteredPOI", "hidePOI", "showContinentPOI", "lootFilterUpgrades" }
 		local checkboxes_text = {
 			showAtTop = "Display at the top of the Quest Log", 
 			onlyCurrentZone = "Only show World Quests for the current zone", 
@@ -278,6 +279,7 @@ local function Panel_OnRefresh(self)
 			hideFilteredPOI = "Hide filtered World Quest POI icons on the world map", 
 			hidePOI = "Hide untracked World Quest POI icons on the world map", 
 			showContinentPOI = "Show hovered World Quest POI icon on the Broken Isles map",
+			lootFilterUpgrades = "Show only upgrades for Loot filter",
 		}
 
 		for i,key in ipairs(checkboxes_order) do
