@@ -213,23 +213,26 @@ local function FilterButton_ShowMenu(self)
 	filterMenu.index = self.index
 	UIDropDownMenu_Initialize(filterMenu, FilterMenu_Initialize, "MENU")
 	ToggleDropDownMenu(1, nil, filterMenu, self, 0, 0)
-
 end
 
 local function FilterButton_OnClick(self, button)
+	HideDropDownMenu(1)
 	PlaySound("igMainMenuOptionCheckBoxOn")
 	if button == 'RightButton' and self.index == FILTER_EMISSARY then
 		FilterButton_ShowMenu(self)
 	else
 		if IsShiftKeyDown() then
+			if self.index == FILTER_EMISSARY then Addon.Config:Set('filterEmissary', 0, true) end
 			Addon.Config:ToggleFilter(self.index)
 		else
+			Addon.Config:Set('filterEmissary', 0, true)
 			if Addon.Config:IsOnlyFilter(self.index) then
 				Addon.Config:SetNoFilter()
 			else
 				Addon.Config:SetOnlyFilter(self.index)
 			end
 		end
+		FilterButton_OnEnter(self)
 	end
 end
 

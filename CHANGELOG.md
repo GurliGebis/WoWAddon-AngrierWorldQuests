@@ -1,3 +1,7 @@
+## v0.5.1
+
+* Specific Emissary Quest filter is reset when it is unselected.
+
 ## v0.5.0
 
 * Added ability to filter only certain Emissary Quests. Right click on the Emissary filter to get a dropdown to select one.
