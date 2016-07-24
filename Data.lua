@@ -95,7 +95,10 @@ local invtype_locations = {
 	INVTYPE_HOLDABLE = { INVSLOT_OFFHAND },
 }
 
+local cachedArtifactRelics = nil
 local function GetAllArtifactRelics()
+	if cachedArtifactRelics then return cachedArtifactRelics end
+
 	local ret = {}
 
 	local unlockEarned = select(13, GetAchievementInfo(UNLOCK_RELIC_SLOT_ACHIEVEMENT))
@@ -131,6 +134,7 @@ local function GetAllArtifactRelics()
 			end
 		end
 	end
+	cachedArtifactRelics = ret
 	return ret
 end
 
@@ -236,9 +240,14 @@ function Data:UNIT_QUEST_LOG_CHANGED(arg1)
 	end
 end
 
+function Data:ClearArtifactCache()
+	cachedArtifactRelics = nil
+end
+
 function Data:Startup()
 	fakeTooltip = CreateFrame('GameTooltip', 'AWQFakeTooltip', UIParent, 'GameTooltipTemplate')
 	fakeTooltip:Hide()
 
 	self:RegisterEvent('UNIT_QUEST_LOG_CHANGED')
+	self:RegisterEvent('BAG_UPDATE', 'ClearArtifactCache')
 end

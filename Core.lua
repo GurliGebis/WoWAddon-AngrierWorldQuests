@@ -8,7 +8,7 @@ local function Addon_OnEvent(frame, event, ...)
 			if func == 0 then
 				callback[event](callback, ...)
 			else
-				callback[func](callback, ...)
+				callback[func](callback, event, ...)
 			end
 		end
 	end
