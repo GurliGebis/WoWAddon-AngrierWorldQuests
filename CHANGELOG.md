@@ -1,3 +1,8 @@
+## v0.5.2
+
+* Added option for Loot Filter to only show upgrades by default.
+* Loot Upgrades filter now checks Artifact Relics for upgrades.
+
 ## v0.5.1
 
 * Added ability to filter to only Loot Upgrades, can access it by right clicking the Loot filter.
