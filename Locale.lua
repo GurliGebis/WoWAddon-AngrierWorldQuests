@@ -5,7 +5,7 @@ local default_locale = "enUS"
 local current_locale
 
 Locale.enUS = {
-	UPGRADES = "Upgrades"
+	UPGRADES = "Upgrades",
 }
 
 function Locale:Get(key)
