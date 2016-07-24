@@ -49,7 +49,7 @@ function Data:ItemArtifactPower(itemID)
 		power = tonumber(power)
 
 		cachedPower[itemID] = power
-
+		
 		fakeTooltip:Hide()
 		return power
 	else

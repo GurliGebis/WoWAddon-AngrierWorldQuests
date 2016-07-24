@@ -56,6 +56,16 @@ local function GetMapAreaIDs()
 	end
 end
 
+local function ArtifactPowerTruncate(power)
+	if power > 10000 then
+		return floor(power / 1000) .. "k"
+	elseif power > 1000 then
+		return (floor(power / 100) / 10) .. "k"
+	else
+		return power
+	end
+end
+
 -- =================
 --  Event Functions
 -- =================
@@ -613,7 +623,7 @@ local function QuestFrame_Update()
 										local iLevel = Addon.Data:RewardItemLevel(questID)
 										if artifactPower then
 											tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
-											tagText = artifactPower
+											tagText = ArtifactPowerTruncate(artifactPower)
 											tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
 										else
 											tagTexture = itemTexture
