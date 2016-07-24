@@ -738,12 +738,7 @@ function QF:UNIT_INVENTORY_CHANGED(unit)
 	end
 end
 
-function QF:QUEST_WATCH_LIST_CHANGED()
-	QuestFrame_Update()
-	MapFrame_Update()
-end
-
-function QF:SUPER_TRACKED_QUEST_CHANGED()
+function QF:FrameUpdate()
 	QuestFrame_Update()
 	MapFrame_Update()
 end
@@ -753,8 +748,8 @@ function QF:Startup()
 
 	FILTER_NAMES[FILTER_ORDER_RESOURCES] = select(1, GetCurrencyInfo(1220)) -- Add in localized name of Order Resources
 
-	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED")
-	self:RegisterEvent("SUPER_TRACKED_QUEST_CHANGED")
+	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", "FrameUpdate")
+	self:RegisterEvent("SUPER_TRACKED_QUEST_CHANGED", "FrameUpdate")
 	self:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
 	Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)

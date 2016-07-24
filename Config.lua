@@ -170,14 +170,12 @@ local function Panel_OnCancel(self)
 end
 
 local function Panel_OnDefaults(self)
-	Config:Set('onlyCurrentZone', configDefaults['onlyCurrentZone'])
-	Config:Set('showEverywhere', configDefaults['showEverywhere'])
-	Config:Set('showAtTop', configDefaults['showAtTop'])
-	Config:Set('hidePOI', configDefaults['hidePOI'])
-	Config:Set('showContinentPOI', configDefaults['showContinentPOI'])
-	Config:Set('hideFilteredPOI', configDefaults['hideFilteredPOI'])
-	Config:Set('timeFilterDuration', configDefaults['timeFilterDuration'])
-	Config:Set('disabledFilters', configDefaults['disabledFilters'])
+	AngryWorldQuests_Config = { __version = configVersion }
+	for key,callbacks_key in pairs(callbacks) do
+		for _, func in ipairs(callbacks_key) do
+			func(key, configDefaults[key])
+		end
+	end
 	wipe(panelOriginalConfig)
 end
 

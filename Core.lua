@@ -4,24 +4,29 @@ local Listener = CreateFrame('Frame', ADDON .. 'Listener')
 local EventListeners = {}
 local function Addon_OnEvent(frame, event, ...)
 	if EventListeners[event] then
-		for _, callback in ipairs(EventListeners[event]) do
-			callback[event](callback, ...)
+		for callback, func in pairs(EventListeners[event]) do
+			if func == 0 then
+				callback[event](callback, ...)
+			else
+				callback[func](callback, ...)
+			end
 		end
 	end
 end
 Listener:SetScript('OnEvent', Addon_OnEvent)
-function Addon:RegisterEvent(event, callback)
+function Addon:RegisterEvent(event, callback, func)
+	if func == nil then func = 0 end
 	if EventListeners[event] == nil then
 		Listener:RegisterEvent(event)
-		EventListeners[event] = { callback }
+		EventListeners[event] = { [callback]=func }
 	else
-		table.insert(EventListeners[event], callback)
+		EventListeners[event][callback] = func
 	end
 end
 
 local ModulePrototype = {}
-function ModulePrototype:RegisterEvent(event)
-	Addon:RegisterEvent(event, self)
+function ModulePrototype:RegisterEvent(event, func)
+	Addon:RegisterEvent(event, self, func)
 end
 Addon.ModulePrototype = ModulePrototype
 
