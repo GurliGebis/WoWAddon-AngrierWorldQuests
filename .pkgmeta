@@ -5,3 +5,5 @@ manual-changelog: CHANGELOG.md
 ignore:
 	- CHANGELOG.md
 	- README.md
+	- extract_artifact_power.rb
+	- extract_relic_types.rb
