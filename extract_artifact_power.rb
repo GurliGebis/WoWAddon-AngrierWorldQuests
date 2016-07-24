@@ -3,7 +3,7 @@ require 'nokogiri'
 require 'open-uri'
 require 'json'
 
-url = 'http://legion.wowhead.com/items/consumables?filter=224;1;0'
+url = 'http://www.wowhead.com/items/consumables?filter=224;1;0'
 
 page = open(url).read
 
