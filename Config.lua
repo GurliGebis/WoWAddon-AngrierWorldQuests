@@ -270,21 +270,12 @@ local function Panel_OnRefresh(self)
 		filterCheckboxes = {}
 
 		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "hideFilteredPOI", "hidePOI", "showContinentPOI", "lootFilterUpgrades" }
-		local checkboxes_text = {
-			showAtTop = "Display at the top of the Quest Log", 
-			onlyCurrentZone = "Only show World Quests for the current zone", 
-			showEverywhere = "Show all World Quests on every map",
-			hideFilteredPOI = "Hide filtered World Quest POI icons on the world map", 
-			hidePOI = "Hide untracked World Quest POI icons on the world map", 
-			showContinentPOI = "Show hovered World Quest POI icon on the Broken Isles map",
-			lootFilterUpgrades = "Show only upgrades for Loot filter",
-		}
 
 		for i,key in ipairs(checkboxes_order) do
 			checkboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
 			checkboxes[i]:SetScript("OnClick", CheckBox_OnClick)
 			checkboxes[i].configKey = key
-			checkboxes[i].Text:SetText(checkboxes_text[key])
+			checkboxes[i].Text:SetText( Addon.Locale['config_'..key] )
 			if i == 1 then
 				checkboxes[i]:SetPoint("TOPLEFT", label, "BOTTOMLEFT", -2, -8)
 			else
@@ -293,7 +284,7 @@ local function Panel_OnRefresh(self)
 		end
 
 		dropdowns[1] = DropDown_Create(self)
-		dropdowns[1].Text:SetText("Time Remaining Filter Duration")
+		dropdowns[1].Text:SetText( Addon.Locale['config_timeFilterDuration'] )
 		dropdowns[1].configKey = "timeFilterDuration"
 		dropdowns[1]:SetPoint("TOPLEFT", checkboxes[#checkboxes], "BOTTOMLEFT", -13, -24)
 
@@ -301,7 +292,7 @@ local function Panel_OnRefresh(self)
 		label2:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 435, -5)
 		label2:SetJustifyH("LEFT")
 		label2:SetJustifyV("TOP")
-		label2:SetText("Enabled Filters")
+		label2:SetText(Addon.Locale['config_enabledFilters'])
 
 		for i,index in ipairs(Addon.QuestFrame.FilterOrder) do
 			filterCheckboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
