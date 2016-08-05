@@ -23,10 +23,30 @@ function Addon:RegisterEvent(event, callback, func)
 		EventListeners[event][callback] = func
 	end
 end
+function Addon:UnregisterEvent(event, callback)
+	local listeners = EventListeners[event]
+	if listeners then
+		local count = 0
+		for index,_ in pairs(listeners) do
+			if index == callback then
+				listeners[index] = nil
+			else
+				count = count + 1
+			end
+		end
+		if count == 0 then
+			EventListeners[event] = nil
+			Listener:UnregisterEvent(event)
+		end
+	end
+end
 
 local ModulePrototype = {}
 function ModulePrototype:RegisterEvent(event, func)
 	Addon:RegisterEvent(event, self, func)
+end
+function ModulePrototype:UnregisterEvent(event)
+	Addon:RegisterEvent(event, self)
 end
 Addon.ModulePrototype = ModulePrototype
 
@@ -51,7 +71,7 @@ Addon:RegisterEvent('PLAYER_ENTERING_WORLD', Addon)
 function Addon:PLAYER_ENTERING_WORLD()
 	self:ForAllModules('Startup')
 
-	Listener:UnregisterEvent('PLAYER_ENTERING_WORLD')
+	self:UnregisterEvent('PLAYER_ENTERING_WORLD', self)
 end
 
 Addon.Name = GetAddOnMetadata(ADDON, "Title")
