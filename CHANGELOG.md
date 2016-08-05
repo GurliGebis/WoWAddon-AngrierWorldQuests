@@ -1,3 +1,7 @@
+## v0.5.3
+
+* Small bug fixes
+
 ## v0.5.2
 
 * Added option for Loot Filter to only show upgrades by default.
