@@ -69,6 +69,35 @@ local artifactRelicSlots = {
 	[128908] = { 14, 17, 8 }, -- Fury
 	[128289] = { 8, 9, 14 }, -- Protection
 }
+
+function Data:TestArtifacts()
+	local relicNames = {
+		[8] = "Iron",
+		[9] = "Blood",
+		[10] = "Shadow",
+		[11] = "Fel",
+		[12] = "Arcane",
+		[13] = "Frost",
+		[14] = "Fire",
+		[15] = "Water",
+		[16] = "Life",
+		[17] = "Storm",
+		[18] = "Holy",
+	}
+
+	for itemID, relics in pairs(artifactRelicSlots) do
+		local itemName = GetItemInfo(itemID)
+	end
+
+	for itemID, relics in pairs(artifactRelicSlots) do
+		local itemLink = select(2, GetItemInfo(itemID))
+		if (itemLink) then
+			print( string.format("%s: %s, %s, %s", itemLink, relicNames[relics[1]], relicNames[relics[2]], relicNames[relics[3]]) )
+		end
+	end
+
+end
+
 local NUM_RELICS = 3
 local UNLOCK_RELIC_SLOT_ACHIEVEMENT = 10994
 
