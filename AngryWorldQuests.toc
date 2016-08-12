@@ -6,8 +6,8 @@
 
 Core.lua
 
-QuestFrame.lua
-
-Locale.lua
-Data.lua
 Config.lua
+Locale.lua
+
+QuestFrame.lua
+Data.lua
