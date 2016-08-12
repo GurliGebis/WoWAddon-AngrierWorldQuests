@@ -730,7 +730,7 @@ local function MapFrame_Update()
 		end
 	end
 	if Config.hideFilteredPOI then
-		bounties = GetQuestBountyInfoForMapID(GetCurrentMapAreaID())
+		local bounties = GetQuestBountyInfoForMapID(GetCurrentMapAreaID())
 		local hasFilters = Config:HasFilters()
 		if Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
 		local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
