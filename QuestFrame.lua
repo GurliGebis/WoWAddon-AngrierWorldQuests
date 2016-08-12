@@ -83,17 +83,21 @@ end
 
 local function DisplayMyTaskPOI(self)
 	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showContinentPOI then
-		local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
-		local selected = self.questID == GetSuperTrackedQuestID()
-		local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questID)
-		local isSpellTarget = SpellCanTargetQuest() and IsQuestIDValidSpellTarget(self.questID)
-		myTaskPOI.worldQuest = true
-		myTaskPOI.Texture:SetDrawLayer("OVERLAY")
-		WorldMap_SetupWorldQuestButton(myTaskPOI, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, selected, isCriteria, isSpellTarget)
-		WorldMapPOIFrame_AnchorPOI(myTaskPOI, self.infoX, self.infoY, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST);
-		myTaskPOI.questID = self.questID;
-		myTaskPOI.numObjectives = self.numObjectives
-		myTaskPOI:Show()
+		if ( Config.showTrackedPOI and (IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID) ) then
+			myTaskPOI:Hide()
+		else
+			local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
+			local selected = self.questID == GetSuperTrackedQuestID()
+			local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questID)
+			local isSpellTarget = SpellCanTargetQuest() and IsQuestIDValidSpellTarget(self.questID)
+			myTaskPOI.worldQuest = true
+			myTaskPOI.Texture:SetDrawLayer("OVERLAY")
+			WorldMap_SetupWorldQuestButton(myTaskPOI, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, selected, isCriteria, isSpellTarget)
+			WorldMapPOIFrame_AnchorPOI(myTaskPOI, self.infoX, self.infoY, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST);
+			myTaskPOI.questID = self.questID;
+			myTaskPOI.numObjectives = self.numObjectives
+			myTaskPOI:Show()
+		end
 	else
 		myTaskPOI:Hide()
 	end
@@ -705,6 +709,7 @@ local function QuestFrame_Update()
 	
 end
 
+local TRACKED_POI_COUNT = 0
 local function MapFrame_Update()
 	if Config.hidePOI then
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
@@ -725,6 +730,43 @@ local function MapFrame_Update()
 			if taskPOI.worldQuest and TaskPOI_IsFiltered(taskPOI, bounties, hasFilters, selectedFilters) then
 				taskPOI:Hide()
 			end
+		end
+	end
+
+	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showTrackedPOI then
+		local taskIconIndex  = 1
+		for _, mapID in ipairs(MAPID_ALL) do
+			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, continentMapID)
+			if (questsList and #questsList > 0) then
+				for i, info in ipairs(questsList) do
+					if ( HaveQuestData(info.questId) ) then
+						local isWorldQuest = QuestMapFrame_IsQuestWorldQuest(info.questId);
+						if ( isWorldQuest and (IsWorldQuestHardWatched(info.questId) or GetSuperTrackedQuestID() == info.questId) ) then
+							local taskPOI = WorldMap_TryCreatingWorldQuestPOI(info, "AWQ"..taskIconIndex);
+
+							if ( taskPOI ) then
+								WorldMapPOIFrame_AnchorPOI(taskPOI, info.x, info.y, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST);
+								taskPOI.questID = info.questId
+								taskPOI.numObjectives = info.numObjectives
+								taskPOI:Show()
+								taskIconIndex = taskIconIndex + 1
+							end
+
+						end
+					end
+				end
+			end
+		end
+
+		for i = taskIconIndex, TRACKED_POI_COUNT do
+			_G["WorldMapFrameTaskPOIAWQ"..i]:Hide();
+		end
+		if taskIconIndex-1 > TRACKED_POI_COUNT then
+			TRACKED_POI_COUNT = taskIconIndex - 1
+		end
+	else
+		for i = 1, TRACKED_POI_COUNT do
+			_G["WorldMapFrameTaskPOIAWQ"..i]:Hide();
 		end
 	end
 end
@@ -754,7 +796,7 @@ function QF:Startup()
 	self:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
 	Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
-	Config:RegisterCallback({'hidePOI', 'hideFilteredPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
+	Config:RegisterCallback({'hidePOI', 'hideFilteredPOI', 'showTrackedPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 	Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
 	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'lootFilterUpgrades', 'timeFilterDuration'}, function() 
 		QuestFrame_Update()

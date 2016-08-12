@@ -13,6 +13,7 @@ langs.enUS = {
 	config_hideFilteredPOI = "Hide filtered World Quest POI icons on the world map", 
 	config_hidePOI = "Hide untracked World Quest POI icons on the world map", 
 	config_showContinentPOI = "Show hovered World Quest POI icon on the Broken Isles map",
+	config_showTrackedPOI = "Show tracked World Quest POI icons on the Broken Isles map",
 	config_lootFilterUpgrades = "Show only upgrades for Loot filter",
 	config_timeFilterDuration = "Time Remaining Filter Duration",
 	config_enabledFilters = "Enabled Filters",
