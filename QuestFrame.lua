@@ -104,7 +104,14 @@ local function TitleButton_OnEnter(self)
 	local _, color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
-	for i = 1, NUM_WORLDMAP_TASK_POIS do
+	local mapAreaID = GetCurrentMapAreaID();
+	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID);
+	local numTaskPOIs = 0;
+	if(taskInfo ~= nil) then
+		numTaskPOIs = #taskInfo;
+	end
+
+	for i = 1, numTaskPOIs do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton.questID == self.questID then
 			if Config.hidePOI then
@@ -124,7 +131,14 @@ local function TitleButton_OnLeave(self)
 	local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
-	for i = 1, NUM_WORLDMAP_TASK_POIS do
+	local mapAreaID = GetCurrentMapAreaID();
+	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID);
+	local numTaskPOIs = 0;
+	if(taskInfo ~= nil) then
+		numTaskPOIs = #taskInfo;
+	end
+
+	for i = 1, numTaskPOIs do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton.questID == self.questID then
 			mapButton:UnlockHighlight()
