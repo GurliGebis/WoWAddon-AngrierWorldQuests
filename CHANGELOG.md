@@ -1,3 +1,7 @@
+## v0.5.4
+
+* Bug fix for "Hide untracked World Quest POI icons"
+
 ## v0.5.3
 
 * Small bug fixes
