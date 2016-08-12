@@ -1,7 +1,7 @@
 local ADDON, Addon = ...
 local Config = Addon:NewModule('Config')
 
-local configVersion = 1
+local configVersion = 2
 local configDefaults = {
 	collapsed = false,
 	showAtTop = true,
@@ -14,7 +14,7 @@ local configDefaults = {
 	filterLoot = 0,
 	lootFilterUpgrades = false,
 	timeFilterDuration = 6,
-	hidePOI = false,
+	hideUntrackedPOI = false,
 	hideFilteredPOI = false,
 	showTrackedPOI = false,
 }
@@ -270,7 +270,7 @@ local function Panel_OnRefresh(self)
 		dropdowns = {}
 		filterCheckboxes = {}
 
-		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "hideFilteredPOI", "hidePOI", "showTrackedPOI", "showContinentPOI", "lootFilterUpgrades" }
+		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "hideFilteredPOI", "hideUntrackedPOI", "showTrackedPOI", "showContinentPOI", "lootFilterUpgrades" }
 
 		for i,key in ipairs(checkboxes_order) do
 			checkboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
@@ -343,6 +343,12 @@ function Config:Startup()
 	if AngryWorldQuests_Config == nil then AngryWorldQuests_Config = {} end
 	if not AngryWorldQuests_Config['__version'] then
 		AngryWorldQuests_Config['__version'] = configVersion
+	end
+
+	if AngryWorldQuests_Config['__version'] == 1 then
+		AngryWorldQuests_Config['hideUntrackedPOI'] = AngryWorldQuests_Config['hidePOI']
+		AngryWorldQuests_Config['hidePOI'] = nil
+		AngryWorldQuests_Config['__version'] = 2
 	end
 
 	optionPanel = self:CreatePanel(ADDON)

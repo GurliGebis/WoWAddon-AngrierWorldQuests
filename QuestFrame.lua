@@ -118,7 +118,7 @@ local function TitleButton_OnEnter(self)
 	for i = 1, numTaskPOIs do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton.questID == self.questID then
-			if Config.hidePOI then
+			if Config.hideUntrackedPOI then
 				mapButton:Show()
 			end
 			mapButton:LockHighlight()
@@ -146,7 +146,7 @@ local function TitleButton_OnLeave(self)
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton.questID == self.questID then
 			mapButton:UnlockHighlight()
-			if Config.hidePOI then
+			if Config.hideUntrackedPOI then
 				mapButton:SetShown( IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID )
 			end
 		end
@@ -725,10 +725,10 @@ end
 
 local TRACKED_POI_COUNT = 0
 local function MapFrame_Update()
-	if Config.hidePOI then
+	if Config.hideUntrackedPOI then
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
 			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
-			if taskPOI.worldQuest and not (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
+			if taskPOI.worldQuest and taskPOI:IsShown() and not (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
 				taskPOI:Hide()
 			end
 		end
@@ -741,7 +741,7 @@ local function MapFrame_Update()
 
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
 			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
-			if taskPOI.worldQuest and TaskPOI_IsFiltered(taskPOI, bounties, hasFilters, selectedFilters) then
+			if taskPOI.worldQuest and taskPOI:IsShown() and TaskPOI_IsFiltered(taskPOI, bounties, hasFilters, selectedFilters) then
 				taskPOI:Hide()
 			end
 		end
@@ -810,7 +810,7 @@ function QF:Startup()
 	self:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
 	Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
-	Config:RegisterCallback({'hidePOI', 'hideFilteredPOI', 'showTrackedPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
+	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showTrackedPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 	Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
 	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'lootFilterUpgrades', 'timeFilterDuration'}, function() 
 		QuestFrame_Update()
