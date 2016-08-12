@@ -3,6 +3,10 @@
 * Added option to show tracked World Quest POI icons on the Broken Isles map.
 * Small bug fixes.
 
+## v0.5.4
+
+* Bug fix for "Hide untracked World Quest POI icons"
+
 ## v0.5.3
 
 * Small bug fixes.

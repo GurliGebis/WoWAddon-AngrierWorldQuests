@@ -108,16 +108,14 @@ local function TitleButton_OnEnter(self)
 	local _, color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
-	local mapAreaID = GetCurrentMapAreaID();
-	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID);
-	local numTaskPOIs = 0;
-	if(taskInfo ~= nil) then
-		numTaskPOIs = #taskInfo;
-	end
+	local mapAreaID = GetCurrentMapAreaID()
+	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID)
+	local numTaskPOIs = 0
+	if taskInfo ~= nil then numTaskPOIs = #taskInfo end
 
 	for i = 1, numTaskPOIs do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
-		if mapButton and mapButton.questID == self.questID then
+		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
 			if Config.hideUntrackedPOI then
 				mapButton:Show()
 			end
@@ -135,16 +133,14 @@ local function TitleButton_OnLeave(self)
 	local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
-	local mapAreaID = GetCurrentMapAreaID();
-	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID);
-	local numTaskPOIs = 0;
-	if(taskInfo ~= nil) then
-		numTaskPOIs = #taskInfo;
-	end
+	local mapAreaID = GetCurrentMapAreaID()
+	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID)
+	local numTaskPOIs = 0
+	if taskInfo ~= nil then numTaskPOIs = #taskInfo end
 
 	for i = 1, numTaskPOIs do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
-		if mapButton and mapButton.questID == self.questID then
+		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
 			mapButton:UnlockHighlight()
 			if Config.hideUntrackedPOI then
 				mapButton:SetShown( IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID )
