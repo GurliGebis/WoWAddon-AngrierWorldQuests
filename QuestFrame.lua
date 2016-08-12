@@ -82,7 +82,7 @@ local function HeaderButton_OnClick(self, button)
 end
 
 local function DisplayMyTaskPOI(self)
-	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showContinentPOI then
+	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showHoveredPOI then
 		if ( Config.showTrackedPOI and (IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID) ) then
 			myTaskPOI:Hide()
 		else
@@ -116,7 +116,7 @@ local function TitleButton_OnEnter(self)
 	for i = 1, numTaskPOIs do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
-			if Config.hideUntrackedPOI then
+			if Config.hideUntrackedPOI and Config.showHoveredPOI then
 				mapButton:Show()
 			end
 			mapButton:LockHighlight()
@@ -125,6 +125,9 @@ local function TitleButton_OnEnter(self)
 
 	DisplayMyTaskPOI(self)
 	
+	if Config.showComparisonRight then
+		WorldMapTooltip.ItemTooltip.Tooltip.overrideComparisonAnchorSide = "right"
+	end
 	TaskPOI_OnEnter(self)
 end
 

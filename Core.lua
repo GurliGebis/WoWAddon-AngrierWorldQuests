@@ -54,13 +54,14 @@ Addon.Modules = {}
 function Addon:NewModule(name)
 	local object = {}
 	self.Modules[name] = object
+	table.insert(self.Modules, object)
 	setmetatable(object, {__index=ModulePrototype})
 	return object
 end
 setmetatable(Addon, {__index = Addon.Modules})
 
 function Addon:ForAllModules(event, ...)
-	for name, module in pairs(Addon.Modules) do
+	for _, module in ipairs(Addon.Modules) do
 		if type(module) == 'table' and module[event] then
 			module[event](module, ...)
 		end
