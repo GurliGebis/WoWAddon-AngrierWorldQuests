@@ -184,7 +184,7 @@ function Data:ItemArtifactPower(itemID)
 	local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
 	local textLine4 = AWQFakeTooltipTextLeft4 and AWQFakeTooltipTextLeft4:IsShown() and AWQFakeTooltipTextLeft4:GetText()
 
-	if textLine2 and textLine4 and(textLine2:match("|cFFE6CC80")) then
+	if textLine2 and textLine4 and textLine2:match("|cFFE6CC80") then
 		local power = textLine4:gsub("%p", ""):match("%d+")
 		power = tonumber(power)
 

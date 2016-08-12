@@ -709,7 +709,7 @@ local function MapFrame_Update()
 	if Config.hidePOI then
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
 			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
-			if taskPOI.worldQuest and (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
+			if taskPOI.worldQuest and not (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
 				taskPOI:Hide()
 			end
 		end
@@ -768,6 +768,6 @@ function QF:Startup()
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
 	hooksecurefunc("WorldMap_UpdateQuestBonusObjectives", MapFrame_Update)
 
-	myTaskPOI = WorldMap_GetOrCreateTaskPOI("AWQ")
+	myTaskPOI = WorldMap_GetOrCreateTaskPOI("AWQ0")
 	myTaskPOI:Hide()
 end

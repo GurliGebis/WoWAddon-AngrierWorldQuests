@@ -1,6 +1,6 @@
 ## Interface: 70000
 ## Title: Angry World Quests
-## Notes: Adds World Quests to the quests list
+## Notes: Adds World Quests to the quest list
 ## Author: Ermad
 ## SavedVariables: AngryWorldQuests_Config
 
