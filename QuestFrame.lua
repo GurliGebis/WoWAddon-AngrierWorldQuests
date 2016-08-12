@@ -719,20 +719,20 @@ local function MapFrame_Update()
 	if Config.hidePOI then
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
 			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
-			if taskPOI.worldQuest and (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
+			if taskPOI.worldQuest and taskPOI:IsShown() and not (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
 				taskPOI:Hide()
 			end
 		end
 	end
 	if Config.hideFilteredPOI then
-		bounties = GetQuestBountyInfoForMapID(GetCurrentMapAreaID())
+		local bounties = GetQuestBountyInfoForMapID(GetCurrentMapAreaID())
 		local hasFilters = Config:HasFilters()
 		if Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
 		local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
 
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
 			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
-			if taskPOI.worldQuest and TaskPOI_IsFiltered(taskPOI, bounties, hasFilters, selectedFilters) then
+			if taskPOI.worldQuest and taskPOI:IsShown() and TaskPOI_IsFiltered(taskPOI, bounties, hasFilters, selectedFilters) then
 				taskPOI:Hide()
 			end
 		end
