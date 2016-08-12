@@ -1,10 +1,11 @@
 ## v0.6.0
-* Added option to show tracked World Quest POI icons on the Broken Isles map
-* Small bug fixes
+
+* Added option to show tracked World Quest POI icons on the Broken Isles map.
+* Small bug fixes.
 
 ## v0.5.3
 
-* Small bug fixes
+* Small bug fixes.
 
 ## v0.5.2
 
