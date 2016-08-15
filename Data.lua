@@ -132,7 +132,12 @@ local function GetAllArtifactRelics()
 
 	local unlockEarned = select(13, GetAchievementInfo(UNLOCK_RELIC_SLOT_ACHIEVEMENT))
 
-	local currentLink = GetInventoryItemLink("player", INVSLOT_MAINHAND)
+	local currentSpec = GetSpecializationInfo(GetSpecialization())
+	local artifactInvSlot = INVSLOT_MAINHAND
+	if (currentSpec == 266 or currentSpec == 73 or currentSpec == 66) then artifactInvSlot = INVSLOT_OFFHAND end -- Demonology Warlock, Protection Warrior, Protection Paladin
+
+	local currentLink = GetInventoryItemLink("player", artifactInvSlot)
+
 	local currentItemID = currentLink and tonumber( currentLink:match("item:(%d+):") )
 	if artifactRelicSlots[currentItemID] then
 		local relics = {}
