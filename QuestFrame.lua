@@ -28,6 +28,7 @@ QF.FilterOrder = FILTER_ORDER
 local FILTER_LOOT_ALL = 1
 local FILTER_LOOT_UPGRADES = 2
 
+local AWQ_POI_COUNT = 0
 local myTaskPOI
 
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
@@ -83,7 +84,7 @@ end
 
 local function DisplayMyTaskPOI(self)
 	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showHoveredPOI then
-		if ( Config.showTrackedPOI and (IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID) ) then
+		if Config.showContinentPOI then
 			myTaskPOI:Hide()
 		else
 			local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
@@ -95,7 +96,6 @@ local function DisplayMyTaskPOI(self)
 			WorldMap_SetupWorldQuestButton(myTaskPOI, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, selected, isCriteria, isSpellTarget)
 			WorldMapPOIFrame_AnchorPOI(myTaskPOI, self.infoX, self.infoY, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST);
 			myTaskPOI.questID = self.questID;
-			myTaskPOI.numObjectives = self.numObjectives
 			myTaskPOI:Show()
 		end
 	else
@@ -122,6 +122,15 @@ local function TitleButton_OnEnter(self)
 			mapButton:LockHighlight()
 		end
 	end
+	for i = 1, AWQ_POI_COUNT do
+		local mapButton = _G["WorldMapFrameTaskPOIAWQ"..i]
+		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
+			mapButton:LockHighlight()
+			if Config.showHoveredPOI then
+				mapButton:Show()
+			end
+		end
+	end
 
 	DisplayMyTaskPOI(self)
 	
@@ -143,6 +152,15 @@ local function TitleButton_OnLeave(self)
 
 	for i = 1, numTaskPOIs do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
+		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
+			mapButton:UnlockHighlight()
+			if Config.hideUntrackedPOI then
+				mapButton:SetShown( IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID )
+			end
+		end
+	end
+	for i = 1, AWQ_POI_COUNT do
+		local mapButton = _G["WorldMapFrameTaskPOIAWQ"..i]
 		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
 			mapButton:UnlockHighlight()
 			if Config.hideUntrackedPOI then
@@ -722,11 +740,55 @@ local function QuestFrame_Update()
 	
 end
 
-local TRACKED_POI_COUNT = 0
 local function MapFrame_Update()
+	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showContinentPOI then
+		local taskIconIndex  = 1
+		for _, mapID in ipairs(MAPID_ALL) do
+			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, continentMapID)
+			if (questsList and #questsList > 0) then
+				for i, info in ipairs(questsList) do
+					if ( HaveQuestData(info.questId) ) then
+						local isWorldQuest = QuestMapFrame_IsQuestWorldQuest(info.questId);
+						if isWorldQuest then
+							local taskPOI = WorldMap_TryCreatingWorldQuestPOI(info, "AWQ"..taskIconIndex);
+
+							if ( taskPOI ) then
+								WorldMapPOIFrame_AnchorPOI(taskPOI, info.x, info.y, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST);
+								taskPOI.questID = info.questId
+								taskPOI.numObjectives = info.numObjectives
+								taskPOI:Show()
+								taskIconIndex = taskIconIndex + 1
+							end
+
+						end
+					end
+				end
+			end
+		end
+
+		for i = taskIconIndex, AWQ_POI_COUNT do
+			_G["WorldMapFrameTaskPOIAWQ"..i]:Hide()
+			_G["WorldMapFrameTaskPOIAWQ"..i].questID = nil
+		end
+		if taskIconIndex-1 > AWQ_POI_COUNT then
+			AWQ_POI_COUNT = taskIconIndex - 1
+		end
+	else
+		for i = 1, AWQ_POI_COUNT do
+			_G["WorldMapFrameTaskPOIAWQ"..i]:Hide()
+			_G["WorldMapFrameTaskPOIAWQ"..i].questID = nil
+		end
+	end
+
 	if Config.hideUntrackedPOI then
 		for i = 1, NUM_WORLDMAP_TASK_POIS do
 			local taskPOI = _G["WorldMapFrameTaskPOI"..i]
+			if taskPOI.worldQuest and taskPOI:IsShown() and not (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
+				taskPOI:Hide()
+			end
+		end
+		for i = 1, AWQ_POI_COUNT do
+			local taskPOI = _G["WorldMapFrameTaskPOIAWQ"..i]
 			if taskPOI.worldQuest and taskPOI:IsShown() and not (IsWorldQuestHardWatched(taskPOI.questID) or GetSuperTrackedQuestID() == taskPOI.questID) then
 				taskPOI:Hide()
 			end
@@ -744,44 +806,14 @@ local function MapFrame_Update()
 				taskPOI:Hide()
 			end
 		end
-	end
-
-	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showTrackedPOI then
-		local taskIconIndex  = 1
-		for _, mapID in ipairs(MAPID_ALL) do
-			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, continentMapID)
-			if (questsList and #questsList > 0) then
-				for i, info in ipairs(questsList) do
-					if ( HaveQuestData(info.questId) ) then
-						local isWorldQuest = QuestMapFrame_IsQuestWorldQuest(info.questId);
-						if ( isWorldQuest and (IsWorldQuestHardWatched(info.questId) or GetSuperTrackedQuestID() == info.questId) ) then
-							local taskPOI = WorldMap_TryCreatingWorldQuestPOI(info, "AWQ"..taskIconIndex);
-
-							if ( taskPOI ) then
-								WorldMapPOIFrame_AnchorPOI(taskPOI, info.x, info.y, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST);
-								taskPOI.questID = info.questId
-								taskPOI.numObjectives = info.numObjectives
-								taskPOI:Show()
-								taskIconIndex = taskIconIndex + 1
-							end
-
-						end
-					end
-				end
+		for i = 1, AWQ_POI_COUNT do
+			local taskPOI = _G["WorldMapFrameTaskPOIAWQ"..i]
+			if taskPOI.worldQuest and taskPOI:IsShown() and TaskPOI_IsFiltered(taskPOI, bounties, hasFilters, selectedFilters) then
+				taskPOI:Hide()
 			end
 		end
-
-		for i = taskIconIndex, TRACKED_POI_COUNT do
-			_G["WorldMapFrameTaskPOIAWQ"..i]:Hide();
-		end
-		if taskIconIndex-1 > TRACKED_POI_COUNT then
-			TRACKED_POI_COUNT = taskIconIndex - 1
-		end
-	else
-		for i = 1, TRACKED_POI_COUNT do
-			_G["WorldMapFrameTaskPOIAWQ"..i]:Hide();
-		end
 	end
+
 end
 
 function QF:UNIT_INVENTORY_CHANGED(unit)
@@ -809,7 +841,7 @@ function QF:Startup()
 	self:RegisterEvent("UNIT_INVENTORY_CHANGED")
 
 	Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
-	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showTrackedPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
+	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 	Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
 	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'lootFilterUpgrades', 'timeFilterDuration'}, function() 
 		QuestFrame_Update()

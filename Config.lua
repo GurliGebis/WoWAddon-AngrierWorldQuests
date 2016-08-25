@@ -16,7 +16,7 @@ local configDefaults = {
 	timeFilterDuration = 6,
 	hideUntrackedPOI = false,
 	hideFilteredPOI = false,
-	showTrackedPOI = false,
+	showContinentPOI = false,
 	showComparisonRight = false,
 }
 local callbacks = {}
@@ -271,7 +271,7 @@ local function Panel_OnRefresh(self)
 		dropdowns = {}
 		filterCheckboxes = {}
 
-		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "hideFilteredPOI", "hideUntrackedPOI", "showTrackedPOI", "showHoveredPOI", "lootFilterUpgrades" }
+		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "showContinentPOI", "hideFilteredPOI", "hideUntrackedPOI", "showHoveredPOI", "lootFilterUpgrades" }
 
 		for i,key in ipairs(checkboxes_order) do
 			checkboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")

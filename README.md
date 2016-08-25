@@ -17,9 +17,9 @@ Multiple filters can be selected by shift clicking on them. When multiple are se
 * __Display at the top of the Quest Log__ - Toggle if the world quest list is displayed above or below regular quests in the quest log
 * __Only show World Quests for the current zone__ - If toggled will only display world quests for the current zone, instead of all world quests.
 * __Show World Quests on every map__ - If toggled will show all world quests on maps outside of the Broken Isles.
+* __Show World Quest POI icons on the Broken Isles map__ - If toggled will show world quest icons on the Broken Isles map.
 * __Hide filtered World Quest POI icons on the world map__ - If toggled will hide world quests icons on the world map for quests that are filtered out.
 * __Hide untracked World Quest POI icons on the world map__ - If toggled will only show world quests icons on the world map for quests that are tracked.
-* __Show tracked World Quest POI icons on the Broken Isles map__ - If toggled will show world quests icons on the Broken Isles map for quests that are tracked.
 * __Always show hovered World Quest POI icon__ - If toggled it will show the world quest icon for world quests hovered in the list while Broken Isles map or while hidden by one of the previous options.
 * __Show only upgrades for Loot filter__ - If toggled the loot filter will by default only show upgrades, can still right click filter to show all items.
 * __Time Remaining Filter Duration__ - Maximum duration for world quests to show with the time remaining filter.
