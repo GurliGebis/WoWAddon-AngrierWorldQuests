@@ -164,10 +164,10 @@ local function Panel_OnSave(self)
 end
 
 local function Panel_OnCancel(self)
-	for key, value in pairs(panelOriginalConfig) do
-		if key == "disabledFilters" then AngryWorldQuests_Config["selectedFilters"] = nil end
-		Config:Set(key, value)
-	end
+	-- for key, value in pairs(panelOriginalConfig) do
+	-- 	if key == "disabledFilters" then AngryWorldQuests_Config["selectedFilters"] = nil end
+	-- 	Config:Set(key, value)
+	-- end
 	wipe(panelOriginalConfig)
 end
 
