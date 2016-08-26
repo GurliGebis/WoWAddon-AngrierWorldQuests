@@ -83,22 +83,18 @@ local function HeaderButton_OnClick(self, button)
 end
 
 local function DisplayMyTaskPOI(self)
-	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showHoveredPOI then
-		if Config.showContinentPOI then
-			myTaskPOI:Hide()
-		else
-			local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
-			local selected = self.questID == GetSuperTrackedQuestID()
-			local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questID)
-			local isSpellTarget = SpellCanTargetQuest() and IsQuestIDValidSpellTarget(self.questID)
-			myTaskPOI.worldQuest = true
-			myTaskPOI.Texture:SetDrawLayer("OVERLAY")
-			WorldMap_SetupWorldQuestButton(myTaskPOI, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, selected, isCriteria, isSpellTarget)
-			WorldMapPOIFrame_AnchorPOI(myTaskPOI, self.infoX, self.infoY, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST)
-			myTaskPOI.questID = self.questID
-			myTaskPOI.numObjectives = self.numObjectives
-			myTaskPOI:Show()
-		end
+	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showHoveredPOI and not Config.showContinentPOI then
+		local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
+		local selected = self.questID == GetSuperTrackedQuestID()
+		local isCriteria = WorldMapFrame.UIElementsFrame.BountyBoard:IsWorldQuestCriteriaForSelectedBounty(self.questID)
+		local isSpellTarget = SpellCanTargetQuest() and IsQuestIDValidSpellTarget(self.questID)
+		myTaskPOI.worldQuest = true
+		myTaskPOI.Texture:SetDrawLayer("OVERLAY")
+		WorldMap_SetupWorldQuestButton(myTaskPOI, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, selected, isCriteria, isSpellTarget)
+		WorldMapPOIFrame_AnchorPOI(myTaskPOI, self.infoX, self.infoY, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST)
+		myTaskPOI.questID = self.questID
+		myTaskPOI.numObjectives = self.numObjectives
+		myTaskPOI:Show()
 	else
 		myTaskPOI:Hide()
 	end
@@ -117,18 +113,28 @@ local function TitleButton_OnEnter(self)
 	for i = 1, numTaskPOIs do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
 		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
-			if Config.hideUntrackedPOI and Config.showHoveredPOI then
-				mapButton:Show()
+			if Config.hideUntrackedPOI then
+				if Config.showHoveredPOI and not (IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID) then
+					mapButton:Show()
+				else
+					mapButton:LockHighlight()
+				end
+			else
+				mapButton:LockHighlight()
 			end
-			mapButton:LockHighlight()
 		end
 	end
 	for i = 1, AWQ_POI_COUNT do
 		local mapButton = _G["WorldMapFrameTaskPOIAWQ"..i]
 		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
-			mapButton:LockHighlight()
-			if Config.showHoveredPOI then
-				mapButton:Show()
+			if Config.hideUntrackedPOI then
+				if Config.showHoveredPOI and not (IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID) then
+					mapButton:Show()
+				else
+					mapButton:LockHighlight()
+				end
+			else
+				mapButton:LockHighlight()
 			end
 		end
 	end
