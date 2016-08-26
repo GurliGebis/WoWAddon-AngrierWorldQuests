@@ -206,8 +206,12 @@ function Data:RewardIsUpgrade(questID)
 
 		for _, slotID in ipairs(invtype_locations[equipSlot]) do
 			local currentItem = GetInventoryItemLink("player", slotID)
-			local currentIlvl = select(4, GetItemInfo(currentItem))
-			if ilvl > currentIlvl then
+			if currentItem then
+				local currentIlvl = select(4, GetItemInfo(currentItem))
+				if not currentIlvl or ilvl > currentIlvl then
+					isUpgrade = true
+				end
+			else
 				isUpgrade = true
 			end
 		end
