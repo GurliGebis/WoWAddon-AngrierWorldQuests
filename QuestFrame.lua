@@ -94,8 +94,9 @@ local function DisplayMyTaskPOI(self)
 			myTaskPOI.worldQuest = true
 			myTaskPOI.Texture:SetDrawLayer("OVERLAY")
 			WorldMap_SetupWorldQuestButton(myTaskPOI, worldQuestType, rarity, isElite, tradeskillLineIndex, self.inProgress, selected, isCriteria, isSpellTarget)
-			WorldMapPOIFrame_AnchorPOI(myTaskPOI, self.infoX, self.infoY, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST);
-			myTaskPOI.questID = self.questID;
+			WorldMapPOIFrame_AnchorPOI(myTaskPOI, self.infoX, self.infoY, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST)
+			myTaskPOI.questID = self.questID
+			myTaskPOI.numObjectives = self.numObjectives
 			myTaskPOI:Show()
 		end
 	else
