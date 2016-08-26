@@ -645,7 +645,7 @@ local function QuestFrame_Update()
 
 								local money = GetQuestLogRewardMoney(questID)
 								if ( money > 0 ) then
-									local gold = floor(money / (COPPER_PER_GOLD) + 0.5)
+									local gold = floor(money / (COPPER_PER_GOLD))
 									tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
 									tagTexCoords = { 0, 0.25, 0, 1 }
 									tagText = BreakUpLargeNumbers(gold)

@@ -1,3 +1,7 @@
+## v0.6.2
+
+* Slight behavior change for show hovered POI icons
+
 ## v0.6.1
 
 * Bug fixes
