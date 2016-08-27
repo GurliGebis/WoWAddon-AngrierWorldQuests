@@ -758,7 +758,9 @@ local function QuestFrame_Update()
 end
 
 local function MapFrame_Update()
-	if GetCurrentMapAreaID() == MAPID_BROKENISLES and Config.showContinentPOI then
+	local mapAreaID = GetCurrentMapAreaID()
+
+	if mapAreaID == MAPID_BROKENISLES and Config.showContinentPOI then
 		local taskIconIndex  = 1
 		for _, mapID in ipairs(MAPID_ALL) do
 			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, continentMapID)
@@ -795,6 +797,13 @@ local function MapFrame_Update()
 			_G["WorldMapFrameTaskPOIAWQ"..i]:Hide()
 			_G["WorldMapFrameTaskPOIAWQ"..i].questID = nil
 		end
+	end
+
+	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID)
+	local numTaskPOIs = 0
+	if taskInfo ~= nil then numTaskPOIs = #taskInfo end
+	for i = 1, numTaskPOIs do
+		if _G["WorldMapFrameTaskPOI"..i] then _G["WorldMapFrameTaskPOI"..i]:Show() end
 	end
 
 	if Config.hideUntrackedPOI then
