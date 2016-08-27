@@ -9,7 +9,7 @@ local MAPID_STORMHEIM = 1017
 local MAPID_VALSHARAH = 1018
 local MAPID_HIGHMOUNTAIN = 1024
 local MAPID_SURAMAR = 1033
-local MAPID_ALL = { MAPID_DALARAN, MAPID_AZSUNA, MAPID_STORMHEIM, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_SURAMAR }
+local MAPID_ALL = { MAPID_DALARAN, MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM }
 
 local FILTER_COUNT = 7
 local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2" }
@@ -59,9 +59,9 @@ local function GetMapAreaIDs()
 end
 
 local function ArtifactPowerTruncate(power)
-	if power > 10000 then
+	if power >= 10000 then
 		return floor(power / 1000) .. "k"
-	elseif power > 1000 then
+	elseif power >= 1000 then
 		return (floor(power / 100) / 10) .. "k"
 	else
 		return power
@@ -105,14 +105,9 @@ local function TitleButton_OnEnter(self)
 	local _, color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
-	local mapAreaID = GetCurrentMapAreaID()
-	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID)
-	local numTaskPOIs = 0
-	if taskInfo ~= nil then numTaskPOIs = #taskInfo end
-
-	for i = 1, numTaskPOIs do
+	for i = 1, NUM_WORLDMAP_TASK_POIS do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
-		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
+		if mapButton and mapButton.wasShown and mapButton.worldQuest and mapButton.questID == self.questID then
 			if Config.hideUntrackedPOI then
 				if Config.showHoveredPOI and not (IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID) then
 					mapButton:Show()
@@ -152,14 +147,9 @@ local function TitleButton_OnLeave(self)
 	local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
-	local mapAreaID = GetCurrentMapAreaID()
-	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID)
-	local numTaskPOIs = 0
-	if taskInfo ~= nil then numTaskPOIs = #taskInfo end
-
-	for i = 1, numTaskPOIs do
+	for i = 1, NUM_WORLDMAP_TASK_POIS do
 		local mapButton = _G["WorldMapFrameTaskPOI"..i]
-		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
+		if mapButton and mapButton.wasShown and mapButton.worldQuest and mapButton.questID == self.questID then
 			mapButton:UnlockHighlight()
 			if Config.hideUntrackedPOI then
 				mapButton:SetShown( IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID )
@@ -799,11 +789,9 @@ local function MapFrame_Update()
 		end
 	end
 
-	local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapAreaID)
-	local numTaskPOIs = 0
-	if taskInfo ~= nil then numTaskPOIs = #taskInfo end
-	for i = 1, numTaskPOIs do
-		if _G["WorldMapFrameTaskPOI"..i] then _G["WorldMapFrameTaskPOI"..i]:Show() end
+	for i = 1, NUM_WORLDMAP_TASK_POIS do
+		local taskPOI = _G["WorldMapFrameTaskPOI"..i]
+		taskPOI:SetShown( taskPOI.wasShown )
 	end
 
 	if Config.hideUntrackedPOI then
@@ -840,6 +828,14 @@ local function MapFrame_Update()
 		end
 	end
 
+end
+
+local function UpdateQuestBonusObjectives()
+	for i = 1, NUM_WORLDMAP_TASK_POIS do
+		local taskPOI = _G["WorldMapFrameTaskPOI"..i]
+		taskPOI.wasShown = taskPOI:IsShown()
+	end
+	MapFrame_Update()
 end
 
 function QF:UNIT_INVENTORY_CHANGED(unit)
@@ -879,7 +875,7 @@ function QF:Startup()
 
 	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
-	hooksecurefunc("WorldMap_UpdateQuestBonusObjectives", MapFrame_Update)
+	hooksecurefunc("WorldMap_UpdateQuestBonusObjectives", UpdateQuestBonusObjectives)
 
 	myTaskPOI = WorldMap_GetOrCreateTaskPOI("AWQ0")
 	myTaskPOI:Hide()

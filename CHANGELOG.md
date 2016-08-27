@@ -1,3 +1,8 @@
+## v0.6.3
+
+* Changed rounding behavior of AP rewards.
+* Small bug fixes.
+
 ## v0.6.2
 
 * Added support for completing World Quests by spell on quest list entries.
