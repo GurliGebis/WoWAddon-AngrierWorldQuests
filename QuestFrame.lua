@@ -408,14 +408,14 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 	if hasFilters then
 		local money = GetQuestLogRewardMoney(self.questID)
 		if ( money > 0 ) then
-			isFiltered = hasFilters and not selectedFilters[FILTER_GOLD]
+			isFiltered = not selectedFilters[FILTER_GOLD]
 		end	
 
 		local numQuestCurrencies = GetNumQuestLogRewardCurrencies(self.questID)
 		for i = 1, numQuestCurrencies do
 			local name, texture, numItems = GetQuestLogRewardCurrencyInfo(i, self.questID)
 			if name == FILTER_NAMES[FILTER_ORDER_RESOURCES] then
-				isFiltered = hasFilters and not selectedFilters[FILTER_ORDER_RESOURCES]
+				isFiltered = not selectedFilters[FILTER_ORDER_RESOURCES]
 			end
 		end
 
@@ -430,9 +430,9 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 				else
 					if iLevel then
 						local upgradesOnly = Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)
-						isFiltered = hasFilters and (not selectedFilters[FILTER_LOOT] or (upgradesOnly and not Addon.Data:RewardIsUpgrade(self.questID)))
+						isFiltered = not selectedFilters[FILTER_LOOT] or (upgradesOnly and not Addon.Data:RewardIsUpgrade(self.questID))
 					else
-						isFiltered = hasFilters and not selectedFilters[FILTER_ITEMS]
+						isFiltered = not selectedFilters[FILTER_ITEMS]
 					end
 				end
 			end
@@ -462,6 +462,7 @@ end
 
 local function QuestFrame_Update()
 	if not WorldMapFrame:IsShown() then return end
+
 	myTaskPOI:Hide()
 	local currentMapID, continentMapID = GetMapAreaIDs()
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(currentMapID)
@@ -501,6 +502,8 @@ local function QuestFrame_Update()
 			end
 		end
 	end
+
+	QuestScrollFrame.Background:SetAtlas("QuestLogBackground", true) -- Always show quest background
 
 	local headerIndex = 0
 	local titleIndex = 0
@@ -746,6 +749,8 @@ local function QuestFrame_Update()
 end
 
 local function MapFrame_Update()
+	if not WorldMapFrame:IsVisible() then return end
+
 	local mapAreaID = GetCurrentMapAreaID()
 
 	if mapAreaID == MAPID_BROKENISLES and Config.showContinentPOI then
@@ -871,7 +876,7 @@ function QF:Startup()
 		end
 	end)
 
-	hooksecurefunc("QuestMapFrame_UpdateAll", QuestFrame_Update)
+	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
 	hooksecurefunc("WorldMap_UpdateQuestBonusObjectives", UpdateQuestBonusObjectives)
 
