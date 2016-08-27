@@ -1,10 +1,12 @@
 ## v0.6.2
 
-* Slight behavior change for show hovered POI icons
+* Added support for completing World Quests by spell on quest list entries.
+* Slight behavior change for show hovered POI icons.
+* Small bug fixes.
 
 ## v0.6.1
 
-* Bug fixes
+* Bug fixes.
 
 ## v0.6.0
 
@@ -13,7 +15,7 @@
 
 ## v0.5.5
 
-* Small bug fixes
+* Small bug fixes.
 
 ## v0.5.4
 
