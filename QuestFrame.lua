@@ -182,30 +182,40 @@ local function TitleButton_OnLeave(self)
 end
 
 local function TitleButton_OnClick(self, button)
-	PlaySound("igMainMenuOptionCheckBoxOn")
-	if IsModifiedClick("CHATLINK") and ChatEdit_GetActiveWindow() then
-		local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(self.questID)
-		-- ChatEdit_InsertLink( string.format("|cffffff00|Hquest:%d:110|h[%s]|h|r", self.questID, title) )
-		ChatEdit_InsertLink( string.format("[%s]", title) )
-	elseif ( button == "RightButton" ) then
-		if ( self.mapID ) then
-			SetMapByID(self.mapID)
+	if SpellCanTargetQuest() then
+		if IsQuestIDValidSpellTarget(self.questID) then
+			UseWorldMapActionButtonSpellOnQuest(self.questID)
+			-- Assume success for responsiveness
+			WorldMap_OnWorldQuestCompletedBySpell(self.questID)
+		else
+			UIErrorsFrame:AddMessage(WORLD_QUEST_CANT_COMPLETE_BY_SPELL, RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
 		end
 	else
-		if IsShiftKeyDown() then
-			if IsWorldQuestHardWatched(self.questID) or (IsWorldQuestWatched(self.questID) and GetSuperTrackedQuestID() == self.questID) then
-				BonusObjectiveTracker_UntrackWorldQuest(self.questID)
-			else
-				BonusObjectiveTracker_TrackWorldQuest(self.questID, true)
+		PlaySound("igMainMenuOptionCheckBoxOn")
+		if IsModifiedClick("CHATLINK") and ChatEdit_GetActiveWindow() then
+			local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(self.questID)
+			-- ChatEdit_InsertLink( string.format("|cffffff00|Hquest:%d:110|h[%s]|h|r", self.questID, title) )
+			ChatEdit_InsertLink( string.format("[%s]", title) )
+		elseif ( button == "RightButton" ) then
+			if ( self.mapID ) then
+				SetMapByID(self.mapID)
 			end
 		else
-			if IsWorldQuestHardWatched(self.questID) then
-				SetSuperTrackedQuestID(self.questID);
+			if IsShiftKeyDown() then
+				if IsWorldQuestHardWatched(self.questID) or (IsWorldQuestWatched(self.questID) and GetSuperTrackedQuestID() == self.questID) then
+					BonusObjectiveTracker_UntrackWorldQuest(self.questID)
+				else
+					BonusObjectiveTracker_TrackWorldQuest(self.questID, true)
+				end
 			else
-				BonusObjectiveTracker_TrackWorldQuest(self.questID)
+				if IsWorldQuestHardWatched(self.questID) then
+					SetSuperTrackedQuestID(self.questID)
+				else
+					BonusObjectiveTracker_TrackWorldQuest(self.questID)
+				end
 			end
+			DisplayMyTaskPOI(self)
 		end
-		DisplayMyTaskPOI(self)
 	end
 end
 
@@ -757,10 +767,10 @@ local function MapFrame_Update()
 					if ( HaveQuestData(info.questId) ) then
 						local isWorldQuest = QuestMapFrame_IsQuestWorldQuest(info.questId);
 						if isWorldQuest then
-							local taskPOI = WorldMap_TryCreatingWorldQuestPOI(info, "AWQ"..taskIconIndex);
+							local taskPOI = WorldMap_TryCreatingWorldQuestPOI(info, "AWQ"..taskIconIndex)
 
 							if ( taskPOI ) then
-								WorldMapPOIFrame_AnchorPOI(taskPOI, info.x, info.y, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST);
+								WorldMapPOIFrame_AnchorPOI(taskPOI, info.x, info.y, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST)
 								taskPOI.questID = info.questId
 								taskPOI.numObjectives = info.numObjectives
 								taskPOI:Show()
