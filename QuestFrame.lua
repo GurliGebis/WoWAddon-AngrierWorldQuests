@@ -719,6 +719,10 @@ local function QuestFrame_Update()
 								button:Show()
 								prevButton = button
 							end
+
+							if button:IsMouseOver() then
+								DisplayMyTaskPOI(button)
+							end
 						end
 
 					end
