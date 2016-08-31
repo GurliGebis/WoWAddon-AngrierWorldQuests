@@ -581,6 +581,7 @@ local function QuestFrame_Update()
 
 							local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(questID)
 							local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(questID)
+							local tradeskillLineID = tradeskillLineIndex and select(7, GetProfessionInfo(tradeskillLineIndex))
 							local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
 							C_TaskQuest.RequestPreloadRewardData(questID)
 
@@ -848,7 +849,7 @@ end
 function QF:UNIT_INVENTORY_CHANGED(unit)
 	if (Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)) and unit == "player" then
 		QuestFrame_Update() 
-		if Config.hideFilteredPOI and WorldMapFrame:IsShown() then
+		if Config.hideFilteredPOI and WorldMapFrame:IsVisible() then
 			WorldMap_UpdateQuestBonusObjectives()
 			MapFrame_Update()
 		end

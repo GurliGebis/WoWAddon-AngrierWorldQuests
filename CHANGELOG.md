@@ -1,3 +1,7 @@
+## v0.6.4
+
+* Show profession world quest icon
+
 ## v0.6.3
 
 * Changed rounding behavior of AP rewards.
