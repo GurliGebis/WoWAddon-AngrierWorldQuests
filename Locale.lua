@@ -17,6 +17,11 @@ langs.enUS = {
 	config_lootFilterUpgrades = "Show only upgrades for Loot filter",
 	config_timeFilterDuration = "Time Remaining Filter Duration",
 	config_enabledFilters = "Enabled Filters",
+	config_sortMethod = "Sort World Quests by",
+	config_sortMethod_1 = "Name",
+	config_sortMethod_2 = "Time Remaining",
+	config_sortMethod_3 = "Zone",
+	config_sortMethod_4 = "Faction",
 }
 
 function Locale:Get(key)

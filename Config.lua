@@ -18,6 +18,7 @@ local configDefaults = {
 	hideFilteredPOI = false,
 	showContinentPOI = false,
 	showComparisonRight = false,
+	sortMethod = 1,
 }
 local callbacks = {}
 
@@ -242,6 +243,17 @@ local function DropDown_Initialize(self)
 			end
 			UIDropDownMenu_AddButton(info)
 		end
+	elseif key == 'sortMethod' then
+		for _, index in ipairs(Addon.QuestFrame.SortOrder) do
+			info.text = Addon.Locale['config_sortMethod_'..index]
+			info.value = index
+			if ( selectedValue == info.value ) then
+				info.checked = 1
+			else
+				info.checked = nil
+			end
+			UIDropDownMenu_AddButton(info)
+		end
 	end
 end
 
@@ -289,6 +301,11 @@ local function Panel_OnRefresh(self)
 		dropdowns[1].Text:SetText( Addon.Locale['config_timeFilterDuration'] )
 		dropdowns[1].configKey = "timeFilterDuration"
 		dropdowns[1]:SetPoint("TOPLEFT", checkboxes[#checkboxes], "BOTTOMLEFT", -13, -24)
+
+		dropdowns[2] = DropDown_Create(self)
+		dropdowns[2].Text:SetText( Addon.Locale['config_sortMethod'] )
+		dropdowns[2].configKey = "sortMethod"
+		dropdowns[2]:SetPoint("TOPLEFT", dropdowns[1], "BOTTOMLEFT", 0, -24)
 
 		local label2 = self:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		label2:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 435, -5)

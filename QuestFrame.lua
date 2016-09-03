@@ -9,7 +9,8 @@ local MAPID_STORMHEIM = 1017
 local MAPID_VALSHARAH = 1018
 local MAPID_HIGHMOUNTAIN = 1024
 local MAPID_SURAMAR = 1033
-local MAPID_ALL = { MAPID_DALARAN, MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM }
+local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN }
+local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6 }
 
 local FILTER_COUNT = 7
 local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2" }
@@ -24,6 +25,13 @@ local FILTER_TIME = 7
 local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS }
 QF.FilterNames = FILTER_NAMES
 QF.FilterOrder = FILTER_ORDER
+
+local SORT_NAME = 1
+local SORT_TIME = 2
+local SORT_ZONE = 3
+local SORT_FACTION = 4
+local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION }
+QF.SortOrder = SORT_ORDER
 
 local FILTER_LOOT_ALL = 1
 local FILTER_LOOT_UPGRADES = 2
@@ -121,7 +129,7 @@ local function TitleButton_OnEnter(self)
 	end
 	for i = 1, AWQ_POI_COUNT do
 		local mapButton = _G["WorldMapFrameTaskPOIAWQ"..i]
-		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
+		if mapButton and mapButton.wasShown and mapButton.worldQuest and mapButton.questID == self.questID then
 			if Config.hideUntrackedPOI then
 				if Config.showHoveredPOI and not (IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID) then
 					mapButton:Show()
@@ -158,7 +166,7 @@ local function TitleButton_OnLeave(self)
 	end
 	for i = 1, AWQ_POI_COUNT do
 		local mapButton = _G["WorldMapFrameTaskPOIAWQ"..i]
-		if mapButton and mapButton.worldQuest and mapButton.questID == self.questID then
+		if mapButton and mapButton.wasShown and mapButton.worldQuest and mapButton.questID == self.questID then
 			mapButton:UnlockHighlight()
 			if Config.hideUntrackedPOI then
 				mapButton:SetShown( IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID )
@@ -460,6 +468,24 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 	return isFiltered
 end
 
+local function TaskPOI_Sorter(a, b)
+	if Config.sortMethod == SORT_FACTION then
+		if a.factionID ~= b.factionID then
+			return a.factionID < b.factionID
+		end
+	elseif Config.sortMethod == SORT_TIME then
+		if a.timeLeftMinutes ~= b.timeLeftMinutes then
+			return a.timeLeftMinutes < b.timeLeftMinutes
+		end
+	elseif Config.sortMethod == SORT_ZONE then
+		if MAPID_ORDER[a.mapID] ~= MAPID_ORDER[b.mapID] then
+			return MAPID_ORDER[a.mapID] < MAPID_ORDER[b.mapID]
+		end
+	end
+
+	return a.Text:GetText() < b.Text:GetText()
+end
+
 local function QuestFrame_Update()
 	if not WorldMapFrame:IsShown() then return end
 
@@ -471,6 +497,13 @@ local function QuestFrame_Update()
 		for i = 1, #titleButtons do titleButtons[i]:Hide() end
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 		return
+	end
+
+	local hoveredQuest
+	for _, titleButton in ipairs(titleButtons) do
+		if titleButton:IsMouseOver() and titleButton:IsShown() then
+			hoveredQuest = titleButton.questID
+		end
 	end
 
 	local questsCollapsed = Config.collapsed
@@ -565,6 +598,8 @@ local function QuestFrame_Update()
 			questMapIDs = MAPID_ALL
 		end
 
+		local usedButtons = {}
+
 		for _, mapID in ipairs(questMapIDs) do
 
 			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, continentMapID)
@@ -591,6 +626,8 @@ local function QuestFrame_Update()
 							button.worldQuest = true
 							button.questID = questID
 							button.mapID = mapID
+							button.factionID = factionID
+							button.timeLeftMinutes = timeLeftMinutes
 							button.numObjectives = questInfo.numObjectives
 							button.infoX = questInfo.x
 							button.infoY = questInfo.y
@@ -706,24 +743,19 @@ local function QuestFrame_Update()
 
 							local isFiltered = TaskPOI_IsFiltered(button, bounties, hasFilters, selectedFilters)
 
-							button:SetHeight(totalHeight)
-							button:ClearAllPoints()
-							if ( prevButton ) then
-								button:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
+							if not isFiltered then
+								button:SetHeight(totalHeight)
+								button:ClearAllPoints()
+
+								table.insert(usedButtons, button)
+
+								if hoveredQuest == button.questID then
+									DisplayMyTaskPOI(button)
+								end
 							else
-								button:SetPoint("TOPLEFT", 1, -6)
-							end
-							if isFiltered then
-								button:Hide()
 								titleIndex = titleIndex - 1
-							else
-								button:Show()
-								prevButton = button
 							end
 
-							if button:IsMouseOver() then
-								DisplayMyTaskPOI(button)
-							end
 						end
 
 					end
@@ -731,6 +763,19 @@ local function QuestFrame_Update()
 			end
 
 		end
+
+		table.sort(usedButtons, TaskPOI_Sorter)
+
+		for _, button in ipairs(usedButtons) do
+			button:Show()
+			if ( prevButton ) then
+				button:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
+			else
+				button:SetPoint("TOPLEFT", 1, -6)
+			end
+			prevButton = button
+		end
+
 	else
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 	end
@@ -756,6 +801,13 @@ end
 local function MapFrame_Update()
 	if not WorldMapFrame:IsVisible() then return end
 
+	local hoveredQuest
+	for _, titleButton in ipairs(titleButtons) do
+		if titleButton:IsMouseOver() and titleButton:IsShown() then
+			hoveredQuest = titleButton.questID
+		end
+	end
+
 	local mapAreaID = GetCurrentMapAreaID()
 
 	if mapAreaID == MAPID_BROKENISLES and Config.showContinentPOI then
@@ -772,6 +824,7 @@ local function MapFrame_Update()
 							if ( taskPOI ) then
 								WorldMapPOIFrame_AnchorPOI(taskPOI, info.x, info.y, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST)
 								taskPOI.questID = info.questId
+								taskPOI.wasShown = true
 								taskPOI.numObjectives = info.numObjectives
 								taskPOI:Show()
 								taskIconIndex = taskIconIndex + 1
@@ -785,7 +838,7 @@ local function MapFrame_Update()
 
 		for i = taskIconIndex, AWQ_POI_COUNT do
 			_G["WorldMapFrameTaskPOIAWQ"..i]:Hide()
-			_G["WorldMapFrameTaskPOIAWQ"..i].questID = nil
+			_G["WorldMapFrameTaskPOIAWQ"..i].wasShown = false
 		end
 		if taskIconIndex-1 > AWQ_POI_COUNT then
 			AWQ_POI_COUNT = taskIconIndex - 1
@@ -793,7 +846,7 @@ local function MapFrame_Update()
 	else
 		for i = 1, AWQ_POI_COUNT do
 			_G["WorldMapFrameTaskPOIAWQ"..i]:Hide()
-			_G["WorldMapFrameTaskPOIAWQ"..i].questID = nil
+			_G["WorldMapFrameTaskPOIAWQ"..i].wasShown = false
 		end
 	end
 
@@ -836,6 +889,15 @@ local function MapFrame_Update()
 		end
 	end
 
+	if Config.showHoveredPOI then
+		for i = 1, AWQ_POI_COUNT do
+			local taskPOI = _G["WorldMapFrameTaskPOIAWQ"..i]
+			if taskPOI.wasShown and taskPOI.questID == hoveredQuest then
+				taskPOI:Show()
+			end
+		end
+	end
+
 end
 
 local function UpdateQuestBonusObjectives()
@@ -872,7 +934,7 @@ function QF:Startup()
 
 	Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
 	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
-	Config:RegisterCallback('onlyCurrentZone', QuestFrame_Update)
+	Config:RegisterCallback({'onlyCurrentZone', 'sortMethod'}, QuestFrame_Update)
 	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'lootFilterUpgrades', 'timeFilterDuration'}, function() 
 		QuestFrame_Update()
 		if Config.hideFilteredPOI and WorldMapFrame:IsShown() then
