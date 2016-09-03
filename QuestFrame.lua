@@ -470,8 +470,8 @@ end
 
 local function TaskPOI_Sorter(a, b)
 	if Config.sortMethod == SORT_FACTION then
-		if a.factionID ~= b.factionID then
-			return a.factionID < b.factionID
+		if (a.factionID or 0) ~= (b.factionID or 0) then
+			return (a.factionID or 0) < (b.factionID or 0)
 		end
 	elseif Config.sortMethod == SORT_TIME then
 		if a.timeLeftMinutes ~= b.timeLeftMinutes then
@@ -648,7 +648,10 @@ local function QuestFrame_Update()
 							local hasIcon = true
 							button.TaskIcon:Show()
 							button.TaskIcon:SetTexCoord(0, 1, 0, 1)
-							if worldQuestType == LE_QUEST_TAG_TYPE_PVP then
+							if questInfo.inProgress then
+								button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
+								button.TaskIcon:SetSize(10, 15)
+							elseif worldQuestType == LE_QUEST_TAG_TYPE_PVP then
 								button.TaskIcon:SetAtlas("worldquest-icon-pvp-ffa", true)
 							elseif worldQuestType == LE_QUEST_TAG_TYPE_PET_BATTLE then
 								button.TaskIcon:SetAtlas("worldquest-icon-petbattle", true)

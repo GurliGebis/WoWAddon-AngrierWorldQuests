@@ -1,3 +1,12 @@
+## v0.7.1
+
+* Shows a question mark icon next to quests in progress
+* Fixed bug with sorting by faction
+
+## v0.7.0
+
+* Added configuration option to sort World Quests by different values. Name, Time Remaining
+
 ## v0.6.4
 
 * Show profession world quest icon
