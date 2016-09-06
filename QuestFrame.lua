@@ -59,7 +59,7 @@ local function GetMapAreaIDs()
 	local conts = { GetMapContinents() }
 	local contID = conts[contIndex*2 - 1]
 	if #mapHeirarchy == 0 then contID = mapID end
-	if Config.showEverywhere and contID ~= MAPID_BROKENISLES then
+	if Config.showEverywhere and not tContains(MAPID_ALL, mapID) then
 		return MAPID_BROKENISLES, MAPID_BROKENISLES
 	else
 		return mapID, contID

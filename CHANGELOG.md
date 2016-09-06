@@ -1,3 +1,7 @@
+## v0.7.2
+
+* Fixed "Show World Quests on every map" from not functioning in certain zones
+
 ## v0.7.1
 
 * Shows a question mark icon next to quests in progress
