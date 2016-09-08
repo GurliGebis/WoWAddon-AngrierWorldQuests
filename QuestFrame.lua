@@ -474,8 +474,8 @@ local function TaskPOI_Sorter(a, b)
 			return (a.factionID or 0) < (b.factionID or 0)
 		end
 	elseif Config.sortMethod == SORT_TIME then
-		if a.timeLeftMinutes ~= b.timeLeftMinutes then
-			return a.timeLeftMinutes < b.timeLeftMinutes
+		if math.abs( (a.timeLeftMinutes or 0) - (b.timeLeftMinutes or 0) ) > 2 then
+			return (a.timeLeftMinutes or 0) < (b.timeLeftMinutes or 0)
 		end
 	elseif Config.sortMethod == SORT_ZONE then
 		if MAPID_ORDER[a.mapID] ~= MAPID_ORDER[b.mapID] then
@@ -669,7 +669,6 @@ local function QuestFrame_Update()
 								button.TaskIcon:Hide()
 							end
 
-
 							if ( timeLeftMinutes and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
 								button.TimeIcon:Show()
 								if hasIcon then
@@ -748,7 +747,6 @@ local function QuestFrame_Update()
 
 							if not isFiltered then
 								button:SetHeight(totalHeight)
-								button:ClearAllPoints()
 
 								table.insert(usedButtons, button)
 
@@ -770,12 +768,13 @@ local function QuestFrame_Update()
 		table.sort(usedButtons, TaskPOI_Sorter)
 
 		for _, button in ipairs(usedButtons) do
-			button:Show()
+			button:ClearAllPoints()
 			if ( prevButton ) then
 				button:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
 			else
 				button:SetPoint("TOPLEFT", 1, -6)
 			end
+			button:Show()
 			prevButton = button
 		end
 
