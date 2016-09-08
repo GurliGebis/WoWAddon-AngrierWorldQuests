@@ -1,3 +1,7 @@
+## v0.7.3
+
+* Fixed bug with sorting World Quests by Time Remaining
+
 ## v0.7.2
 
 * Fixed "Show World Quests on every map" from not functioning in certain zones
