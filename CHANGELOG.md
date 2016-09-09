@@ -1,3 +1,7 @@
+## v0.8.0
+
+* Added Spanish localization, courtesy of MrUrkaz
+
 ## v0.7.3
 
 * Fixed bug with sorting World Quests by Time Remaining
