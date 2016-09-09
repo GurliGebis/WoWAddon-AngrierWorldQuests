@@ -4,7 +4,7 @@
 
 ## v0.7.3
 
-* Fixed bug with sorting World Quests by Time Remaining
+* Fixed bug with sorting World Quests by Time Left
 
 ## v0.7.2
 

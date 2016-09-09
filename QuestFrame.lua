@@ -749,10 +749,6 @@ local function QuestFrame_Update()
 								button:SetHeight(totalHeight)
 
 								table.insert(usedButtons, button)
-
-								if hoveredQuest == button.questID then
-									DisplayMyTaskPOI(button)
-								end
 							else
 								titleIndex = titleIndex - 1
 							end
@@ -776,6 +772,10 @@ local function QuestFrame_Update()
 			end
 			button:Show()
 			prevButton = button
+			
+			if hoveredQuest == button.questID then
+				TitleButton_OnEnter(button)
+			end
 		end
 
 	else
