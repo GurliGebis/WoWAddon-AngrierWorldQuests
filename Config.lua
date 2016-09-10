@@ -1,7 +1,7 @@
 local ADDON, Addon = ...
 local Config = Addon:NewModule('Config')
 
-local configVersion = 3
+local configVersion = 4
 local configDefaults = {
 	collapsed = false,
 	showAtTop = true,
@@ -9,9 +9,10 @@ local configDefaults = {
 	onlyCurrentZone = true,
 	showEverywhere = false,
 	selectedFilters = 0,
-	disabledFilters = 0,
+	disabledFilters = 2^(8-1),
 	filterEmissary = 0,
 	filterLoot = 0,
+	filterFaction = 0,
 	lootFilterUpgrades = false,
 	timeFilterDuration = 6,
 	hideUntrackedPOI = false,
@@ -371,7 +372,10 @@ function Config:Startup()
 		AngryWorldQuests_Config['showHoveredPOI'] = AngryWorldQuests_Config['showContinentPOI']
 		AngryWorldQuests_Config['showContinentPOI'] = nil
 	end
-	AngryWorldQuests_Config['__version'] = 3
+	if AngryWorldQuests_Config['__version'] <= 3 then
+		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(8-1), AngryWorldQuests_Config['disabledFilters'])
+	end
+	AngryWorldQuests_Config['__version'] = configVersion
 
 	optionPanel = self:CreatePanel(ADDON)
 end

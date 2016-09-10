@@ -1,3 +1,7 @@
+## v0.9.0
+
+* Added new Faction filter. It is disabled by default due to space concerns, can enable it config panel (/awq).
+
 ## v0.8.1
 
 * Added Korean localization, courtesy of next96
