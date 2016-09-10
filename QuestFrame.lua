@@ -233,7 +233,7 @@ local function FilterButton_OnEnter(self)
 			text = string.format("%s (%s)", text, Addon.Locale.UPGRADES)
 		end
 	end
-	if self.index == FILTER_FACTION then
+	if self.index == FILTER_FACTION and Config.filterFaction ~= 0 then
 		local title = GetFactionInfoByID(Config.filterFaction)
 		if title then text = text..": "..title end
 	end
