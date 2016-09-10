@@ -7,3 +7,4 @@ ignore:
 	- README.md
 	- extract_artifact_power.rb
 	- extract_relic_types.rb
+	- extract_world_quest_reps.rb
