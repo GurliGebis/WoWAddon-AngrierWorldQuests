@@ -1,6 +1,10 @@
+## v0.9.2
+
+* Faction filter now also works for World Quests that reward two reputations
+
 ## v0.9.0
 
-* Added new Faction filter. It is disabled by default due to space concerns, can enable it config panel (/awq).
+* Added new Faction filter. It is disabled by default due to space concerns, can enable it config panel (/awq)
 
 ## v0.8.1
 
