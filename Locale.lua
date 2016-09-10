@@ -42,6 +42,26 @@ langs.esES = {
 	config_sortMethod_3 = "Zona",
 	config_sortMethod_4 = "Facción",
 }
+langs.esMX = langs.esES
+
+langs.koKR = {
+	UPGRADES = "업그레이드",
+	config_showAtTop = "퀘스트 목록 창의 상단 혹은 하단에 표시합니다", 
+	config_onlyCurrentZone = "현재 지역에 있는 전역 퀘스트만 표시합니다", 
+	config_showEverywhere = "전 지역에 있는 전역 퀘스트를 모두 표시합니다",
+	config_hideFilteredPOI = "필터를 통해 걸러진 퀘스트들의 전역 퀘스트 아이콘을 숨깁니다", 
+	config_hideUntrackedPOI = "추적중인 퀘스트들의 전역 퀘스트 아이콘을 숨깁니다", 
+	config_showHoveredPOI = "전역 퀘스트 아이콘을 항상 표시합니다",
+	config_showContinentPOI = "부서진 섬 지도에서 전역 퀘스트 아이콘을 표시합니다",
+	config_lootFilterUpgrades = "전리품 필터를 통해 나온 결과물 중에, 현재 장비보다 좋은 항목만을 표시합니다",
+	config_timeFilterDuration = "마감 시한 필터의 기준 시간",
+	config_enabledFilters = "사용할 필터 선택",
+	config_sortMethod = "전역 퀘스트 정렬 기준",
+	config_sortMethod_1 = "이름",
+	config_sortMethod_2 = "마감 시한",
+	config_sortMethod_3 = "지역",
+	config_sortMethod_4 = "사절 및 세력",
+}
 
 function Locale:Get(key)
 	if langs[current_locale][key] ~= nil then

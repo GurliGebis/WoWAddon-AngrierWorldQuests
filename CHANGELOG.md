@@ -1,3 +1,7 @@
+## v0.8.1
+
+* Added Korean localization, courtesy of next96
+
 ## v0.8.0
 
 * Added Spanish localization, courtesy of MrUrkaz
