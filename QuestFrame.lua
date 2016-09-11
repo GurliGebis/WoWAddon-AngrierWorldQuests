@@ -14,9 +14,9 @@ local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH]
 
 local CURRENCYID_RESOURCES = 1220
 
-local FILTER_COUNT = 8
-local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06" }
-local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION }
+local FILTER_COUNT = 11
+local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet" }
+local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT }
 local FILTER_EMISSARY = 1
 local FILTER_ARTIFACT_POWER = 2
 local FILTER_LOOT = 3
@@ -25,7 +25,10 @@ local FILTER_GOLD = 5
 local FILTER_ITEMS = 6
 local FILTER_TIME = 7
 local FILTER_FACTION = 8
-local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS }
+local FILTER_PVP = 9
+local FILTER_PROFESSION = 10
+local FILTER_PETBATTLE = 11
+local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE }
 QF.FilterNames = FILTER_NAMES
 QF.FilterOrder = FILTER_ORDER
 
@@ -479,10 +482,29 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 		end
 
 		if selectedFilters[FILTER_TIME] then
-			if timeLeftMinutes and timeLeftMinutes <= (Config.timeFilterDuration * 60) then
+			if timeLeftMinutes and (timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) <= (Config.timeFilterDuration * 60) then
 				isFiltered = false
 			end
 		end
+
+		if selectedFilters[FILTER_PVP] then
+			if worldQuestType == LE_QUEST_TAG_TYPE_PVP then
+				isFiltered = false
+			end
+		end
+
+		if selectedFilters[FILTER_PETBATTLE] then
+			if worldQuestType == LE_QUEST_TAG_TYPE_PET_BATTLE then
+				isFiltered = false
+			end
+		end
+
+		if selectedFilters[FILTER_PROFESSION] then
+			if tradeskillLineIndex then
+				isFiltered = false
+			end
+		end
+
 	end
 
 	if selectedFilters[FILTER_EMISSARY] and not isFiltered then
@@ -961,6 +983,8 @@ function QF:Startup()
 	Config = Addon.Config
 
 	FILTER_NAMES[FILTER_ORDER_RESOURCES] = select(1, GetCurrencyInfo(CURRENCYID_RESOURCES)) -- Add in localized name of Order Resources
+
+	if UnitFactionGroup("player") == "Alliance" then FILTER_ICONS[ FILTER_PVP ] = "pvpcurrency-honor-alliance" end
 
 	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", "FrameUpdate")
 	self:RegisterEvent("SUPER_TRACKED_QUEST_CHANGED", "FrameUpdate")

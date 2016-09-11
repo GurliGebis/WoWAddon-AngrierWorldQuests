@@ -1,3 +1,8 @@
+## v0.10.0
+
+* Added PvP, Profession, and Pet Battles filter. These are disabled by default, and can be enabled in the config panel (/awq)
+* Active filters are now not saved across reloads. So won't have an active filter from last session you forget about
+
 ## v0.9.2
 
 * Faction filter now also works for World Quests that reward two reputations

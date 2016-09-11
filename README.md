@@ -4,7 +4,7 @@ Adds a filterable lists of world quests and their rewards to quest log on the wo
 
 * __Emissary Quests__ - Only show world quests that are a criteria for a current emissary quest. Can right click this filter to select only a specific emissary quest.
 * __Time Remaining__ - Shows world quests that have less then 6 hours remaining (duration configurable in options panel).
-* __Faction__ - Shows world quests associated with that Faction. Doesn't show world quest that don't provide reputation at your current standing.
+* __Faction__ - Shows world quests that reward reputation with that Faction. Doesn't show world quest that don't provide reputation at your current standing.
 * __Artifact Power__ - Shows world quests that reward an item that increases Artifact Power.
 * __Loot__ - Shows world quests that reward an equipable item. Can right click this filter to have it show items that are an item level upgrade over your currently equipped item.
 * __Order Resources__ - Shows world quests that reward Order Resources.
@@ -24,4 +24,5 @@ Multiple filters can be selected by shift clicking on them. When multiple are se
 * __Always show hovered World Quest POI icon__ - If toggled it will show the world quest icon for world quests hovered in the list while Broken Isles map or while hidden by one of the previous options.
 * __Show only upgrades for Loot filter__ - If toggled the loot filter will by default only show upgrades, can still right click filter to show all items.
 * __Time Remaining Filter Duration__ - Maximum duration for world quests to show with the time remaining filter.
+* __Sort Method__ - Sort World Quests by this criteria.
 * __Enabled Filters__ - Controls which filters are displayed on the quest list.
