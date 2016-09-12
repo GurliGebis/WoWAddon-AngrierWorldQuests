@@ -9,8 +9,11 @@ local MAPID_STORMHEIM = 1017
 local MAPID_VALSHARAH = 1018
 local MAPID_HIGHMOUNTAIN = 1024
 local MAPID_SURAMAR = 1033
-local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN }
-local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6 }
+local MAPID_EYEOFAZSHARA = 1096
+local MAPID_BROKENSHORE = 1021
+
+local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE }
+local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6, [MAPID_EYEOFAZSHARA] = 7, [MAPID_BROKENSHORE] = 8 }
 
 local CURRENCYID_RESOURCES = 1220
 
@@ -429,7 +432,6 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 	end
 	if hasFilters == nil then
 		hasFilters = Config:HasFilters()
-		if Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
 	end
 	if selectedFilters == nil then
 		selectedFilters = Config:GetFilterTable(FILTER_COUNT)
@@ -505,18 +507,16 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 			end
 		end
 
-	end
-
-	if selectedFilters[FILTER_EMISSARY] and not isFiltered then
-		local isBounty = false
-		local bountyFilter = Config.filterEmissary
-		if GetQuestLogIndexByID(bountyFilter) == 0 then bountyFilter = 0 end
-		for _, bounty in ipairs(bounties) do
-			if bounty and IsQuestCriteriaForBounty(self.questID, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
-				isBounty = true
+		if selectedFilters[FILTER_EMISSARY] then
+			local bountyFilter = Config.filterEmissary
+			if GetQuestLogIndexByID(bountyFilter) == 0 then bountyFilter = 0 end
+			for _, bounty in ipairs(bounties) do
+				if bounty and IsQuestCriteriaForBounty(self.questID, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
+					isFiltered = false
+				end
 			end
 		end
-		if not isBounty then isFiltered = true end
+
 	end
 
 	return isFiltered
@@ -618,7 +618,6 @@ local function QuestFrame_Update()
 
 	if (not questsCollapsed) then
 		local hasFilters = Config:HasFilters()
-		if Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
 		local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
 
 		local prevFilter
@@ -928,7 +927,6 @@ local function MapFrame_Update()
 	if Config.hideFilteredPOI then
 		local bounties = GetQuestBountyInfoForMapID(GetCurrentMapAreaID())
 		local hasFilters = Config:HasFilters()
-		if Config.selectedFilters == FILTER_EMISSARY then hasFilters = false end
 		local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
 
 		for i = 1, NUM_WORLDMAP_TASK_POIS do

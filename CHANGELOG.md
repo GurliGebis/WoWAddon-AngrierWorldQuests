@@ -1,3 +1,8 @@
+## v0.11.1
+
+* Updated localizations
+* Changed behavior slightly when Emissary filter was selected in addition to others
+
 ## v0.11.0
 
 * Added an option to enable per-character configuration
