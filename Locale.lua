@@ -22,6 +22,7 @@ langs.enUS = {
 	config_sortMethod_2 = "Time Left",
 	config_sortMethod_3 = "Zone",
 	config_sortMethod_4 = "Faction",
+	config_characterConfig = "Per-character configuration",
 }
 
 langs.esES = {
@@ -61,6 +62,65 @@ langs.koKR = {
 	config_sortMethod_2 = "마감 시한",
 	config_sortMethod_3 = "지역",
 	config_sortMethod_4 = "사절 및 세력",
+}
+
+--by Jinx@萨尔, 感谢kerobbs的BNS.
+langs.zhCN = {
+	UPGRADES = "升级",
+	config_showAtTop = "在任务日志顶部显示", 
+	config_onlyCurrentZone = "只显示当前地图的世界任务", 
+	config_showEverywhere = "在每个地图显示世界任务",
+	config_hideFilteredPOI = "在世界地图中隐藏过滤的世界任务点图标", 
+	config_hideUntrackedPOI = "在世界地图中隐藏未追踪的世界任务点图标", 
+	config_showHoveredPOI = "总是显示鼠标停留的世界任务点图标",
+	config_showContinentPOI = "在破碎群岛地图显示世界任务点图标",
+	config_lootFilterUpgrades = "只显示拾取过滤中可升级的",
+	config_timeFilterDuration = "剩余时间过滤",
+	config_enabledFilters = "启用过滤器",
+	config_sortMethod = "排列世界任务按照",
+	config_sortMethod_1 = "名称",
+	config_sortMethod_2 = "剩余时间",
+	config_sortMethod_3 = "区域",
+	config_sortMethod_4 = "阵营",
+}
+ 
+--by BNS@www.kerobbs.net
+langs.zhTW = {
+	UPGRADES = "升級",
+	config_showAtTop = "顯示在任務日誌頂部", 
+	config_onlyCurrentZone = "只顯示目前區域的世界任務", 
+	config_showEverywhere = "在每個地圖顯示世界任務",
+	config_hideFilteredPOI = "在世界地圖隱藏過濾的世界任務點圖標", 
+	config_hideUntrackedPOI = "在世界地圖隱藏未追蹤的世界任務點圖標", 
+	config_showHoveredPOI = "永遠顯示滑鼠停留的的世界任務點圖標",
+	config_showContinentPOI = "在破碎群島地圖顯示世界任務點圖標",
+	config_lootFilterUpgrades = "只顯示拾取過濾中可升級的",
+	config_timeFilterDuration = "剩餘時間過濾",
+	config_enabledFilters = "啟用過濾器",
+	config_sortMethod = "排序世界任務根據",
+	config_sortMethod_1 = "名稱",
+	config_sortMethod_2 = "剩餘時間",
+	config_sortMethod_3 = "區域",
+	config_sortMethod_4 = "陣營",
+}
+
+langs.ruRU = {
+	UPGRADES = "Обновление",
+	config_showAtTop = "Показать вверху списка квестов",
+	config_onlyCurrentZone = "Показывать Локальные Задания только для текущей зоны",
+	config_showEverywhere = "Показать Локальные задания на отдельной карте",
+	config_hideFilteredPOI = "Скрыть отфильтрованные World Quest иконки на карте мира",
+	config_hideUntrackedPOI = "Скрыть неотслеживаемые World Quest иконки на карте мира",
+	config_showHoveredPOI = "Всегда показывать значок World Quest",
+	config_showContinentPOI = "Показать World Quest иконки на полной карте материка",
+	config_lootFilterUpgrades = "Показать обновления только для Loot фильтра",
+	config_timeFilterDuration = "Оставшееся время(Продолжительность)",
+	config_enabledFilters = "Включенные фильтры",
+	config_sortMethod = "Сортировать Задания",
+	config_sortMethod_1 = "Имя",
+	config_sortMethod_2 = "Оставшееся время",
+	config_sortMethod_3 = "Зона",
+	config_sortMethod_4 = "Фракция",
 }
 
 function Locale:Get(key)

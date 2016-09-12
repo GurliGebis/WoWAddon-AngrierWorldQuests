@@ -3,6 +3,7 @@
 ## Notes: Adds World Quests to the quest list
 ## Author: Ermad
 ## SavedVariables: AngryWorldQuests_Config
+## SavedVariablesPerCharacter: AngryWorldQuests_CharacterConfig
 
 Core.lua
 

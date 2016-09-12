@@ -1,3 +1,8 @@
+## v0.11.0
+
+* Added an option to enable per-character configuration
+* Added Chinese (Simplified and Traditional) and Russian localizations
+
 ## v0.10.0
 
 * Added PvP, Profession, and Pet Battles filter. These are disabled by default, and can be enabled in the config panel (/awq)

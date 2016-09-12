@@ -43,18 +43,34 @@ setmetatable(Config, {
 })
 
 function Config:Get(key)
-	if AngryWorldQuests_Config == nil or AngryWorldQuests_Config[key] == nil then
-		return configDefaults[key]
+	if self:CharacterConfig() then
+		if AngryWorldQuests_CharacterConfig == nil or AngryWorldQuests_CharacterConfig[key] == nil then
+			return configDefaults[key]
+		else
+			return AngryWorldQuests_CharacterConfig[key]
+		end
 	else
-		return AngryWorldQuests_Config[key]
+		if AngryWorldQuests_Config == nil or AngryWorldQuests_Config[key] == nil then
+			return configDefaults[key]
+		else
+			return AngryWorldQuests_Config[key]
+		end
 	end
 end
 
 function Config:Set(key, newValue, silent)
-	if configDefaults[key] == newValue then
-		AngryWorldQuests_Config[key] = nil
+	if self:CharacterConfig() then
+		if configDefaults[key] == newValue then
+			AngryWorldQuests_CharacterConfig[key] = nil
+		else
+			AngryWorldQuests_CharacterConfig[key] = newValue
+		end
 	else
-		AngryWorldQuests_Config[key] = newValue
+		if configDefaults[key] == newValue then
+			AngryWorldQuests_Config[key] = nil
+		else
+			AngryWorldQuests_Config[key] = newValue
+		end
 	end
 	if callbacks[key] and not silent then
 		for _, func in ipairs(callbacks[key]) do
@@ -158,8 +174,24 @@ function Config:ToggleFilter(index)
 	return not currentValue
 end
 
+function Config:CharacterConfig()
+	return AngryWorldQuests_CharacterConfig and AngryWorldQuests_CharacterConfig['__enabled']
+end
+
+function Config:SetCharacterConfig(enabled)
+	AngryWorldQuests_CharacterConfig['__enabled'] = enabled
+	if not AngryWorldQuests_CharacterConfig['__init'] then
+		AngryWorldQuests_CharacterConfig['__init'] = true
+		for key,value in pairs(AngryWorldQuests_Config) do
+			AngryWorldQuests_CharacterConfig[key] = value
+		end
+	end
+end
+
 local panelOriginalConfig = {}
 local optionPanel
+
+local Panel_OnRefresh
 
 local function Panel_OnSave(self)
 	wipe(panelOriginalConfig)
@@ -217,6 +249,18 @@ local function CheckBox_OnClick(self)
 	Config:Set(key, self:GetChecked())
 end
 
+local function CharConfigCheckBox_OnClick(self)
+	local status = Config:CharacterConfig()
+	Config:SetCharacterConfig( not status )
+
+	for key,callbacks_key in pairs(callbacks) do
+		for _, func in ipairs(callbacks_key) do
+			func(key, Config:Get(key))
+		end
+	end
+	Panel_OnRefresh(optionPanel)
+end
+
 local function DropDown_OnClick(self, dropdown)
 	local key = dropdown.configKey
 	if panelOriginalConfig[key] == nil then
@@ -270,9 +314,19 @@ local function DropDown_Create(self)
 	return dropdown
 end
 
-local panelInit, checkboxes, dropdowns, filterCheckboxes
-local function Panel_OnRefresh(self)
+local panelInit, checkboxes, dropdowns, filterCheckboxes, charConfigCheckbox
+Panel_OnRefresh = function(self)
 	if not panelInit then
+		local footer = self:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+		footer:SetPoint('BOTTOMRIGHT', -16, 16)
+		footer:SetText( Addon.Version or "Dev" )
+
+		charConfigCheckbox = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
+		charConfigCheckbox:SetScript("OnClick", CharConfigCheckBox_OnClick)
+		charConfigCheckbox.Text:SetFontObject("GameFontHighlightSmall")
+		charConfigCheckbox.Text:SetPoint("LEFT", charConfigCheckbox, "RIGHT", 0, 1)
+		charConfigCheckbox.Text:SetText( Addon.Locale.config_characterConfig )
+		charConfigCheckbox:SetPoint("BOTTOMLEFT", 14, 12)
 
 		local label = self:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 		label:SetPoint("TOPLEFT", 16, -16)
@@ -330,6 +384,8 @@ local function Panel_OnRefresh(self)
 
 		panelInit = true
 	end
+
+	charConfigCheckbox:SetChecked( Config:CharacterConfig() )
 	
 	for _, check in ipairs(checkboxes) do
 		CheckBox_Update(check)
@@ -360,6 +416,7 @@ end
 
 function Config:Startup()
 	if AngryWorldQuests_Config == nil then AngryWorldQuests_Config = {} end
+	if AngryWorldQuests_CharacterConfig == nil then AngryWorldQuests_CharacterConfig = {} end
 
 	AngryWorldQuests_Config.selectedFilters = nil
 	AngryWorldQuests_Config.filterEmissary = nil
@@ -385,6 +442,7 @@ function Config:Startup()
 		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(9-1), 2^(10-1), 2^(11-1), AngryWorldQuests_Config['disabledFilters'])
 	end
 	AngryWorldQuests_Config['__version'] = configVersion
+	AngryWorldQuests_CharacterConfig['__version'] = configVersion
 
 	optionPanel = self:CreatePanel(ADDON)
 end
