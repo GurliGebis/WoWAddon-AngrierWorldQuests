@@ -11,7 +11,6 @@ local MAPID_HIGHMOUNTAIN = 1024
 local MAPID_SURAMAR = 1033
 local MAPID_EYEOFAZSHARA = 1096
 local MAPID_BROKENSHORE = 1021
-
 local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE }
 local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6, [MAPID_EYEOFAZSHARA] = 7, [MAPID_BROKENSHORE] = 8 }
 
@@ -367,8 +366,8 @@ local function GetHeaderButton(index)
 end
 
 local titleButtons = {}
-local function GetTitleButton(index)
-	if ( not titleButtons[index] ) then
+local function GetTitleButton(questID)
+	if ( not titleButtons[questID] ) then
 		local title = CreateFrame("BUTTON", nil, QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
 		title:SetScript("OnEnter", TitleButton_OnEnter)
 		title:SetScript("OnLeave", TitleButton_OnLeave)
@@ -378,6 +377,7 @@ local function GetTitleButton(index)
 		title.TagTexture:ClearAllPoints()
 		title.TagTexture:SetPoint("TOP", title.Text, "CENTER", 0, 8)
 		title.TagTexture:SetPoint("RIGHT", 0, 0)
+		title.TagTexture:Hide()
 
 		title.TagText = title:CreateFontString(nil, nil, "GameFontNormalLeft")
 		title.TagText:SetTextColor(1, 1, 1)
@@ -392,9 +392,9 @@ local function GetTitleButton(index)
 
 		title.UpdateTooltip = TaskPOI_OnEnter
 
-		titleButtons[index] = title
+		titleButtons[questID] = title
 	end
-	return titleButtons[index]
+	return titleButtons[questID]
 end
 
 local filterButtons = {}
@@ -548,13 +548,13 @@ local function QuestFrame_Update()
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(currentMapID)
 	if not displayLocation or lockedQuestID then
 		for i = 1, #headerButtons do headerButtons[i]:Hide() end
-		for i = 1, #titleButtons do titleButtons[i]:Hide() end
+		for _, titleButton in pairs(titleButtons) do titleButton:Hide() end
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 		return
 	end
 
 	local hoveredQuest
-	for _, titleButton in ipairs(titleButtons) do
+	for _, titleButton in pairs(titleButtons) do
 		if titleButton:IsMouseOver() and titleButton:IsShown() then
 			hoveredQuest = titleButton.questID
 		end
@@ -593,7 +593,6 @@ local function QuestFrame_Update()
 	QuestScrollFrame.Background:SetAtlas("QuestLogBackground", true) -- Always show quest background
 
 	local headerIndex = 0
-	local titleIndex = 0
 
 	headerIndex = headerIndex + 1
 	local button = GetHeaderButton(headerIndex)
@@ -615,6 +614,9 @@ local function QuestFrame_Update()
 	end
 	button:Show()
 	prevButton = button
+
+	local displayedQuestIDs = {}
+	local usedButtons = {}
 
 	if (not questsCollapsed) then
 		local hasFilters = Config:HasFilters()
@@ -651,7 +653,6 @@ local function QuestFrame_Update()
 			questMapIDs = MAPID_ALL
 		end
 
-		local usedButtons = {}
 
 		for _, mapID in ipairs(questMapIDs) do
 
@@ -674,8 +675,7 @@ local function QuestFrame_Update()
 							C_TaskQuest.RequestPreloadRewardData(questID)
 
 							local totalHeight = 8
-							titleIndex = titleIndex + 1
-							local button = GetTitleButton(titleIndex)
+							local button = GetTitleButton(questID)
 							button.worldQuest = true
 							button.questID = questID
 							button.mapID = mapID
@@ -747,13 +747,13 @@ local function QuestFrame_Update()
 							end	
 
 							local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
-							for i = 1, numQuestCurrencies do
-								local name, texture, numItems = GetQuestLogRewardCurrencyInfo(i, questID)
+							if numQuestCurrencies > 0 then
+								local name, texture, numItems = GetQuestLogRewardCurrencyInfo(1, questID)
 								tagText = numItems
 								tagTexture = texture
 							end
 
-							local numQuestRewards = GetNumQuestLogRewards(questID);
+							local numQuestRewards = GetNumQuestLogRewards(questID)
 							if numQuestRewards > 0 then
 								local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
 								if itemName and itemTexture then
@@ -786,24 +786,21 @@ local function QuestFrame_Update()
 								button.TagText:SetText("")
 								button.TagTexture:Show()
 								button.TagTexture:SetTexture(tagTexture)
-							else
-								button.TagText:Hide()
-								button.TagTexture:Hide()
 							end
-							if tagTexCoords then
-								button.TagTexture:SetTexCoord( unpack(tagTexCoords) )
-							else
-								button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
+							if tagTexture then
+								if tagTexCoords then
+									button.TagTexture:SetTexCoord( unpack(tagTexCoords) )
+								else
+									button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
+								end
 							end
 
 							local isFiltered = TaskPOI_IsFiltered(button, bounties, hasFilters, selectedFilters)
 
 							if not isFiltered then
 								button:SetHeight(totalHeight)
-
+								displayedQuestIDs[questID] = true
 								table.insert(usedButtons, button)
-							else
-								titleIndex = titleIndex - 1
 							end
 
 						end
@@ -837,7 +834,7 @@ local function QuestFrame_Update()
 
 	if Config.showAtTop and firstButton then
 		firstButton:ClearAllPoints()
-		if titleIndex > 0 then
+		if #usedButtons > 0 then
 			firstButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -6)
 		else
 			firstButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
@@ -847,8 +844,10 @@ local function QuestFrame_Update()
 	for i = headerIndex + 1, #headerButtons do
 		headerButtons[i]:Hide()
 	end
-	for i = titleIndex + 1, #titleButtons do
-		titleButtons[i]:Hide()
+	for questID, titleButton in pairs(titleButtons) do
+		if not displayedQuestIDs[questID] then
+			titleButton:Hide()
+		end
 	end
 	
 end
