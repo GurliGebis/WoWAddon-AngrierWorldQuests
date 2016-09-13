@@ -2,6 +2,7 @@
 
 * Updated localizations
 * Changed behavior slightly when Emissary filter was selected in addition to others
+* Now checks world quests to show from Eye of Azshara and Broken Shore zones
 
 ## v0.11.0
 
