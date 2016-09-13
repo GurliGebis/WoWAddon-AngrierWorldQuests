@@ -330,24 +330,22 @@ end
 local function FilterButton_OnClick(self, button)
 	HideDropDownMenu(1)
 	PlaySound("igMainMenuOptionCheckBoxOn")
-	if (button == 'RightButton' and (self.index == FILTER_EMISSARY or self.index == FILTER_LOOT or self.index == FILTER_FACTION)) or (self.index == FILTER_FACTION and not Config:GetFilter(FILTER_FACTION)) then
+	if (button == 'RightButton' and (self.index == FILTER_EMISSARY or self.index == FILTER_LOOT or self.index == FILTER_FACTION))
+			or (self.index == FILTER_FACTION and not Config:GetFilter(FILTER_FACTION) and Config.filterFaction == 0) then
 		FilterButton_ShowMenu(self)
 	else
 		if IsShiftKeyDown() then
 			if self.index == FILTER_EMISSARY then Config:Set('filterEmissary', 0, true) end
 			if self.index == FILTER_LOOT then Config:Set('filterLoot', 0, true) end
-			if self.index == FILTER_FACTION then Config:Set('filterFaction', 0, true) end
 			Config:ToggleFilter(self.index)
 		else
 			if Config:IsOnlyFilter(self.index) then
 				Config:Set('filterEmissary', 0, true)
 				Config:Set('filterLoot', 0, true)
-				Config:Set('filterFaction', 0, true)
 				Config:SetNoFilter()
 			else
 				if self.index ~= FILTER_EMISSARY then Config:Set('filterEmissary', 0, true) end
 				if self.index ~= FILTER_LOOT then Config:Set('filterLoot', 0, true) end
-				if self.index ~= FILTER_FACTION then Config:Set('filterFaction', 0, true) end
 				Config:SetOnlyFilter(self.index)
 			end
 		end
