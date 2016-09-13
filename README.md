@@ -18,6 +18,8 @@ Multiple filters can be selected by shift clicking on them. When multiple are se
 
 ### Configuration Options
 
+The configuration panel can be accessed in the Interface settings, or by the command /awq.
+
 * __Display at the top of the Quest Log__ - Toggle if the world quest list is displayed above or below regular quests in the quest log
 * __Only show World Quests for the current zone__ - If toggled will only display world quests for the current zone, instead of all world quests.
 * __Show World Quests on every map__ - If toggled will show all world quests on maps outside of the Broken Isles.
