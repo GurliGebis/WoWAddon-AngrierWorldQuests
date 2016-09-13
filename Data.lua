@@ -185,7 +185,7 @@ function Data:ItemArtifactPower(itemID)
 		return cachedPower[itemID]
 	end
 
-	fakeTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+	fakeTooltip:ClearLines()
 	fakeTooltip:SetItemByID(itemID)
 
 	local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
@@ -270,7 +270,7 @@ end
 
 function Data:RewardItemLevel(questID)
 	if cachedItems[questID] == nil then
-		fakeTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+		fakeTooltip:ClearLines()
 		fakeTooltip:SetQuestLogItem("reward", 1, questID)
 
 		local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
@@ -302,7 +302,7 @@ end
 
 function Data:Startup()
 	fakeTooltip = CreateFrame('GameTooltip', 'AWQFakeTooltip', UIParent, 'GameTooltipTemplate')
-	fakeTooltip:Hide()
+	fakeTooltip:SetOwner(UIParent, "ANCHOR_NONE")
 
 	self:RegisterEvent('UNIT_QUEST_LOG_CHANGED')
 	self:RegisterEvent('BAG_UPDATE', 'ClearArtifactCache')
