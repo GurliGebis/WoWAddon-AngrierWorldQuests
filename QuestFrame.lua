@@ -463,7 +463,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 			local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, self.questID)
 			if itemName and itemTexture then
 				local artifactPower = Addon.Data:ItemArtifactPower(itemID)
-				local iLevel = Addon.Data:RewardItemLevel(self.questID)
+				local iLevel = Addon.Data:RewardItemLevel(itemID, self.questID)
 				if artifactPower then
 					isFiltered = not selectedFilters[FILTER_ARTIFACT_POWER]
 				else
@@ -758,7 +758,7 @@ local function QuestFrame_Update()
 								local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
 								if itemName and itemTexture then
 									local artifactPower = Addon.Data:ItemArtifactPower(itemID)
-									local iLevel = Addon.Data:RewardItemLevel(questID)
+									local iLevel = Addon.Data:RewardItemLevel(itemID, questID)
 									if artifactPower then
 										tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
 										tagText = ArtifactPowerTruncate(artifactPower)

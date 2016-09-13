@@ -268,26 +268,39 @@ function Data:RewardIsUpgrade(questID)
 	end
 end
 
-function Data:RewardItemLevel(questID)
-	if cachedItems[questID] == nil then
+function Data:RewardItemLevel(itemID, questID)
+	local key = itemID..":"..questID
+	if cachedItems[key] == nil then
 		fakeTooltip:ClearLines()
 		fakeTooltip:SetQuestLogItem("reward", 1, questID)
 
-		local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
-		local textLine3 = AWQFakeTooltipTextLeft3 and AWQFakeTooltipTextLeft3:IsShown() and AWQFakeTooltipTextLeft3:GetText()
-		local matcher = string.gsub(ITEM_LEVEL_PLUS, "%%d%+", "(%%d+)+")
-		local itemLevel
+		local itemLink = select(2, fakeTooltip:GetItem())
+		if itemLink then
+			local itemName, _, _, itemLevel, _, _, _, _, itemEquipLoc, _, _, itemClassID, itemSubClassID = GetItemInfo(itemLink)
+			if itemName then
+				if (itemClassID == 3 and itemSubClassID == 11) or (itemEquipLoc ~= nil and itemEquipLoc ~= "") then
+					cachedItems[key] = itemLevel
+				else
+					cachedItems[key] = false
+				end
+			end
+		else
+			local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
+			local textLine3 = AWQFakeTooltipTextLeft3 and AWQFakeTooltipTextLeft3:IsShown() and AWQFakeTooltipTextLeft3:GetText()
+			local matcher = string.gsub(ITEM_LEVEL_PLUS, "%%d%+", "(%%d+)+")
+			local itemLevel
 
-		if textLine2 then
-			itemLevel = tonumber(textLine2:match(matcher))
-		end
-		if textLine3 and not itemLevel then
-			itemLevel = tonumber(textLine3:match(matcher))
-		end
+			if textLine2 then
+				itemLevel = tonumber(textLine2:match(matcher))
+			end
+			if textLine3 and not itemLevel then
+				itemLevel = tonumber(textLine3:match(matcher))
+			end
 
-		cachedItems[questID] = itemLevel or false
+			cachedItems[key] = itemLevel or false
+		end
 	end
-	return cachedItems[questID]
+	return cachedItems[key]
 end
 
 function Data:UNIT_QUEST_LOG_CHANGED(arg1)
