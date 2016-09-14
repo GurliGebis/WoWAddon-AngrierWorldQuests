@@ -1,3 +1,7 @@
+## v0.11.3
+
+* Small bugfix from last release
+
 ## v0.11.2
 
 * When more then 7 filters are displayed the filters are moved to a new row to not overlap with the header text

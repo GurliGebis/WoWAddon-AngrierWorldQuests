@@ -274,8 +274,8 @@ function Data:RewardItemLevel(itemID, questID)
 		fakeTooltip:ClearLines()
 		fakeTooltip:SetQuestLogItem("reward", 1, questID)
 
-		local itemLink = select(2, fakeTooltip:GetItem())
-		if itemLink then
+		-- local itemLink = select(2, fakeTooltip:GetItem())
+		if false and itemLink then
 			local itemName, _, _, itemLevel, _, _, _, _, itemEquipLoc, _, _, itemClassID, itemSubClassID = GetItemInfo(itemLink)
 			if itemName then
 				if (itemClassID == 3 and itemSubClassID == 11) or (itemEquipLoc ~= nil and itemEquipLoc ~= "") then
