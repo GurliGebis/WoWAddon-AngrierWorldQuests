@@ -364,6 +364,26 @@ local function GetHeaderButton(index)
 end
 
 local titleButtons = {}
+local function UpdateTitleButton(title)
+	local filename, fontHeight = title.TagText:GetFont()
+	if Config.extendedInfo then
+		title.TagTexture:SetSize(24, 24)
+		title.TagText:ClearAllPoints()
+		title.TagText:SetPoint("BOTTOMRIGHT", title.TagTexture , "BOTTOMRIGHT", 0, 2)
+		title.TagText:SetFont(filename, fontHeight, "OUTLINE")
+	else
+		title.TagTexture:SetSize(16, 16)
+		title.TagText:ClearAllPoints()
+		title.TagText:SetPoint("RIGHT", title.TagTexture , "LEFT", -3, 0)
+		title.TagText:SetFont(filename, fontHeight, "")
+	end
+end
+local function UpdateTitleButtons()
+	for _, title in pairs(titleButtons) do
+		UpdateTitleButton(title)
+	end
+end
+
 local function GetTitleButton(questID)
 	if ( not titleButtons[questID] ) then
 		local title = CreateFrame("BUTTON", nil, QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
@@ -371,7 +391,7 @@ local function GetTitleButton(questID)
 		title:SetScript("OnLeave", TitleButton_OnLeave)
 		title:SetScript("OnClick", TitleButton_OnClick)
 
-		title.TagTexture:SetSize(16, 16)
+		title.TagTexture:SetSize(24, 24)
 		title.TagTexture:ClearAllPoints()
 		title.TagTexture:SetPoint("TOP", title.Text, "CENTER", 0, 8)
 		title.TagTexture:SetPoint("RIGHT", 0, 0)
@@ -379,7 +399,6 @@ local function GetTitleButton(questID)
 
 		title.TagText = title:CreateFontString(nil, nil, "GameFontNormalLeft")
 		title.TagText:SetTextColor(1, 1, 1)
-		title.TagText:SetPoint("RIGHT", title.TagTexture , "LEFT", -3, 0)
 		title.TagText:Hide()
 
 		title.TaskIcon:ClearAllPoints()
@@ -390,9 +409,19 @@ local function GetTitleButton(questID)
 
 		title.UpdateTooltip = TaskPOI_OnEnter
 
+		UpdateTitleButton(title)
+
 		titleButtons[questID] = title
 	end
 	return titleButtons[questID]
+end
+local objectiveButtons = {}
+local function GetObjectiveButton(index)
+	if ( not objectiveButtons[index] ) then
+		local frame = CreateFrame("FRAME", "AWQOF"..index, QuestMapFrame.QuestsFrame.Contents, "QuestLogObjectiveTemplate")
+		objectiveButtons[index] = frame
+	end
+	return objectiveButtons[index]
 end
 
 local filterButtons = {}
@@ -548,6 +577,7 @@ local function QuestFrame_Update()
 		for i = 1, #headerButtons do headerButtons[i]:Hide() end
 		for _, titleButton in pairs(titleButtons) do titleButton:Hide() end
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
+		for i = 1, #objectiveButtons do objectiveButtons[i]:Hide() end
 		return
 	end
 
@@ -591,6 +621,7 @@ local function QuestFrame_Update()
 	QuestScrollFrame.Background:SetAtlas("QuestLogBackground", true) -- Always show quest background
 
 	local headerIndex = 0
+	local objectiveIndex = 0
 
 	headerIndex = headerIndex + 1
 	local button = GetHeaderButton(headerIndex)
@@ -683,119 +714,156 @@ local function QuestFrame_Update()
 							button.infoX = questInfo.x
 							button.infoY = questInfo.y
 
-							local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
-							button.Text:SetTextColor( color.r, color.g, color.b )
-
-							button.Text:SetText(title)
-							totalHeight = totalHeight + button.Text:GetHeight()
-
-							if ( IsWorldQuestHardWatched(questID) or GetSuperTrackedQuestID() == questID ) then
-								button.Check:Show()
-								button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0)
-							else
-								button.Check:Hide()
-							end
-
-							local hasIcon = true
-							button.TaskIcon:Show()
-							button.TaskIcon:SetTexCoord(0, 1, 0, 1)
-							if questInfo.inProgress then
-								button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
-								button.TaskIcon:SetSize(10, 15)
-							elseif worldQuestType == LE_QUEST_TAG_TYPE_PVP then
-								button.TaskIcon:SetAtlas("worldquest-icon-pvp-ffa", true)
-							elseif worldQuestType == LE_QUEST_TAG_TYPE_PET_BATTLE then
-								button.TaskIcon:SetAtlas("worldquest-icon-petbattle", true)
-							elseif worldQuestType == LE_QUEST_TAG_TYPE_DUNGEON then
-								button.TaskIcon:SetAtlas("worldquest-icon-dungeon", true)
-							elseif ( worldQuestType == LE_QUEST_TAG_TYPE_PROFESSION and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
-								button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
-							elseif isElite then
-								local tagCoords = QUEST_TAG_TCOORDS[QUEST_TAG_HEROIC]
-								button.TaskIcon:SetSize(16, 16)
-								button.TaskIcon:SetTexture("Interface\\QuestFrame\\QuestTypeIcons")
-								button.TaskIcon:SetTexCoord( unpack(tagCoords) )
-							else
-								hasIcon = false
-								button.TaskIcon:Hide()
-							end
-
-							if ( timeLeftMinutes and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
-								button.TimeIcon:Show()
-								if hasIcon then
-									button.TimeIcon:SetSize(14, 14)
-									button.TimeIcon:SetPoint("CENTER", button.TaskIcon, "BOTTOMLEFT", 0, 0)
-								else
-									button.TimeIcon:SetSize(16, 16)
-									button.TimeIcon:SetPoint("CENTER", button.Text, "LEFT", -15, 0)
-								end
-							else
-								button.TimeIcon:Hide()
-							end
-
-							local tagText, tagTexture, tagTexCoords, tagColor
-							tagColor = {r=1, g=1, b=1}
-
-							local money = GetQuestLogRewardMoney(questID)
-							if ( money > 0 ) then
-								local gold = floor(money / (COPPER_PER_GOLD))
-								tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
-								tagTexCoords = { 0, 0.25, 0, 1 }
-								tagText = BreakUpLargeNumbers(gold)
-							end	
-
-							local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
-							if numQuestCurrencies > 0 then
-								local name, texture, numItems = GetQuestLogRewardCurrencyInfo(1, questID)
-								tagText = numItems
-								tagTexture = texture
-							end
-
-							local numQuestRewards = GetNumQuestLogRewards(questID)
-							if numQuestRewards > 0 then
-								local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
-								if itemName and itemTexture then
-									local artifactPower = Addon.Data:ItemArtifactPower(itemID)
-									local iLevel = Addon.Data:RewardItemLevel(itemID, questID)
-									if artifactPower then
-										tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
-										tagText = ArtifactPowerTruncate(artifactPower)
-										tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
-									else
-										tagTexture = itemTexture
-										if iLevel then
-											tagText = iLevel
-											tagColor = BAG_ITEM_QUALITY_COLORS[quality]
-										else
-											tagText = quantity > 1 and quantity
-										end
-									end
-								end
-							end
-
-							if tagTexture and tagText then
-								button.TagText:Show()
-								button.TagText:SetText(tagText)
-								button.TagText:SetTextColor(tagColor.r, tagColor.g, tagColor.b )
-								button.TagTexture:Show()
-								button.TagTexture:SetTexture(tagTexture)
-							elseif tagTexture then
-								button.TagText:Hide()
-								button.TagText:SetText("")
-								button.TagTexture:Show()
-								button.TagTexture:SetTexture(tagTexture)
-							end
-							if tagTexture then
-								if tagTexCoords then
-									button.TagTexture:SetTexCoord( unpack(tagTexCoords) )
-								else
-									button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
-								end
-							end
-
 							local isFiltered = TaskPOI_IsFiltered(button, bounties, hasFilters, selectedFilters)
 
 							if not isFiltered then
+								local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
+								button.Text:SetTextColor( color.r, color.g, color.b )
+
+								button.Text:SetText(title)
+								totalHeight = totalHeight + button.Text:GetHeight()
+
+								if ( IsWorldQuestHardWatched(questID) or GetSuperTrackedQuestID() == questID ) then
+									button.Check:Show()
+									button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0)
+								else
+									button.Check:Hide()
+								end
+
+								local hasIcon = true
+								button.TaskIcon:Show()
+								button.TaskIcon:SetTexCoord(0, 1, 0, 1)
+								if questInfo.inProgress then
+									button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
+									button.TaskIcon:SetSize(10, 15)
+								elseif worldQuestType == LE_QUEST_TAG_TYPE_PVP then
+									button.TaskIcon:SetAtlas("worldquest-icon-pvp-ffa", true)
+								elseif worldQuestType == LE_QUEST_TAG_TYPE_PET_BATTLE then
+									button.TaskIcon:SetAtlas("worldquest-icon-petbattle", true)
+								elseif worldQuestType == LE_QUEST_TAG_TYPE_DUNGEON then
+									button.TaskIcon:SetAtlas("worldquest-icon-dungeon", true)
+								elseif ( worldQuestType == LE_QUEST_TAG_TYPE_PROFESSION and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
+									button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
+								elseif isElite then
+									local tagCoords = QUEST_TAG_TCOORDS[QUEST_TAG_HEROIC]
+									button.TaskIcon:SetSize(16, 16)
+									button.TaskIcon:SetTexture("Interface\\QuestFrame\\QuestTypeIcons")
+									button.TaskIcon:SetTexCoord( unpack(tagCoords) )
+								else
+									hasIcon = false
+									button.TaskIcon:Hide()
+								end
+
+								if ( timeLeftMinutes and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
+									button.TimeIcon:Show()
+									if hasIcon then
+										button.TimeIcon:SetSize(14, 14)
+										button.TimeIcon:SetPoint("CENTER", button.TaskIcon, "BOTTOMLEFT", 0, 0)
+									else
+										button.TimeIcon:SetSize(16, 16)
+										button.TimeIcon:SetPoint("CENTER", button.Text, "LEFT", -15, 0)
+									end
+								else
+									button.TimeIcon:Hide()
+								end
+
+								local tagText, tagTexture, tagTexCoords, tagColor
+								tagColor = {r=1, g=1, b=1}
+
+								local money = GetQuestLogRewardMoney(questID)
+								if ( money > 0 ) then
+									local gold = floor(money / (COPPER_PER_GOLD))
+									if Config.extendedInfo then
+										tagTexture = "Interface\\icons\\inv_misc_coin_01" 
+									else
+										tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
+										tagTexCoords = { 0, 0.25, 0, 1 }
+									end
+									tagText = BreakUpLargeNumbers(gold)
+								end	
+
+								local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
+								if numQuestCurrencies > 0 then
+									local name, texture, numItems = GetQuestLogRewardCurrencyInfo(1, questID)
+									tagText = numItems
+									tagTexture = texture
+								end
+
+								local numQuestRewards = GetNumQuestLogRewards(questID)
+								if numQuestRewards > 0 then
+									local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
+									if itemName and itemTexture then
+										local artifactPower = Addon.Data:ItemArtifactPower(itemID)
+										local iLevel = Addon.Data:RewardItemLevel(itemID, questID)
+										if artifactPower then
+											tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
+											tagText = ArtifactPowerTruncate(artifactPower)
+											tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
+										else
+											tagTexture = itemTexture
+											if iLevel then
+												tagText = iLevel
+												tagColor = BAG_ITEM_QUALITY_COLORS[quality]
+											else
+												tagText = quantity > 1 and quantity
+											end
+										end
+									end
+								end
+
+								if tagTexture and tagText then
+									button.TagText:Show()
+									button.TagText:SetText(tagText)
+									button.TagText:SetTextColor(tagColor.r, tagColor.g, tagColor.b )
+									button.TagTexture:Show()
+									button.TagTexture:SetTexture(tagTexture)
+								elseif tagTexture then
+									button.TagText:Hide()
+									button.TagText:SetText("")
+									button.TagTexture:Show()
+									button.TagTexture:SetTexture(tagTexture)
+								end
+								if tagTexture then
+									if tagTexCoords then
+										button.TagTexture:SetTexCoord( unpack(tagTexCoords) )
+									else
+										button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
+									end
+								end
+
+								if Config.extendedInfo then
+									local objColor = NORMAL_FONT_COLOR
+									local timeString
+									if ( timeLeftMinutes <= WORLD_QUESTS_TIME_CRITICAL_MINUTES ) then
+										-- Grace period, show the actual time left
+										objColor = RED_FONT_COLOR
+										timeString = SecondsToTime(timeLeftMinutes * 60)
+									elseif timeLeftMinutes <= 60 + WORLD_QUESTS_TIME_CRITICAL_MINUTES then
+										timeString = SecondsToTime((timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) * 60)
+									elseif timeLeftMinutes < 24 * 60 + WORLD_QUESTS_TIME_CRITICAL_MINUTES then
+										timeString = D_HOURS:format(math.floor(timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) / 60)
+									else
+										timeString = D_DAYS:format(math.floor(timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) / 1440)
+									end
+
+									local factionName = factionID and GetFactionInfoByID(factionID)
+
+									objectiveIndex = objectiveIndex + 1
+									local objButton = GetObjectiveButton(objectiveIndex)
+									objButton:Show()
+									if factionName then
+										objButton.Text:SetText( string.format("%s, %s", timeString, factionName) )
+									else
+										objButton.Text:SetText(timeString)
+									end
+									--objButton.Text:SetTextColor( color:GetRGBA() )
+									local objHeight = objButton.Text:GetStringHeight()
+									objButton:SetHeight(objHeight)
+									objButton:SetPoint("TOPLEFT", button.Text, "BOTTOMLEFT", 0, -3)
+									objHeight = objHeight + 3
+									totalHeight = totalHeight + objHeight
+								end
+
 								button:SetHeight(totalHeight)
 								displayedQuestIDs[questID] = true
 								table.insert(usedButtons, button)
@@ -846,6 +914,9 @@ local function QuestFrame_Update()
 		if not displayedQuestIDs[questID] then
 			titleButton:Hide()
 		end
+	end
+	for i = objectiveIndex + 1, #objectiveButtons do
+		objectiveButtons[i]:Hide()
 	end
 	
 end
@@ -994,6 +1065,10 @@ function QF:Startup()
 			WorldMap_UpdateQuestBonusObjectives()
 			MapFrame_Update()
 		end
+	end)
+	Config:RegisterCallback('extendedInfo', function()
+		UpdateTitleButtons()
+		QuestFrame_Update()
 	end)
 
 	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)

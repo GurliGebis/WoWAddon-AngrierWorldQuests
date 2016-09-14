@@ -20,6 +20,7 @@ local configDefaults = {
 	showContinentPOI = false,
 	showComparisonRight = false,
 	sortMethod = 1,
+	extendedInfo = false,
 }
 local callbacks = {}
 
