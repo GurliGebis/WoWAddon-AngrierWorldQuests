@@ -646,13 +646,24 @@ local function QuestFrame_Update()
 
 	local displayedQuestIDs = {}
 	local usedButtons = {}
+	local filtersOwnRow = false
 
 	if (not questsCollapsed) then
 		local hasFilters = Config:HasFilters()
 		local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
 
-		local prevFilter
+		local enabledCount = 0
 		for i=#FILTER_ORDER, 1, -1 do
+			if not Config:GetFilterDisabled(FILTER_ORDER[i]) then enabledCount = enabledCount + 1 end
+		end
+		if enabledCount > 7 or (enabledCount > 5 and GetLocale() == "ruRU") then
+			filtersOwnRow = true
+		end
+
+		local prevFilter
+		for j=1, #FILTER_ORDER, 1 do
+			local i = j
+			if not filtersOwnRow then i = #FILTER_ORDER - i + 1 end
 			local filterButton = GetFilterButton(FILTER_ORDER[i])
 			if Config:GetFilterDisabled(FILTER_ORDER[i]) then
 				filterButton:Hide()
@@ -660,12 +671,21 @@ local function QuestFrame_Update()
 				filterButton:Show()
 
 				filterButton:ClearAllPoints()
-				if prevFilter then
-					filterButton:SetPoint("RIGHT", prevFilter, "LEFT", 5, 0)
-					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+				if filtersOwnRow then
+					if prevFilter then
+						filterButton:SetPoint("LEFT", prevFilter, "RIGHT", -5, 0)
+					else
+						filterButton:SetPoint("LEFT", 27, 0)
+						filterButton:SetPoint("TOP", prevButton, "BOTTOM", 0, -1)
+					end
 				else
-					filterButton:SetPoint("RIGHT", 1, 0)
-					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+					if prevFilter then
+						filterButton:SetPoint("RIGHT", prevFilter, "LEFT", 5, 0)
+						filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+					else
+						filterButton:SetPoint("RIGHT", 1, 0)
+						filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+					end
 				end
 
 				if selectedFilters[FILTER_ORDER[i]] then
@@ -879,9 +899,11 @@ local function QuestFrame_Update()
 
 		table.sort(usedButtons, TaskPOI_Sorter)
 
-		for _, button in ipairs(usedButtons) do
+		for i, button in ipairs(usedButtons) do
 			button:ClearAllPoints()
-			if ( prevButton ) then
+			if i == 1 and filtersOwnRow then
+				button:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -19)
+			elseif prevButton then
 				button:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
 			else
 				button:SetPoint("TOPLEFT", 1, -6)
@@ -903,7 +925,11 @@ local function QuestFrame_Update()
 		if #usedButtons > 0 then
 			firstButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -6)
 		else
-			firstButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
+			if filtersOwnRow then
+				firstButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, -25)
+			else
+				firstButton:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
+			end
 		end
 	end
 

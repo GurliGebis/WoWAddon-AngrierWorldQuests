@@ -1,5 +1,6 @@
 ## v0.11.2
 
+* When more then 7 filters are displayed the filters are moved to a new row to not overlap with the header text
 * Changed Faction filter to remember last selection, can change selection by right-clicking on it
 * A few small fixes and improvements
 
