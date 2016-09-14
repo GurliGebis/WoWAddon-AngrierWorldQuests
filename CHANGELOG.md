@@ -1,6 +1,7 @@
 ## v0.11.2
 
 * Changed Faction filter to remember last selection, can change selection by right-clicking on it
+* A few small fixes and improvements
 
 ## v0.11.1
 
