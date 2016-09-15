@@ -1,3 +1,7 @@
+## v0.11.4
+
+* Some bugfixes for rewards display
+
 ## v0.11.3
 
 * Small bugfix from last release
