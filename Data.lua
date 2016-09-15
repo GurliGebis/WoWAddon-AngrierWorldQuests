@@ -185,7 +185,7 @@ function Data:ItemArtifactPower(itemID)
 		return cachedPower[itemID]
 	end
 
-	fakeTooltip:ClearLines()
+	fakeTooltip:SetOwner(UIParent, "ANCHOR_NONE")
 	fakeTooltip:SetItemByID(itemID)
 
 	local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
@@ -219,10 +219,9 @@ function Data:QuestHasFaction(questID, factionID)
 	end
 end
 
-function Data:RewardIsUpgrade(questID)
-	local _, _, _, _, _, itemID = GetQuestLogRewardInfo(1, questID)
+function Data:RewardIsUpgrade(itemID, questID)
 	local _, _, _, _, _, _, _, _, equipSlot, _, _ = GetItemInfo(itemID)
-	local ilvl = self:RewardItemLevel(questID)
+	local ilvl = self:RewardItemLevel(itemID, questID)
 
 	if equipSlot and invtype_locations[equipSlot] then
 		local isUpgrade = false
@@ -271,7 +270,7 @@ end
 function Data:RewardItemLevel(itemID, questID)
 	local key = itemID..":"..questID
 	if cachedItems[key] == nil then
-		fakeTooltip:ClearLines()
+		fakeTooltip:SetOwner(UIParent, "ANCHOR_NONE")
 		fakeTooltip:SetQuestLogItem("reward", 1, questID)
 
 		-- local itemLink = select(2, fakeTooltip:GetItem())
@@ -315,7 +314,7 @@ end
 
 function Data:Startup()
 	fakeTooltip = CreateFrame('GameTooltip', 'AWQFakeTooltip', UIParent, 'GameTooltipTemplate')
-	fakeTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+	fakeTooltip:Hide()
 
 	self:RegisterEvent('UNIT_QUEST_LOG_CHANGED')
 	self:RegisterEvent('BAG_UPDATE', 'ClearArtifactCache')

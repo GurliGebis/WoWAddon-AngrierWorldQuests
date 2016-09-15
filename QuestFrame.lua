@@ -496,7 +496,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 				else
 					if iLevel then
 						local upgradesOnly = Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)
-						isFiltered = not selectedFilters[FILTER_LOOT] or (upgradesOnly and not Addon.Data:RewardIsUpgrade(self.questID))
+						isFiltered = not selectedFilters[FILTER_LOOT] or (upgradesOnly and not Addon.Data:RewardIsUpgrade(itemID, self.questID))
 					else
 						isFiltered = not selectedFilters[FILTER_ITEMS]
 					end
