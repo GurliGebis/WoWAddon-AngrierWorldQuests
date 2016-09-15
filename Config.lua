@@ -423,6 +423,10 @@ function Config:Startup()
 	AngryWorldQuests_Config.filterEmissary = nil
 	AngryWorldQuests_Config.filterLoot = nil
 	AngryWorldQuests_Config.filterFaction = nil
+	AngryWorldQuests_CharacterConfig.selectedFilters = nil
+	AngryWorldQuests_CharacterConfig.filterEmissary = nil
+	AngryWorldQuests_CharacterConfig.filterLoot = nil
+	AngryWorldQuests_CharacterConfig.filterFaction = nil
 
 	if not AngryWorldQuests_Config['__version'] then
 		AngryWorldQuests_Config['__version'] = configVersion
