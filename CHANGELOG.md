@@ -1,3 +1,7 @@
+## v0.12.2
+
+* Bug fix for last release
+
 ## v0.12.1
 
 * Added new button in filter row to change the sort method. It is disabled by default, and can be enabled in the config panel (/awq)

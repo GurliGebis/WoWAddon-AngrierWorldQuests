@@ -433,7 +433,7 @@ function Config:Startup()
 	if AngryWorldQuests_Config['__version'] <= 5 and AngryWorldQuests_Config['disabledFilters'] then
 		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(12-1), AngryWorldQuests_Config['disabledFilters'])
 	end
-	if AngryWorldQuests_CharacterConfig['__version'] <= 5 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
+	if AngryWorldQuests_CharacterConfig['__version'] and AngryWorldQuests_CharacterConfig['__version'] <= 5 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
 		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(12-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
 	end
 	AngryWorldQuests_Config['__version'] = configVersion
