@@ -24,6 +24,7 @@ langs.enUS = {
 	config_sortMethod_4 = FACTION,
 	config_sortMethod_5 = REWARDS,
 	config_characterConfig = "Per-character configuration",
+	config_saveFilters = "Save active filters between logins"
 }
 
 langs.esES = {

@@ -1,3 +1,8 @@
+## v0.12.1
+
+* Added new button in filter row to change the sort method. It is disabled by default, and can be enabled in the config panel (/awq)
+* Added configuration option to save active filters between logins
+
 ## v0.12.0
 
 * Added a new sort method by rewards
