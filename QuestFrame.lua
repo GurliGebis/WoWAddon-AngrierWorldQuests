@@ -983,7 +983,7 @@ local function MapFrame_Update()
 	if mapAreaID == MAPID_BROKENISLES and Config.showContinentPOI then
 		local taskIconIndex  = 1
 		for _, mapID in ipairs(MAPID_ALL) do
-			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, continentMapID)
+			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, MAPID_BROKENISLES)
 			if (questsList and #questsList > 0) then
 				for i, info in ipairs(questsList) do
 					if ( HaveQuestData(info.questId) ) then
