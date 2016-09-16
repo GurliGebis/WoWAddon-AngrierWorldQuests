@@ -1,3 +1,7 @@
+## v0.12.0
+
+* Added a new sort method by rewards
+
 ## v0.11.4
 
 * Some bugfixes for rewards display

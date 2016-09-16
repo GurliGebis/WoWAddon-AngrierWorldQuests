@@ -18,10 +18,11 @@ langs.enUS = {
 	config_timeFilterDuration = "Time Remaining Filter Duration",
 	config_enabledFilters = "Enabled Filters",
 	config_sortMethod = "Sort World Quests by",
-	config_sortMethod_1 = "Name",
-	config_sortMethod_2 = "Time Left",
-	config_sortMethod_3 = "Zone",
-	config_sortMethod_4 = "Faction",
+	config_sortMethod_1 = NAME,
+	config_sortMethod_2 = CLOSES_IN,
+	config_sortMethod_3 = ZONE,
+	config_sortMethod_4 = FACTION,
+	config_sortMethod_5 = REWARDS,
 	config_characterConfig = "Per-character configuration",
 }
 

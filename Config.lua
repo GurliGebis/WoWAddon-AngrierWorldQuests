@@ -21,6 +21,7 @@ local configDefaults = {
 	showComparisonRight = false,
 	sortMethod = 1,
 	extendedInfo = false,
+	saveFilters = false,
 }
 local callbacks = {}
 
@@ -419,15 +420,6 @@ function Config:Startup()
 	if AngryWorldQuests_Config == nil then AngryWorldQuests_Config = {} end
 	if AngryWorldQuests_CharacterConfig == nil then AngryWorldQuests_CharacterConfig = {} end
 
-	AngryWorldQuests_Config.selectedFilters = nil
-	AngryWorldQuests_Config.filterEmissary = nil
-	AngryWorldQuests_Config.filterLoot = nil
-	AngryWorldQuests_Config.filterFaction = nil
-	AngryWorldQuests_CharacterConfig.selectedFilters = nil
-	AngryWorldQuests_CharacterConfig.filterEmissary = nil
-	AngryWorldQuests_CharacterConfig.filterLoot = nil
-	AngryWorldQuests_CharacterConfig.filterFaction = nil
-
 	if not AngryWorldQuests_Config['__version'] then
 		AngryWorldQuests_Config['__version'] = configVersion
 	end
@@ -448,6 +440,17 @@ function Config:Startup()
 	end
 	AngryWorldQuests_Config['__version'] = configVersion
 	AngryWorldQuests_CharacterConfig['__version'] = configVersion
+
+	if self:Get('saveFilters') then
+		AngryWorldQuests_Config.selectedFilters = nil
+		AngryWorldQuests_Config.filterEmissary = nil
+		AngryWorldQuests_Config.filterLoot = nil
+		AngryWorldQuests_Config.filterFaction = nil
+		AngryWorldQuests_CharacterConfig.selectedFilters = nil
+		AngryWorldQuests_CharacterConfig.filterEmissary = nil
+		AngryWorldQuests_CharacterConfig.filterLoot = nil
+		AngryWorldQuests_CharacterConfig.filterFaction = nil
+	end
 
 	optionPanel = self:CreatePanel(ADDON)
 end

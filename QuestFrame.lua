@@ -38,7 +38,9 @@ local SORT_NAME = 1
 local SORT_TIME = 2
 local SORT_ZONE = 3
 local SORT_FACTION = 4
-local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION }
+local SORT_REWARDS = 5
+local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION, SORT_REWARDS }
+local REWARDS_ORDER = { [FILTER_ARTIFACT_POWER] = 1, [FILTER_LOOT] = 2, [FILTER_ORDER_RESOURCES] = 3, [FILTER_GOLD] = 4, [FILTER_ITEMS] = 5 }
 QF.SortOrder = SORT_ORDER
 
 local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859 }
@@ -562,6 +564,15 @@ local function TaskPOI_Sorter(a, b)
 		if MAPID_ORDER[a.mapID] ~= MAPID_ORDER[b.mapID] then
 			return MAPID_ORDER[a.mapID] < MAPID_ORDER[b.mapID]
 		end
+	elseif Config.sortMethod == SORT_REWARDS then
+		local default_cat = FILTER_COUNT + 1
+		local acat = (a.rewardCategory and REWARDS_ORDER[a.rewardCategory]) or default_cat
+		local bcat = (b.rewardCategory and REWARDS_ORDER[b.rewardCategory]) or default_cat
+		if acat ~= bcat then
+			return acat < bcat
+		elseif acat ~= default_cat and (a.rewardValue or 0) ~= (b.rewardValue or 0) then
+			return (a.rewardValue or 0) > (b.rewardValue or 0)
+		end
 	end
 
 	return a.Text:GetText() < b.Text:GetText()
@@ -800,6 +811,8 @@ local function QuestFrame_Update()
 										tagTexCoords = { 0, 0.25, 0, 1 }
 									end
 									tagText = BreakUpLargeNumbers(gold)
+									button.rewardCategory = FILTER_GOLD
+									button.rewardValue = gold
 								end	
 
 								local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
@@ -807,6 +820,8 @@ local function QuestFrame_Update()
 									local name, texture, numItems = GetQuestLogRewardCurrencyInfo(1, questID)
 									tagText = numItems
 									tagTexture = texture
+									button.rewardCategory = FILTER_ORDER_RESOURCES
+									button.rewardValue = numItems
 								end
 
 								local numQuestRewards = GetNumQuestLogRewards(questID)
@@ -819,13 +834,19 @@ local function QuestFrame_Update()
 											tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
 											tagText = ArtifactPowerTruncate(artifactPower)
 											tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
+											button.rewardCategory = FILTER_ARTIFACT_POWER
+											button.rewardValue = artifactPower
 										else
 											tagTexture = itemTexture
 											if iLevel then
 												tagText = iLevel
 												tagColor = BAG_ITEM_QUALITY_COLORS[quality]
+												button.rewardCategory = FILTER_LOOT
+												button.rewardValue = iLevel
 											else
 												tagText = quantity > 1 and quantity
+												button.rewardCategory = FILTER_ITEMS
+												button.rewardValue = quantity
 											end
 										end
 									end
