@@ -581,7 +581,6 @@ end
 local function QuestFrame_Update()
 	if not WorldMapFrame:IsShown() then return end
 
-	myTaskPOI:Hide()
 	local currentMapID, continentMapID = GetMapAreaIDs()
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(currentMapID)
 	if not displayLocation or lockedQuestID then
@@ -589,6 +588,7 @@ local function QuestFrame_Update()
 		for _, titleButton in pairs(titleButtons) do titleButton:Hide() end
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 		for i = 1, #objectiveButtons do objectiveButtons[i]:Hide() end
+		myTaskPOI:Hide()
 		return
 	end
 
