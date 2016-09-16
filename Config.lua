@@ -1,7 +1,7 @@
 local ADDON, Addon = ...
 local Config = Addon:NewModule('Config')
 
-local configVersion = 5
+local configVersion = 6
 local configDefaults = {
 	collapsed = false,
 	showAtTop = true,
@@ -9,7 +9,7 @@ local configDefaults = {
 	onlyCurrentZone = true,
 	showEverywhere = false,
 	selectedFilters = 0,
-	disabledFilters = bit.bor(2^(8-1), 2^(9-1), 2^(10-1), 2^(11-1)),
+	disabledFilters = bit.bor(2^(8-1), 2^(9-1), 2^(10-1), 2^(11-1), 2^(12-1)),
 	filterEmissary = 0,
 	filterLoot = 0,
 	filterFaction = 0,
@@ -424,19 +424,17 @@ function Config:Startup()
 		AngryWorldQuests_Config['__version'] = configVersion
 	end
 
-	if AngryWorldQuests_Config['__version'] <= 1 then
-		AngryWorldQuests_Config['hideUntrackedPOI'] = AngryWorldQuests_Config['hidePOI']
-		AngryWorldQuests_Config['hidePOI'] = nil
-	end
-	if AngryWorldQuests_Config['__version'] <= 2 then
-		AngryWorldQuests_Config['showHoveredPOI'] = AngryWorldQuests_Config['showContinentPOI']
-		AngryWorldQuests_Config['showContinentPOI'] = nil
-	end
 	if AngryWorldQuests_Config['__version'] <= 3 and AngryWorldQuests_Config['disabledFilters'] then
 		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(8-1), AngryWorldQuests_Config['disabledFilters'])
 	end
 	if AngryWorldQuests_Config['__version'] <= 4 and AngryWorldQuests_Config['disabledFilters'] then
 		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(9-1), 2^(10-1), 2^(11-1), AngryWorldQuests_Config['disabledFilters'])
+	end
+	if AngryWorldQuests_Config['__version'] <= 6 and AngryWorldQuests_Config['disabledFilters'] then
+		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(12-1), AngryWorldQuests_Config['disabledFilters'])
+	end
+	if AngryWorldQuests_CharacterConfig['__version'] <= 6 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
+		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(12-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
 	end
 	AngryWorldQuests_Config['__version'] = configVersion
 	AngryWorldQuests_CharacterConfig['__version'] = configVersion

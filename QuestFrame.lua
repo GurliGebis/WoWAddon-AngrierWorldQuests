@@ -16,9 +16,9 @@ local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH]
 
 local CURRENCYID_RESOURCES = 1220
 
-local FILTER_COUNT = 11
-local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet" }
-local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT }
+local FILTER_COUNT = 12
+local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet", "" }
+local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL }
 local FILTER_EMISSARY = 1
 local FILTER_ARTIFACT_POWER = 2
 local FILTER_LOOT = 3
@@ -30,7 +30,8 @@ local FILTER_FACTION = 8
 local FILTER_PVP = 9
 local FILTER_PROFESSION = 10
 local FILTER_PETBATTLE = 11
-local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE }
+local FILTER_SORT = 12
+local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE, FILTER_SORT }
 QF.FilterNames = FILTER_NAMES
 QF.FilterOrder = FILTER_ORDER
 
@@ -244,6 +245,10 @@ local function FilterButton_OnEnter(self)
 		local title = GetFactionInfoByID(Config.filterFaction)
 		if title then text = text..": "..title end
 	end
+	if self.index == FILTER_SORT then
+		local title = Addon.Locale["config_sortMethod_"..Config.sortMethod]
+		if title then text = text..": "..title end
+	end
 	if self.index == FILTER_TIME then
 		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Config.timeFilterDuration))
 	end
@@ -267,7 +272,9 @@ local function FilterMenu_OnClick(self, filterIndex)
 	if filterIndex == FILTER_FACTION then
 		Config:Set('filterFaction', self.value, true)
 	end
-	if IsShiftKeyDown() then
+	if filterIndex == FILTER_SORT then
+		Config:Set('sortMethod', self.value)
+	elseif IsShiftKeyDown() then
 		Config:SetFilter(filterIndex, true)
 	else
 		Config:SetOnlyFilter(filterIndex)
@@ -316,6 +323,23 @@ local function FilterMenu_Initialize(self, level)
 			info.checked = info.value == value
 			UIDropDownMenu_AddButton(info, level)
 		end
+	elseif self.index == FILTER_SORT then
+		local value = Config.sortMethod
+
+		info.text = FILTER_NAMES[ self.index ]
+		info.notCheckable = true
+		info.isTitle = true
+		UIDropDownMenu_AddButton(info, level)
+
+		info.notCheckable = false
+		info.isTitle = false
+		info.disabled = false
+		for _, sortIndex in ipairs(SORT_ORDER) do
+			info.text =  Addon.Locale["config_sortMethod_"..sortIndex]
+			info.value = sortIndex
+			info.checked = info.value == value
+			UIDropDownMenu_AddButton(info, level)
+		end
 	end
 end
 
@@ -333,8 +357,11 @@ local function FilterButton_OnClick(self, button)
 	HideDropDownMenu(1)
 	PlaySound("igMainMenuOptionCheckBoxOn")
 	if (button == 'RightButton' and (self.index == FILTER_EMISSARY or self.index == FILTER_LOOT or self.index == FILTER_FACTION))
+			or (self.index == FILTER_SORT)
 			or (self.index == FILTER_FACTION and not Config:GetFilter(FILTER_FACTION) and Config.filterFaction == 0) then
-		FilterButton_ShowMenu(self)
+		if not (filterMenu and UIDROPDOWNMENU_OPEN_MENU == filterMenu and DropDownList1:IsShown() and filterMenu.index == self.index) then
+			FilterButton_ShowMenu(self)
+		end
 	else
 		if IsShiftKeyDown() then
 			if self.index == FILTER_EMISSARY then Config:Set('filterEmissary', 0, true) end
@@ -431,24 +458,31 @@ local function GetFilterButton(index)
 	if ( not filterButtons[index] ) then
 		local button = CreateFrame("Button", nil, QuestMapFrame.QuestsFrame.Contents)
 		button.index = index
-		
+
 		button:SetScript("OnEnter", FilterButton_OnEnter)
 		button:SetScript("OnLeave", FilterButton_OnLeave)
 		button:RegisterForClicks("LeftButtonUp","RightButtonUp")
 		button:SetScript("OnClick", FilterButton_OnClick)
 
 		button:SetSize(24, 24)
-		button:SetNormalAtlas("worldquest-tracker-ring")
-		button:SetHighlightAtlas("worldquest-tracker-ring")
-		button:GetHighlightTexture():SetAlpha(0.4)
+			
+		if index == FILTER_SORT then
+			button:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
+			button:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down")
+			button:SetDisabledTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Disabled")
+			button:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+		else
+			button:SetNormalAtlas("worldquest-tracker-ring")
+			button:SetHighlightAtlas("worldquest-tracker-ring")
+			button:GetHighlightTexture():SetAlpha(0.4)
 
-		local icon = button:CreateTexture(nil, "BACKGROUND", nil, -1)
-		icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-		icon:SetSize(16, 16)
-		icon:SetPoint("CENTER", 0, 1)
-		icon:SetTexture("Interface\\Icons\\"..(FILTER_ICONS[index] or "inv_misc_questionmark"))
-		button.Icon = icon
-
+			local icon = button:CreateTexture(nil, "BACKGROUND", nil, -1)
+			icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+			icon:SetSize(16, 16)
+			icon:SetPoint("CENTER", 0, 1)
+			icon:SetTexture("Interface\\Icons\\"..(FILTER_ICONS[index] or "inv_misc_questionmark"))
+			button.Icon = icon
+		end
 		filterButtons[index] = button
 	end
 	return filterButtons[index]
@@ -684,7 +718,11 @@ local function QuestFrame_Update()
 				filterButton:ClearAllPoints()
 				if filtersOwnRow then
 					if prevFilter then
-						filterButton:SetPoint("LEFT", prevFilter, "RIGHT", -5, 0)
+						if FILTER_ORDER[i] == FILTER_SORT then
+							filterButton:SetPoint("LEFT", prevFilter, "RIGHT", -4, 1)
+						else
+							filterButton:SetPoint("LEFT", prevFilter, "RIGHT", -5, 0)
+						end
 					else
 						filterButton:SetPoint("LEFT", 27, 0)
 						filterButton:SetPoint("TOP", prevButton, "BOTTOM", 0, -1)
@@ -699,10 +737,12 @@ local function QuestFrame_Update()
 					end
 				end
 
-				if selectedFilters[FILTER_ORDER[i]] then
-					filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
-				else
-					filterButton:SetNormalAtlas("worldquest-tracker-ring")
+				if FILTER_ORDER[i] ~= FILTER_SORT then
+					if selectedFilters[FILTER_ORDER[i]] then
+						filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
+					else
+						filterButton:SetNormalAtlas("worldquest-tracker-ring")
+					end
 				end
 				prevFilter = filterButton
 			end
