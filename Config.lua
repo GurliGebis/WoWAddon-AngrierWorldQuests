@@ -1,7 +1,7 @@
 local ADDON, Addon = ...
 local Config = Addon:NewModule('Config')
 
-local configVersion = 6
+local configVersion = 7
 local configDefaults = {
 	collapsed = false,
 	showAtTop = true,
@@ -9,10 +9,12 @@ local configDefaults = {
 	onlyCurrentZone = true,
 	showEverywhere = false,
 	selectedFilters = 0,
-	disabledFilters = bit.bor(2^(8-1), 2^(9-1), 2^(10-1), 2^(11-1), 2^(12-1)),
+	disabledFilters = bit.bor(2^(8-1), 2^(9-1), 2^(10-1), 2^(11-1), 2^(12-1), 2^(13-1), 2^(14-1)),
 	filterEmissary = 0,
 	filterLoot = 0,
 	filterFaction = 0,
+	filterZone = 0,
+	filterTime = 0,
 	lootFilterUpgrades = false,
 	timeFilterDuration = 6,
 	hideUntrackedPOI = false,
@@ -24,8 +26,6 @@ local configDefaults = {
 	saveFilters = false,
 }
 local callbacks = {}
-
-local timeFilterDurationValues = { 1, 3, 6, 12, 24 }
 
 setmetatable(Config, {
 	__index = function(self, key)
@@ -280,7 +280,7 @@ local function DropDown_Initialize(self)
 	info.arg1 = self
 
 	if key == 'timeFilterDuration' then
-		for _, hours in ipairs(timeFilterDurationValues) do
+		for _, hours in ipairs(Addon.QuestFrame.FilterTimeValues) do
 			info.text = string.format(FORMATED_HOURS, hours)
 			info.value = hours
 			if ( selectedValue == info.value ) then
@@ -423,6 +423,9 @@ function Config:Startup()
 	if not AngryWorldQuests_Config['__version'] then
 		AngryWorldQuests_Config['__version'] = configVersion
 	end
+	if not AngryWorldQuests_CharacterConfig['__version'] then
+		AngryWorldQuests_CharacterConfig['__version'] = configVersion
+	end
 
 	if AngryWorldQuests_Config['__version'] <= 3 and AngryWorldQuests_Config['disabledFilters'] then
 		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(8-1), AngryWorldQuests_Config['disabledFilters'])
@@ -433,9 +436,16 @@ function Config:Startup()
 	if AngryWorldQuests_Config['__version'] <= 5 and AngryWorldQuests_Config['disabledFilters'] then
 		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(12-1), AngryWorldQuests_Config['disabledFilters'])
 	end
-	if AngryWorldQuests_CharacterConfig['__version'] and AngryWorldQuests_CharacterConfig['__version'] <= 5 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
+	if AngryWorldQuests_CharacterConfig['__version'] <= 5 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
 		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(12-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
 	end
+	if AngryWorldQuests_Config['__version'] <= 6 and AngryWorldQuests_Config['disabledFilters'] then
+		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(13-1), 2^(14-1), AngryWorldQuests_Config['disabledFilters'])
+	end
+	if AngryWorldQuests_CharacterConfig['__version'] <= 6 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
+		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(13-1), 2^(14-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
+	end
+
 	AngryWorldQuests_Config['__version'] = configVersion
 	AngryWorldQuests_CharacterConfig['__version'] = configVersion
 
@@ -444,10 +454,14 @@ function Config:Startup()
 		AngryWorldQuests_Config.filterEmissary = nil
 		AngryWorldQuests_Config.filterLoot = nil
 		AngryWorldQuests_Config.filterFaction = nil
+		AngryWorldQuests_Config.filterZone = nil
+		AngryWorldQuests_Config.filterTime = nil
 		AngryWorldQuests_CharacterConfig.selectedFilters = nil
 		AngryWorldQuests_CharacterConfig.filterEmissary = nil
 		AngryWorldQuests_CharacterConfig.filterLoot = nil
 		AngryWorldQuests_CharacterConfig.filterFaction = nil
+		AngryWorldQuests_CharacterConfig.filterZone = nil
+		AngryWorldQuests_CharacterConfig.filterTime = nil
 	end
 
 	optionPanel = self:CreatePanel(ADDON)

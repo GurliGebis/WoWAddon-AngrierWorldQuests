@@ -16,9 +16,9 @@ local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH]
 
 local CURRENCYID_RESOURCES = 1220
 
-local FILTER_COUNT = 12
-local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet", "" }
-local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL }
+local FILTER_COUNT = 14
+local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet", "", "inv_misc_map_01", "icon_treasuremap" }
+local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL, TRACKING, ZONE }
 local FILTER_EMISSARY = 1
 local FILTER_ARTIFACT_POWER = 2
 local FILTER_LOOT = 3
@@ -31,9 +31,13 @@ local FILTER_PVP = 9
 local FILTER_PROFESSION = 10
 local FILTER_PETBATTLE = 11
 local FILTER_SORT = 12
-local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE, FILTER_SORT }
+local FILTER_TRACKED = 13
+local FILTER_ZONE = 14
+local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ZONE, FILTER_TRACKED, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE, FILTER_SORT }
 QF.FilterNames = FILTER_NAMES
 QF.FilterOrder = FILTER_ORDER
+local FILTER_TIME_VALUES = { 1, 3, 6, 12, 24 }
+QF.FilterTimeValues = FILTER_TIME_VALUES
 
 local SORT_NAME = 1
 local SORT_TIME = 2
@@ -249,8 +253,13 @@ local function FilterButton_OnEnter(self)
 		local title = Addon.Locale["config_sortMethod_"..Config.sortMethod]
 		if title then text = text..": "..title end
 	end
+	if self.index == FILTER_ZONE and Config.filterZone ~= 0 then
+		local title = GetMapNameByID(Config.filterZone)
+		if title then text = text..": "..title end
+	end
 	if self.index == FILTER_TIME then
-		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, Config.timeFilterDuration))
+		local hours = Config.filterTime ~= 0 and Config.filterTime or Config.timeFilterDuration
+		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, hours))
 	end
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 	GameTooltip:SetText(text)
@@ -271,6 +280,12 @@ local function FilterMenu_OnClick(self, filterIndex)
 	end
 	if filterIndex == FILTER_FACTION then
 		Config:Set('filterFaction', self.value, true)
+	end
+	if filterIndex == FILTER_ZONE then
+		Config:Set('filterZone', self.value, true)
+	end
+	if filterIndex == FILTER_TIME then
+		Config:Set('filterTime', self.value, true)
 	end
 	if filterIndex == FILTER_SORT then
 		Config:Set('sortMethod', self.value)
@@ -314,12 +329,35 @@ local function FilterMenu_Initialize(self, level)
 		info.value = FILTER_LOOT_UPGRADES
 		info.checked = info.value == value
 		UIDropDownMenu_AddButton(info, level)
+	elseif self.index == FILTER_ZONE then
+		local value = Config.filterZone
+
+		info.text = Addon.Locale.CURRENT_ZONE
+		info.value = 0
+		info.checked = info.value == value
+		UIDropDownMenu_AddButton(info, level)
+
+		for _,mapID in ipairs(MAPID_ALL) do
+			info.text = GetMapNameByID(mapID)
+			info.value = mapID
+			info.checked = info.value == value
+			UIDropDownMenu_AddButton(info, level)
+		end
 	elseif self.index == FILTER_FACTION then
 		local value = Config.filterFaction
 
 		for _, factionID in ipairs(FACTION_ORDER) do
 			info.text =  GetFactionInfoByID(factionID)
 			info.value = factionID
+			info.checked = info.value == value
+			UIDropDownMenu_AddButton(info, level)
+		end
+	elseif self.index == FILTER_TIME then
+		local value = Config.filterTime ~= 0 and Config.filterTime or Config.timeFilterDuration
+
+		for _, hours in ipairs(FILTER_TIME_VALUES) do
+			info.text = string.format(FORMATED_HOURS, hours)
+			info.value = hours
 			info.checked = info.value == value
 			UIDropDownMenu_AddButton(info, level)
 		end
@@ -356,7 +394,7 @@ end
 local function FilterButton_OnClick(self, button)
 	HideDropDownMenu(1)
 	PlaySound("igMainMenuOptionCheckBoxOn")
-	if (button == 'RightButton' and (self.index == FILTER_EMISSARY or self.index == FILTER_LOOT or self.index == FILTER_FACTION))
+	if (button == 'RightButton' and (self.index == FILTER_EMISSARY or self.index == FILTER_LOOT or self.index == FILTER_FACTION or self.index == FILTER_ZONE  or self.index == FILTER_TIME))
 			or (self.index == FILTER_SORT)
 			or (self.index == FILTER_FACTION and not Config:GetFilter(FILTER_FACTION) and Config.filterFaction == 0) then
 		if not (filterMenu and UIDROPDOWNMENU_OPEN_MENU == filterMenu and DropDownList1:IsShown() and filterMenu.index == self.index) then
@@ -371,10 +409,14 @@ local function FilterButton_OnClick(self, button)
 			if Config:IsOnlyFilter(self.index) then
 				Config:Set('filterEmissary', 0, true)
 				Config:Set('filterLoot', 0, true)
+				Config:Set('filterZone', 0, true)
+				Config:Set('filterTime', 0, true)
 				Config:SetNoFilter()
 			else
 				if self.index ~= FILTER_EMISSARY then Config:Set('filterEmissary', 0, true) end
 				if self.index ~= FILTER_LOOT then Config:Set('filterLoot', 0, true) end
+				if self.index ~= FILTER_ZONE then Config:Set('filterZone', 0, true) end
+				if self.index ~= FILTER_TIME then Config:Set('filterTime', 0, true) end
 				Config:SetOnlyFilter(self.index)
 			end
 		end
@@ -547,7 +589,8 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 		end
 
 		if selectedFilters[FILTER_TIME] then
-			if timeLeftMinutes and (timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) <= (Config.timeFilterDuration * 60) then
+			local hours = Config.filterTime ~= 0 and Config.filterTime or Config.timeFilterDuration
+			if timeLeftMinutes and (timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) <= (hours * 60) then
 				isFiltered = false
 			end
 		end
@@ -567,6 +610,27 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 		if selectedFilters[FILTER_PROFESSION] then
 			if tradeskillLineIndex then
 				isFiltered = false
+			end
+		end
+
+		if selectedFilters[FILTER_TRACKED] then
+			if IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID then
+				isFiltered = false
+			end
+		end
+
+		if selectedFilters[FILTER_ZONE] then
+			local currentMapID = GetMapAreaIDs()
+			local filterMapID = Config.filterZone
+
+			if filterMapID ~= 0 then
+				if (self.mapID and self.mapID == filterMapID) or (not self.mapID and currentMapID == filterMapID) then
+					isFiltered = false
+				end
+			else
+				if (self.mapID and self.mapID == currentMapID) or not self.mapID or currentMapID == MAPID_BROKENISLES then
+					isFiltered = false
+				end
 			end
 		end
 
@@ -1034,6 +1098,7 @@ local function MapFrame_Update()
 							if ( taskPOI ) then
 								WorldMapPOIFrame_AnchorPOI(taskPOI, info.x, info.y, WORLD_MAP_POI_FRAME_LEVEL_OFFSETS.WORLD_QUEST)
 								taskPOI.questID = info.questId
+								taskPOI.mapID = mapID
 								taskPOI.wasShown = true
 								taskPOI.numObjectives = info.numObjectives
 								taskPOI:Show()
@@ -1146,7 +1211,7 @@ function QF:Startup()
 	Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
 	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 	Config:RegisterCallback({'onlyCurrentZone', 'sortMethod'}, QuestFrame_Update)
-	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'lootFilterUpgrades', 'timeFilterDuration'}, function() 
+	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'timeFilterDuration'}, function() 
 		QuestFrame_Update()
 		if Config.hideFilteredPOI and WorldMapFrame:IsShown() then
 			WorldMap_UpdateQuestBonusObjectives()

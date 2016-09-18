@@ -1,3 +1,4 @@
+-- Core v1.0
 local ADDON, Addon = ...
 
 local Listener = CreateFrame('Frame', ADDON .. 'Listener')

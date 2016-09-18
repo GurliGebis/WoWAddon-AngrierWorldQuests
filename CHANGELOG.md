@@ -1,3 +1,7 @@
+## v0.13.0
+
+* Added a filter for showing tracked quests and quests by zone. They are disabled by default, and can be enabled in the config panel (/awq)
+
 ## v0.12.2
 
 * Bug fix for last release
