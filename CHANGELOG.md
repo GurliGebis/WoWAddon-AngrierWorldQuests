@@ -1,6 +1,7 @@
 ## v0.13.0
 
 * Added a filter for showing tracked quests and quests by zone. They are disabled by default, and can be enabled in the config panel (/awq)
+* Added option for Loot (Upgrades) filter to show items with a certain ilvl range instead of always higher ilvl only
 
 ## v0.12.2
 
