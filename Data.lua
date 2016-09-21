@@ -230,7 +230,7 @@ function Data:RewardIsUpgrade(itemID, questID)
 			local currentItem = GetInventoryItemLink("player", slotID)
 			if currentItem then
 				local currentIlvl = select(4, GetItemInfo(currentItem))
-				if not currentIlvl or ilvl > currentIlvl then
+				if not currentIlvl or ilvl >= (currentIlvl - Addon.Config.lootUpgradesLevel) then
 					isUpgrade = true
 				end
 			else
@@ -251,7 +251,7 @@ function Data:RewardIsUpgrade(itemID, questID)
 				if relic ~= false and relicType == itemRelicType then
 					if relic then
 						local relicIlvl = select(4, GetItemInfo(relic))
-						if relicIlvl and ilvl > relicIlvl then
+						if relicIlvl and ilvl >= (relicIlvl - Addon.Config.lootUpgradesLevel) then
 							isUpgrade = true
 						end
 					else

@@ -15,7 +15,7 @@ langs.enUS = {
 	config_showHoveredPOI = "Always show hovered World Quest POI icon",
 	config_showContinentPOI = "Show World Quest POI icons on the Broken Isles map",
 	config_lootFilterUpgrades = "Show only upgrades for Loot filter",
-	config_timeFilterDuration = "Time Remaining Filter Duration",
+	config_timeFilterDuration = "Time Remaining filter duration",
 	config_enabledFilters = "Enabled Filters",
 	config_sortMethod = "Sort World Quests by",
 	config_sortMethod_1 = NAME,
@@ -25,6 +25,10 @@ langs.enUS = {
 	config_sortMethod_5 = REWARDS,
 	config_characterConfig = "Per-character configuration",
 	config_saveFilters = "Save active filters between logins",
+	config_lootUpgradesLevel = "Loot filter shows upgrades",
+	config_lootUpgradesLevelValue1 = "Higher ilvl only",
+	config_lootUpgradesLevelValue2 = "Up to same ilvl",
+	config_lootUpgradesLevelValue = "Up to %d ilvls less",
 	CURRENT_ZONE = "Current Zone",
 }
 
@@ -133,6 +137,10 @@ function Locale:Get(key)
 	else
 		return langs[default_locale][key]
 	end
+end
+
+function Locale:Exists(key)
+	return langs[default_locale][key] ~= nil
 end
 
 setmetatable(Locale, {__index = Locale.Get})

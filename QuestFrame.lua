@@ -1211,7 +1211,7 @@ function QF:Startup()
 	Config:RegisterCallback({'showAtTop', 'showEverywhere'}, function() QuestMapFrame_UpdateAll(); QuestFrame_Update() end)
 	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI'}, function() WorldMap_UpdateQuestBonusObjectives(); MapFrame_Update() end)
 	Config:RegisterCallback({'onlyCurrentZone', 'sortMethod'}, QuestFrame_Update)
-	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'timeFilterDuration'}, function() 
+	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'lootUpgradesLevel', 'timeFilterDuration'}, function() 
 		QuestFrame_Update()
 		if Config.hideFilteredPOI and WorldMapFrame:IsShown() then
 			WorldMap_UpdateQuestBonusObjectives()

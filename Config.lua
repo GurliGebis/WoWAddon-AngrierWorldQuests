@@ -16,6 +16,7 @@ local configDefaults = {
 	filterZone = 0,
 	filterTime = 0,
 	lootFilterUpgrades = false,
+	lootUpgradesLevel = -1,
 	timeFilterDuration = 6,
 	hideUntrackedPOI = false,
 	hideFilteredPOI = false,
@@ -26,6 +27,8 @@ local configDefaults = {
 	saveFilters = false,
 }
 local callbacks = {}
+
+local lootUpgradeLevelValues = { -1, 0, 5, 10, 15, 20, 25, 30 }
 
 setmetatable(Config, {
 	__index = function(self, key)
@@ -301,6 +304,21 @@ local function DropDown_Initialize(self)
 			end
 			UIDropDownMenu_AddButton(info)
 		end
+	elseif key == 'lootUpgradesLevel' then
+		for i, ilvl in ipairs(lootUpgradeLevelValues) do
+			if Addon.Locale:Exists('config_lootUpgradesLevelValue'..i) then
+				info.text = Addon.Locale['config_lootUpgradesLevelValue'..i]
+			else
+				info.text = format(Addon.Locale['config_lootUpgradesLevelValue'], ilvl)
+			end
+			info.value = ilvl
+			if ( selectedValue == info.value ) then
+				info.checked = 1
+			else
+				info.checked = nil
+			end
+			UIDropDownMenu_AddButton(info)
+		end
 	end
 end
 
@@ -354,15 +372,18 @@ Panel_OnRefresh = function(self)
 			end
 		end
 
-		dropdowns[1] = DropDown_Create(self)
-		dropdowns[1].Text:SetText( Addon.Locale['config_timeFilterDuration'] )
-		dropdowns[1].configKey = "timeFilterDuration"
-		dropdowns[1]:SetPoint("TOPLEFT", checkboxes[#checkboxes], "BOTTOMLEFT", -13, -24)
+		local dropdowns_order = { "timeFilterDuration", "sortMethod", "lootUpgradesLevel" }
 
-		dropdowns[2] = DropDown_Create(self)
-		dropdowns[2].Text:SetText( Addon.Locale['config_sortMethod'] )
-		dropdowns[2].configKey = "sortMethod"
-		dropdowns[2]:SetPoint("TOPLEFT", dropdowns[1], "BOTTOMLEFT", 0, -24)
+		for i,key in ipairs(dropdowns_order) do
+			dropdowns[i] = DropDown_Create(self)
+			dropdowns[i].Text:SetText( Addon.Locale['config_'..key] )
+			dropdowns[i].configKey = key		
+			if i == 1 then
+				dropdowns[i]:SetPoint("TOPLEFT", checkboxes[#checkboxes], "BOTTOMLEFT", -13, -24)
+			else
+				dropdowns[i]:SetPoint("TOPLEFT", dropdowns[i-1], "BOTTOMLEFT", 0, -24)
+			end
+		end
 
 		local label2 = self:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		label2:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 435, -5)
