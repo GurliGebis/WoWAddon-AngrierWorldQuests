@@ -189,10 +189,18 @@ function Data:ItemArtifactPower(itemID)
 	fakeTooltip:SetItemByID(itemID)
 
 	local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
+	local textLine3 = AWQFakeTooltipTextLeft3 and AWQFakeTooltipTextLeft3:IsShown() and AWQFakeTooltipTextLeft3:GetText()
 	local textLine4 = AWQFakeTooltipTextLeft4 and AWQFakeTooltipTextLeft4:IsShown() and AWQFakeTooltipTextLeft4:GetText()
+	local textLine5 = AWQFakeTooltipTextLeft5 and AWQFakeTooltipTextLeft4:IsShown() and AWQFakeTooltipTextLeft5:GetText()
 
 	if textLine2 and textLine4 and textLine2:match("|cFFE6CC80") then
 		local power = textLine4:gsub("%p", ""):match("%d+")
+		power = tonumber(power)
+
+		cachedPower[itemID] = power
+		return power
+	elseif textLine3 and textLine5 and textLine3:match("|cFFE6CC80") then
+		local power = textLine5:gsub("%p", ""):match("%d+")
 		power = tonumber(power)
 
 		cachedPower[itemID] = power
@@ -286,6 +294,7 @@ function Data:RewardItemLevel(itemID, questID)
 		else
 			local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
 			local textLine3 = AWQFakeTooltipTextLeft3 and AWQFakeTooltipTextLeft3:IsShown() and AWQFakeTooltipTextLeft3:GetText()
+			local textLine4 = AWQFakeTooltipTextLeft4 and AWQFakeTooltipTextLeft4:IsShown() and AWQFakeTooltipTextLeft4:GetText()
 			local matcher = string.gsub(ITEM_LEVEL_PLUS, "%%d%+", "(%%d+)+")
 			local itemLevel
 
@@ -294,6 +303,9 @@ function Data:RewardItemLevel(itemID, questID)
 			end
 			if textLine3 and not itemLevel then
 				itemLevel = tonumber(textLine3:match(matcher))
+			end
+			if textLine4 and not itemLevel then
+				itemLevel = tonumber(textLine4:match(matcher))
 			end
 
 			cachedItems[key] = itemLevel or false
