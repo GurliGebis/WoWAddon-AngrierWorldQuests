@@ -1,4 +1,4 @@
--- Core v1.0
+-- Core v1.1
 local ADDON, Addon = ...
 
 local Listener = CreateFrame('Frame', ADDON .. 'Listener')
@@ -47,7 +47,7 @@ function ModulePrototype:RegisterEvent(event, func)
 	Addon:RegisterEvent(event, self, func)
 end
 function ModulePrototype:UnregisterEvent(event)
-	Addon:RegisterEvent(event, self)
+	Addon:UnregisterEvent(event, self)
 end
 Addon.ModulePrototype = ModulePrototype
 

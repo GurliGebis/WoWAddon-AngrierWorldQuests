@@ -1,3 +1,7 @@
+## v0.13.2
+
+* Updated Korean localization
+
 ## v0.13.1
 
 * Fixed bug with displaying Artifact Power amounts while Colorblind mode was enabled

@@ -54,13 +54,13 @@ langs.esMX = langs.esES
 
 langs.koKR = {
 	UPGRADES = "업그레이드",
-	config_showAtTop = "퀘스트 목록 창의 상단 혹은 하단에 표시합니다", 
-	config_onlyCurrentZone = "현재 지역에 있는 전역 퀘스트만 표시합니다", 
-	config_showEverywhere = "전 지역에 있는 전역 퀘스트를 모두 표시합니다",
-	config_hideFilteredPOI = "필터를 통해 걸러진 퀘스트들의 전역 퀘스트 아이콘을 숨깁니다", 
-	config_hideUntrackedPOI = "추적중인 퀘스트들의 전역 퀘스트 아이콘을 숨깁니다", 
-	config_showHoveredPOI = "전역 퀘스트 아이콘을 항상 표시합니다",
-	config_showContinentPOI = "부서진 섬 지도에서 전역 퀘스트 아이콘을 표시합니다",
+	config_showAtTop = "퀘스트 목록창의 상단에 표시합니다",
+	config_onlyCurrentZone = "퀘스트 목록창에 현재 지역에 있는 전역 퀘스트만 표시합니다",
+	config_showEverywhere = "퀘스트 목록창에 부서진 섬의 전역 퀘스트를 모두 표시합니다",
+	config_hideFilteredPOI = "세계지도에 필터링한 전역퀘스트 아이콘을 표시합니다",
+	config_hideUntrackedPOI = "세계지도에 추적중인 전역퀘스트 아이콘을 표시합니다",
+	config_showHoveredPOI = "퀘스트 목록창에 있는 전역 퀘스트들의 아이콘을 항상 표시합니다",
+	config_showContinentPOI = "부서진 섬 지도에 전역퀘스트 아이콘을 표시합니다",
 	config_lootFilterUpgrades = "전리품 필터를 통해 나온 결과물 중에, 현재 장비보다 좋은 항목만을 표시합니다",
 	config_timeFilterDuration = "마감 시한 필터의 기준 시간",
 	config_enabledFilters = "사용할 필터 선택",
@@ -70,6 +70,12 @@ langs.koKR = {
 	config_sortMethod_3 = "지역",
 	config_sortMethod_4 = "사절 및 세력",
 	config_characterConfig = "캐릭터 개별 설정",
+	config_saveFilters = "활성화된 필터목록을 저장하여 다음 접속까지 유지",
+	config_lootUpgradesLevel = "전리품 업그레이드 필터",
+	config_lootUpgradesLevelValue1 = "높은 등급 전리품",
+	config_lootUpgradesLevelValue2 = "동일한 등급 전리품",
+	config_lootUpgradesLevelValue = "%d등급 낮은 전리품",
+	CURRENT_ZONE = "현재 지역",
 }
 
 langs.zhCN = {
