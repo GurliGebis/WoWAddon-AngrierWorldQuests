@@ -1,3 +1,7 @@
+## v0.13.3
+
+* Bug fixes with French locale
+
 ## v0.13.2
 
 * Updated Korean localization

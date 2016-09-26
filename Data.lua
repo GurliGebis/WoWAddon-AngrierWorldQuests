@@ -200,7 +200,7 @@ function Data:ItemArtifactPower(itemID)
 		cachedPower[itemID] = power
 		return power
 	elseif textLine3 and textLine5 and textLine3:match("|cFFE6CC80") then
-		local power = textLine5:gsub("%p", ""):match("%d+")
+		local power = textLine5:gsub("%p", ""):match("%d[%d%s]+"):gsub("%s+", "")
 		power = tonumber(power)
 
 		cachedPower[itemID] = power
