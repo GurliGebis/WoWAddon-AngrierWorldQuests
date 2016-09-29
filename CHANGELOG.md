@@ -1,3 +1,7 @@
+## v0.13.5
+
+* Bug fix for French locale
+
 ## v0.13.4
 
 * Removed using order hall adavancement to complete quests, seems to be protected function
