@@ -197,7 +197,7 @@ local function TitleButton_OnLeave(self)
 end
 
 local function TitleButton_OnClick(self, button)
-	if SpellCanTargetQuest() then
+	if false and SpellCanTargetQuest() then
 		if IsQuestIDValidSpellTarget(self.questID) then
 			UseWorldMapActionButtonSpellOnQuest(self.questID)
 			-- Assume success for responsiveness
