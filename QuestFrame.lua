@@ -910,6 +910,7 @@ local function QuestFrame_Update()
 									local gold = floor(money / (COPPER_PER_GOLD))
 									if Config.extendedInfo then
 										tagTexture = "Interface\\icons\\inv_misc_coin_01" 
+										tagTexCoords = nil
 									else
 										tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
 										tagTexCoords = { 0, 0.25, 0, 1 }
@@ -924,6 +925,7 @@ local function QuestFrame_Update()
 									local name, texture, numItems = GetQuestLogRewardCurrencyInfo(1, questID)
 									tagText = numItems
 									tagTexture = texture
+									tagTexCoords = nil
 									button.rewardCategory = FILTER_ORDER_RESOURCES
 									button.rewardValue = numItems
 								end
@@ -936,12 +938,14 @@ local function QuestFrame_Update()
 										local iLevel = Addon.Data:RewardItemLevel(itemID, questID)
 										if artifactPower then
 											tagTexture = "Interface\\Icons\\inv_7xp_inscription_talenttome01"
+											tagTexCoords = nil
 											tagText = ArtifactPowerTruncate(artifactPower)
 											tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
 											button.rewardCategory = FILTER_ARTIFACT_POWER
 											button.rewardValue = artifactPower
 										else
 											tagTexture = itemTexture
+											tagTexCoords = nil
 											if iLevel then
 												tagText = iLevel
 												tagColor = BAG_ITEM_QUALITY_COLORS[quality]

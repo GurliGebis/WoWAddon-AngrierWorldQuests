@@ -1,3 +1,7 @@
+## v0.13.6
+
+* Bug fix for when quest has multiple rewards
+
 ## v0.13.5
 
 * Bug fix for French locale
