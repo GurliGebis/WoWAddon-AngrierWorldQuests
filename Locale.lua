@@ -29,6 +29,8 @@ langs.enUS = {
 	config_lootUpgradesLevelValue1 = "Higher ilvl only",
 	config_lootUpgradesLevelValue2 = "Up to same ilvl",
 	config_lootUpgradesLevelValue = "Up to %d ilvls less",
+	config_flightMapTracked = "Show tracked World Quest POI icons on the flight map",
+	config_flightMapAll = "Show all World Quest POI icons on the flight map",
 	CURRENT_ZONE = "Current Zone",
 }
 

@@ -11,4 +11,5 @@ Config.lua
 Locale.lua
 
 QuestFrame.lua
+FlightMap.lua
 Data.lua

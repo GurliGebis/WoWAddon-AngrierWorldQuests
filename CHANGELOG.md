@@ -1,3 +1,7 @@
+## v0.14.0
+
+* Added showing tracked world quests on the Flight Map panel, can be disabled in the options
+
 ## v0.13.6
 
 * Bug fix for when quest has multiple rewards
