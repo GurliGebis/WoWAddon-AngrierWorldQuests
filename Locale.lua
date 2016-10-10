@@ -47,10 +47,15 @@ langs.esES = {
 	config_timeFilterDuration = "Duración para el filtro \"Tiempo restante\":",
 	config_enabledFilters = "Filtros activos",
 	config_sortMethod = "Ordenar Misiones del Mundo por:",
-	config_sortMethod_1 = "Nombre",
-	config_sortMethod_2 = "Tiempo restante",
-	config_sortMethod_3 = "Zona",
-	config_sortMethod_4 = "Facción",
+	config_characterConfig = "Configuración por personaje",
+	config_saveFilters = "Guardar filtros activos entre sesiones",
+	config_lootUpgradesLevel = "El filtro de Botín muestra mejoras:",
+	config_lootUpgradesLevelValue1 = "De mayor ilvl",
+	config_lootUpgradesLevelValue2 = "Del mismo ilvl",
+	config_lootUpgradesLevelValue = "Hasta %d ilvl menos",
+	config_flightMapTracked = "Mostrar Misiones del Mundo en seguimiento en el mapa de vuelo",
+	config_flightMapAll = "Mostrar todas las Misiones del Mundo en el mapa de vuelo",
+	CURRENT_ZONE = "Zona actual",
 }
 langs.esMX = langs.esES
 
@@ -77,6 +82,8 @@ langs.koKR = {
 	config_lootUpgradesLevelValue1 = "높은 등급 전리품",
 	config_lootUpgradesLevelValue2 = "동일한 등급 전리품",
 	config_lootUpgradesLevelValue = "%d등급 낮은 전리품",
+	config_flightMapTracked = "비행 지도에 추적중인 전역퀘스트 아이콘을 표시합니다",
+	config_flightMapAll = "비행 지도에 모든 전역퀘스트 아이콘을 표시합니다",
 	CURRENT_ZONE = "현재 지역",
 }
 
@@ -98,6 +105,14 @@ langs.zhCN = {
 	config_sortMethod_3 = "区域",
 	config_sortMethod_4 = "声望",
 	config_characterConfig = "为角色进行独立的配置",
+	config_saveFilters = "自动保存最后选择的过滤",
+	config_lootUpgradesLevel = "可升级物品装等过滤",
+	config_lootUpgradesLevelValue1 = "仅显示更高装等",
+	config_lootUpgradesLevelValue2 = "显示最高同等级",
+	config_lootUpgradesLevelValue = "最多相差%d装等",
+	config_flightMapTracked = "在飞行地图点上显示当前追踪的世界任务",
+	config_flightMapAll = "在飞行地图点上显示所有的世界任务",
+	CURRENT_ZONE = "当前区域",
 }
 
 langs.zhTW = {
@@ -118,6 +133,14 @@ langs.zhTW = {
 	config_sortMethod_3 = "區域",
 	config_sortMethod_4 = "聲望",
 	config_characterConfig = "為角色進行獨立的配置",
+	config_saveFilters = "自動保存最後選擇的過濾",
+	config_lootUpgradesLevel = "可升級物品裝等過濾",
+	config_lootUpgradesLevelValue1 = "僅顯示更高裝等物品",
+	config_lootUpgradesLevelValue2 = "顯示最高同裝等物品",
+	config_lootUpgradesLevelValue = "最多相差%d裝等",
+	config_flightMapTracked = "在飛行地圖點上顯示當前追蹤的世界任務",
+	config_flightMapAll = "在飛行地圖點上顯示所有的世界任務",
+	CURRENT_ZONE = "當前區域",
 }
 
 langs.ruRU = {

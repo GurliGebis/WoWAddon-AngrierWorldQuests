@@ -1,3 +1,7 @@
+## v0.15.0
+
+* Updated locales
+
 ## v0.14.0
 
 * Added showing tracked world quests on the Flight Map panel, can be disabled in the options
