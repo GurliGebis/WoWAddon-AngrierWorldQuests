@@ -48,7 +48,7 @@ local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION, SORT_REWARDS
 local REWARDS_ORDER = { [FILTER_ARTIFACT_POWER] = 1, [FILTER_LOOT] = 2, [FILTER_ORDER_RESOURCES] = 3, [FILTER_GOLD] = 4, [FILTER_ITEMS] = 5 }
 QF.SortOrder = SORT_ORDER
 
-local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859 }
+local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859, 1090 }
 
 local FILTER_LOOT_ALL = 1
 local FILTER_LOOT_UPGRADES = 2
@@ -57,6 +57,9 @@ local AWQ_POI_COUNT = 0
 local myTaskPOI
 
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
+
+
+local QuestMapFrame_IsQuestWorldQuest = QuestUtils_IsQuestWorldQuest or QuestMapFrame_IsQuestWorldQuest
 
 -- ===================
 --  Utility Functions
@@ -236,7 +239,7 @@ end
 
 local function FilterButton_OnEnter(self)
 	local text = FILTER_NAMES[ self.index ]
-	if self.index == FILTER_EMISSARY and Config.filterEmissary then
+	if self.index == FILTER_EMISSARY and Config.filterEmissary and not IsQuestComplete(Config.filterEmissary) then
 		local title = GetQuestLogTitle(GetQuestLogIndexByID(Config.filterEmissary))
 		if title then text = text..": "..title end
 	end
@@ -310,11 +313,13 @@ local function FilterMenu_Initialize(self, level)
 		local currentMapID, continentMapID = GetMapAreaIDs()
 		local bounties = GetQuestBountyInfoForMapID(currentMapID)
 		for _, bounty in ipairs(bounties) do
-			info.text =  GetQuestLogTitle(GetQuestLogIndexByID(bounty.questID))
-			info.icon = bounty.icon
-			info.value = bounty.questID
-			info.checked = info.value == value
-			UIDropDownMenu_AddButton(info, level)
+			if not IsQuestComplete(bounty.questID) then
+				info.text =  GetQuestLogTitle(GetQuestLogIndexByID(bounty.questID))
+				info.icon = bounty.icon
+				info.value = bounty.questID
+				info.checked = info.value == value
+				UIDropDownMenu_AddButton(info, level)
+			end
 		end
 	elseif self.index == FILTER_LOOT then
 		local value = Config.filterLoot
@@ -636,9 +641,9 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 
 		if selectedFilters[FILTER_EMISSARY] then
 			local bountyFilter = Config.filterEmissary
-			if GetQuestLogIndexByID(bountyFilter) == 0 then bountyFilter = 0 end
+			if GetQuestLogIndexByID(bountyFilter) == 0 or IsQuestComplete(bountyFilter) then bountyFilter = 0 end
 			for _, bounty in ipairs(bounties) do
-				if bounty and IsQuestCriteriaForBounty(self.questID, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
+				if bounty and not IsQuestComplete(bounty.questID) and IsQuestCriteriaForBounty(self.questID, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
 					isFiltered = false
 				end
 			end
@@ -680,7 +685,7 @@ local function QuestFrame_Update()
 	if not WorldMapFrame:IsShown() then return end
 
 	local currentMapID, continentMapID = GetMapAreaIDs()
-	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(currentMapID)
+	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(continentMapID)
 	if not displayLocation or lockedQuestID then
 		for i = 1, #headerButtons do headerButtons[i]:Hide() end
 		for _, titleButton in pairs(titleButtons) do titleButton:Hide() end

@@ -33,6 +33,7 @@ langs.enUS = {
 	config_flightMapAll = "Show all World Quest POI icons on the flight map",
 	CURRENT_ZONE = "Current Zone",
 }
+langs.enGB = langs.enUS
 
 langs.esES = {
 	UPGRADES = "Mejoras",
@@ -163,7 +164,7 @@ langs.ruRU = {
 }
 
 function Locale:Get(key)
-	if langs[current_locale][key] ~= nil then
+	if langs[current_locale] and langs[current_locale][key] ~= nil then
 		return langs[current_locale][key]
 	else
 		return langs[default_locale][key]
@@ -176,9 +177,4 @@ end
 
 setmetatable(Locale, {__index = Locale.Get})
 
-function Locale:Startup()
-	current_locale = GetLocale()
-	if langs[current_locale] == nil then
-		current_locale = default_locale
-	end
-end
+current_locale = GetLocale()

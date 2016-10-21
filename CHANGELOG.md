@@ -1,3 +1,7 @@
+## v0.15.1
+
+* Emissary Quests the are completed but waiting to be turned in are now removed from the filter
+
 ## v0.15.0
 
 * Updated locales
