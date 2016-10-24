@@ -87,7 +87,8 @@ local function GetMapAreaIDs()
 end
 
 local function ArtifactPowerTruncate(power)
-	if power >= 10000 then
+	-- return AbbreviateNumbers(power):lower()
+	if power >= 20000 then
 		return floor(power / 1000) .. "k"
 	elseif power >= 1000 then
 		return (floor(power / 100) / 10) .. "k"
