@@ -1,3 +1,7 @@
+## v0.15.3
+
+* Fixed position bug with display Angry World Quests at bottom of quest list in 7.1
+
 ## v0.15.2
 
 * ToC update for 7.1

@@ -715,11 +715,11 @@ local function QuestFrame_Update()
 		prevButton = storyButton
 	end
 	for i = 1, numEntries do
-		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory = GetQuestLogTitle(i)
+		local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory, isHidden = GetQuestLogTitle(i)
 		if isHeader then
 			headerShown = false
 			headerCollapsed = isCollapsed
-		elseif ( not isTask and (not isBounty or IsQuestComplete(questID))) then
+		elseif ( not isTask and not isHidden and (not isBounty or IsQuestComplete(questID))) then
 			if ( not headerShown ) then
 				headerShown = true
 				headerIndex = headerIndex + 1
