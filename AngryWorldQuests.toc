@@ -12,3 +12,4 @@ Locale.lua
 
 QuestFrame.lua
 Data.lua
+FlightMap.lua
