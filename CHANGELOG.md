@@ -1,3 +1,7 @@
+## v0.15.4
+
+* Removing show tracked world quests on flight map since it is provided by the default UI
+
 ## v0.15.3
 
 * Fixed position bug with display Angry World Quests at bottom of quest list in 7.1

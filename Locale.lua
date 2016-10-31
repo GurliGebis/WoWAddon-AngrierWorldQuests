@@ -29,8 +29,6 @@ langs.enUS = {
 	config_lootUpgradesLevelValue1 = "Higher ilvl only",
 	config_lootUpgradesLevelValue2 = "Up to same ilvl",
 	config_lootUpgradesLevelValue = "Up to %d ilvls less",
-	config_flightMapTracked = "Show tracked World Quest POI icons on the flight map",
-	config_flightMapAll = "Show all World Quest POI icons on the flight map",
 	CURRENT_ZONE = "Current Zone",
 }
 langs.enGB = langs.enUS
@@ -54,8 +52,6 @@ langs.esES = {
 	config_lootUpgradesLevelValue1 = "De mayor ilvl",
 	config_lootUpgradesLevelValue2 = "Del mismo ilvl",
 	config_lootUpgradesLevelValue = "Hasta %d ilvl menos",
-	config_flightMapTracked = "Mostrar Misiones del Mundo en seguimiento en el mapa de vuelo",
-	config_flightMapAll = "Mostrar todas las Misiones del Mundo en el mapa de vuelo",
 	CURRENT_ZONE = "Zona actual",
 }
 langs.esMX = langs.esES
@@ -83,8 +79,6 @@ langs.koKR = {
 	config_lootUpgradesLevelValue1 = "높은 등급 전리품",
 	config_lootUpgradesLevelValue2 = "동일한 등급 전리품",
 	config_lootUpgradesLevelValue = "%d등급 낮은 전리품",
-	config_flightMapTracked = "비행 지도에 추적중인 전역퀘스트 아이콘을 표시합니다",
-	config_flightMapAll = "비행 지도에 모든 전역퀘스트 아이콘을 표시합니다",
 	CURRENT_ZONE = "현재 지역",
 }
 
@@ -111,8 +105,6 @@ langs.zhCN = {
 	config_lootUpgradesLevelValue1 = "仅显示更高装等",
 	config_lootUpgradesLevelValue2 = "显示最高同等级",
 	config_lootUpgradesLevelValue = "最多相差%d装等",
-	config_flightMapTracked = "在飞行地图点上显示当前追踪的世界任务",
-	config_flightMapAll = "在飞行地图点上显示所有的世界任务",
 	CURRENT_ZONE = "当前区域",
 }
 
@@ -139,8 +131,6 @@ langs.zhTW = {
 	config_lootUpgradesLevelValue1 = "僅顯示更高裝等物品",
 	config_lootUpgradesLevelValue2 = "顯示最高同裝等物品",
 	config_lootUpgradesLevelValue = "最多相差%d裝等",
-	config_flightMapTracked = "在飛行地圖點上顯示當前追蹤的世界任務",
-	config_flightMapAll = "在飛行地圖點上顯示所有的世界任務",
 	CURRENT_ZONE = "當前區域",
 }
 

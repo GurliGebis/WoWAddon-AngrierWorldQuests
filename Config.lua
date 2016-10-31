@@ -22,8 +22,6 @@ local configDefaults = {
 	hideFilteredPOI = false,
 	showContinentPOI = false,
 	showComparisonRight = false,
-	flightMapTracked = true,
-	flightMapAll = false,
 	sortMethod = 1,
 	extendedInfo = false,
 	saveFilters = false,
@@ -360,7 +358,7 @@ Panel_OnRefresh = function(self)
 		dropdowns = {}
 		filterCheckboxes = {}
 
-		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "showContinentPOI", "hideFilteredPOI", "hideUntrackedPOI", "showHoveredPOI", "lootFilterUpgrades", "flightMapTracked" }
+		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "showContinentPOI", "hideFilteredPOI", "hideUntrackedPOI", "showHoveredPOI", "lootFilterUpgrades" }
 
 		for i,key in ipairs(checkboxes_order) do
 			checkboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
