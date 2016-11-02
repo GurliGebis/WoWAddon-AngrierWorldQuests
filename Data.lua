@@ -319,6 +319,9 @@ function Data:UNIT_QUEST_LOG_CHANGED(arg1)
 		wipe(cachedItems)
 	end
 end
+function Data:PLAYER_ENTERING_WORLD()
+	wipe(cachedItems)
+end
 
 function Data:ClearArtifactCache()
 	cachedArtifactRelics = nil
@@ -329,5 +332,6 @@ function Data:Startup()
 	fakeTooltip:Hide()
 
 	self:RegisterEvent('UNIT_QUEST_LOG_CHANGED')
+	self:RegisterEvent('PLAYER_ENTERING_WORLD')
 	self:RegisterEvent('BAG_UPDATE', 'ClearArtifactCache')
 end

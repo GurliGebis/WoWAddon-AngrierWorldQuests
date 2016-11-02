@@ -1,3 +1,7 @@
+## v0.15.6
+
+* Additional changes to showing tracked world quests on flight map
+
 ## v0.15.5
 
 * Added some tweaks to make default UI showing tracked world quests on flight map more reliable
