@@ -15,6 +15,7 @@ end
 local function OnShow(self)
 	self.ticker:Cancel()
 	self.ticker = C_Timer.NewTicker(1, function() self:RefreshAllData() end)
+	self:RefreshAllData()
 end
 
 local function WorldQuestDataProvider_Override()

@@ -58,7 +58,6 @@ local myTaskPOI
 
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
 
-
 local QuestMapFrame_IsQuestWorldQuest = QuestUtils_IsQuestWorldQuest or QuestMapFrame_IsQuestWorldQuest
 
 -- ===================
@@ -78,7 +77,7 @@ local function GetMapAreaIDs()
 	end
 	local conts = { GetMapContinents() }
 	local contID = conts[contIndex*2 - 1]
-	if #mapHeirarchy == 0 then contID = mapID end
+	if #mapHeirarchy == 0 or not contID then contID = mapID end
 	if Config.showEverywhere and not tContains(MAPID_ALL, mapID) then
 		return MAPID_BROKENISLES, MAPID_BROKENISLES
 	else

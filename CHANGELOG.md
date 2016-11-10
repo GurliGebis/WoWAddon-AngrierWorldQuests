@@ -1,3 +1,7 @@
+## v0.15.7
+
+* Fixed bug with an error displaying on the Trial of Valor map in certain situations
+
 ## v0.15.6
 
 * Additional changes to showing tracked world quests on flight map
