@@ -1,3 +1,7 @@
+## v0.15.9
+
+* Added deDE localization
+
 ## v0.15.7
 
 * Fixed bug with an error displaying on the Trial of Valor map in certain situations

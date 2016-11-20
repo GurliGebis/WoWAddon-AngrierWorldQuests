@@ -56,6 +56,33 @@ langs.esES = {
 }
 langs.esMX = langs.esES
 
+langs.deDE = {
+	UPGRADES = "Verbesserungen",
+	config_showAtTop = "Zeige oben im Quest Log",
+	config_onlyCurrentZone = "Zeige nur Worldquests aus der aktuellen Zone",
+	config_showEverywhere = "Zeige Worldquests auf allen Karten",
+	config_hideFilteredPOI = "Verberge gefiltere Worldquest Symbole auf der Weltkarte",
+	config_hideUntrackedPOI = "Verberge nicht verfolgte Worldquest Symbole auf der Weltkarte",
+	config_showHoveredPOI = "Zeige Worldquest Symbole immer, wenn unter der Maus",
+	config_showContinentPOI = "Zeige Worldquestsymbole auf der Kontinent-Karte",
+	config_lootFilterUpgrades = "Zeige nur Verbesserungen für den Lootfilter",
+	config_timeFilterDuration = "Dauer für \"Verbleibende Zeit\" Filter",
+	config_enabledFilters = "Aktivierte Filter",
+	config_sortMethod = "Sortiere Weltquests nach",
+	config_sortMethod_1 = NAME,
+	config_sortMethod_2 = CLOSES_IN,
+	config_sortMethod_3 = ZONE,
+	config_sortMethod_4 = FACTION,
+	config_sortMethod_5 = REWARDS,
+	config_characterConfig = "Charakterspezifische Konfiguration",
+	config_saveFilters = "Speichere Filter zwischen Sitzungen",
+	config_lootUpgradesLevel = "Lootfilter zeigt Verbesserungen",
+	config_lootUpgradesLevelValue1 = "Nur höhrere Gegenstandsstufe",
+	config_lootUpgradesLevelValue2 = "Bis zur gleichen Gegenstandsstufe",
+	config_lootUpgradesLevelValue = "Bis zu %d Gegenstandsstufen weniger",
+	CURRENT_ZONE = "Aktuelle Zone",
+}
+
 langs.koKR = {
 	UPGRADES = "업그레이드",
 	config_showAtTop = "퀘스트 목록창의 상단에 표시합니다",
