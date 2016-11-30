@@ -1,3 +1,7 @@
+## v0.16.0
+
+* Added filter for rare world quests
+
 ## v0.15.9
 
 * Added deDE localization
