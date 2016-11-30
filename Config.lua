@@ -437,7 +437,7 @@ function Config:CreatePanel()
 	return panel
 end
 
-function Config:Startup()
+function Config:BeforeStartup()
 	if AngryWorldQuests_Config == nil then AngryWorldQuests_Config = {} end
 	if AngryWorldQuests_CharacterConfig == nil then AngryWorldQuests_CharacterConfig = {} end
 

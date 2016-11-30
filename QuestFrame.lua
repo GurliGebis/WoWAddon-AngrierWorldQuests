@@ -310,8 +310,7 @@ local function FilterMenu_Initialize(self, level)
 		info.checked = info.value == value
 		UIDropDownMenu_AddButton(info, level)
 
-		local currentMapID, continentMapID = GetMapAreaIDs()
-		local bounties = GetQuestBountyInfoForMapID(currentMapID)
+		local bounties = GetQuestBountyInfoForMapID(MAPID_BROKENISLES)
 		for _, bounty in ipairs(bounties) do
 			if not IsQuestComplete(bounty.questID) then
 				info.text =  GetQuestLogTitle(GetQuestLogIndexByID(bounty.questID))
@@ -397,15 +396,18 @@ local function FilterButton_ShowMenu(self)
 end
 
 local function FilterButton_OnClick(self, button)
-	HideDropDownMenu(1)
 	PlaySound("igMainMenuOptionCheckBoxOn")
 	if (button == 'RightButton' and (self.index == FILTER_EMISSARY or self.index == FILTER_LOOT or self.index == FILTER_FACTION or self.index == FILTER_ZONE  or self.index == FILTER_TIME))
 			or (self.index == FILTER_SORT)
 			or (self.index == FILTER_FACTION and not Config:GetFilter(FILTER_FACTION) and Config.filterFaction == 0) then
-		if not (filterMenu and UIDROPDOWNMENU_OPEN_MENU == filterMenu and DropDownList1:IsShown() and filterMenu.index == self.index) then
+		if filterMenu and UIDROPDOWNMENU_OPEN_MENU == filterMenu and DropDownList1:IsShown() and filterMenu.index == self.index then
+			HideDropDownMenu(1)
+		else
+			HideDropDownMenu(1)
 			FilterButton_ShowMenu(self)
 		end
 	else
+		HideDropDownMenu(1)
 		if IsShiftKeyDown() then
 			if self.index == FILTER_EMISSARY then Config:Set('filterEmissary', 0, true) end
 			if self.index == FILTER_LOOT then Config:Set('filterLoot', 0, true) end

@@ -1,4 +1,4 @@
--- Core v1.1
+-- Core v1.2
 local ADDON, Addon = ...
 
 local Listener = CreateFrame('Frame', ADDON .. 'Listener')
@@ -71,11 +71,13 @@ end
 
 Addon:RegisterEvent('PLAYER_ENTERING_WORLD', Addon)
 function Addon:PLAYER_ENTERING_WORLD()
+	self:ForAllModules('BeforeStartup')
 	self:ForAllModules('Startup')
+	self:ForAllModules('AfterStartup')
 
 	self:UnregisterEvent('PLAYER_ENTERING_WORLD', self)
 end
 
 Addon.Name = GetAddOnMetadata(ADDON, "Title")
-Addon.Version = GetAddOnMetadata(ADDON, "X-Curse-Packaged-Version")
+Addon.Version = GetAddOnMetadata(ADDON, "X-Packaged-Version")
 _G[ADDON] = Addon
