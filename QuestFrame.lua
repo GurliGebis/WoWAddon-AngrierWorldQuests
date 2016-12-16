@@ -591,7 +591,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 		end
 
 		if selectedFilters[FILTER_FACTION] then
-			if (factionID == Config.filterFaction or Addon.Data:QuestHasFaction(self.questID, Config.filterFaction)) and not capped then
+			if (factionID == Config.filterFaction or Addon.Data:QuestHasFaction(self.questID, Config.filterFaction)) then
 				isFiltered = false
 			end
 		end

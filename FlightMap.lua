@@ -18,21 +18,11 @@ local function OnShow(self)
 	self:RefreshAllData()
 end
 
-local function WorldQuestDataProvider_Override()
+function Mod:Blizzard_SharedMapDataProviders()
 	hooksecurefunc(WorldQuestDataProviderMixin, "OnShow", OnShow)
 	hooksecurefunc(WorldQuestDataProviderMixin, "RefreshAllData", RefreshAllData)
 end
 
-function Mod:ADDON_LOADED(name)
-	if name == 'Blizzard_SharedMapDataProviders' then
-		WorldQuestDataProvider_Override()
-	end
-end
-
 function Mod:Startup()
-	if IsAddOnLoaded('Blizzard_SharedMapDataProviders') then
-		WorldQuestDataProvider_Override()
-	else
-		self:RegisterEvent('ADDON_LOADED')
-	end
+	self:RegisterAddOnLoaded("Blizzard_SharedMapDataProviders")
 end

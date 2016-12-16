@@ -1,4 +1,4 @@
--- Core v1.2
+-- Core v1.3
 local ADDON, Addon = ...
 
 local Listener = CreateFrame('Frame', ADDON .. 'Listener')
@@ -24,6 +24,7 @@ function Addon:RegisterEvent(event, callback, func)
 		EventListeners[event][callback] = func
 	end
 end
+
 function Addon:UnregisterEvent(event, callback)
 	local listeners = EventListeners[event]
 	if listeners then
@@ -42,12 +43,66 @@ function Addon:UnregisterEvent(event, callback)
 	end
 end
 
+local AddOnListeners = {}
+function Addon:ADDON_LOADED(name)
+	if AddOnListeners[name] then
+		for callback, func in pairs(AddOnListeners[name]) do
+			if func == 0 then
+				callback[name](callback)
+			else
+				callback[func](callback, name)
+			end
+		end
+	end
+end
+
+function Addon:RegisterAddOnLoaded(name, callback, func)
+	if func == nil then func = 0 end
+	if IsAddOnLoaded(name) then
+		if func == 0 then
+			callback[name](callback)
+		else
+			callback[func](callback, name)
+		end
+	else
+		self:RegisterEvent('ADDON_LOADED', self)
+		if AddOnListeners[name] == nil then
+			AddOnListeners[name] = { [callback]=func }
+		else
+			AddOnListeners[name][callback] = func
+		end
+	end
+end
+
+function Addon:UnregisterAddOnLoaded(name, callback)
+	local listeners = AddOnListeners[name]
+	if listeners then
+		local count = 0
+		for index,_ in pairs(listeners) do
+			if index == callback then
+				listeners[index] = nil
+			else
+				count = count + 1
+			end
+		end
+		if count == 0 then
+			AddOnListeners[name] = nil
+		end
+	end
+end
+
 local ModulePrototype = {}
 function ModulePrototype:RegisterEvent(event, func)
 	Addon:RegisterEvent(event, self, func)
 end
 function ModulePrototype:UnregisterEvent(event)
 	Addon:UnregisterEvent(event, self)
+end
+function ModulePrototype:RegisterAddOnLoaded(name, func)
+	Addon:RegisterAddOnLoaded(name, self, func)
+end
+function ModulePrototype:UnregisterAddOnLoaded(name)
+	Addon:UnregisterAddOnLoaded(name, self)
 end
 Addon.ModulePrototype = ModulePrototype
 

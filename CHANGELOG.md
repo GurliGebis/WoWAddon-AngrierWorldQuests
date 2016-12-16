@@ -1,3 +1,7 @@
+## v0.16.1
+
+* Faction filter now shows world quests for factions you have reputation capped
+
 ## v0.16.0
 
 * Added filter for rare world quests
