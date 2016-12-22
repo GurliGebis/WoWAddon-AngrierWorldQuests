@@ -1,3 +1,7 @@
+## v0.16.2
+
+* Shift-clicking on a World Quest with chatbox open now links the World Quest
+
 ## v0.16.1
 
 * Faction filter now shows world quests for factions you have reputation capped

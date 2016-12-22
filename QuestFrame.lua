@@ -211,10 +211,8 @@ local function TitleButton_OnClick(self, button)
 		end
 	else
 		PlaySound("igMainMenuOptionCheckBoxOn")
-		if IsModifiedClick("CHATLINK") and ChatEdit_GetActiveWindow() then
-			local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(self.questID)
-			-- ChatEdit_InsertLink( string.format("|cffffff00|Hquest:%d:110|h[%s]|h|r", self.questID, title) )
-			ChatEdit_InsertLink( string.format("[%s]", title) )
+		if ChatEdit_TryInsertQuestLinkForQuestID(self.questID) then
+			
 		elseif ( button == "RightButton" ) then
 			if ( self.mapID ) then
 				SetMapByID(self.mapID)
