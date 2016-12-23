@@ -1224,6 +1224,18 @@ function QF:FrameUpdate()
 	MapFrame_Update()
 end
 
+function AddQuestTimeToTooltip(questID)
+	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
+	if timeLeftMinutes and timeLeftMinutes >= 24 * 60 + WORLD_QUESTS_TIME_CRITICAL_MINUTES then
+		local daysLeft = math.floor( (timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) / 1440 )
+		local hoursLeft = math.floor( (timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES - daysLeft * 1440) / 60 )
+
+		local color = NORMAL_FONT_COLOR;
+		local timeString = string.format("%s %s", D_DAYS:format(daysLeft), D_HOURS:format(hoursLeft))
+		_G["WorldMapTooltipTextLeft"..WorldMapTooltip:NumLines()]:SetText(BONUS_OBJECTIVE_TIME_LEFT:format(timeString), color.r, color.g, color.b)
+	end
+end
+
 function QF:Startup()
 	Config = Addon.Config
 
@@ -1253,6 +1265,7 @@ function QF:Startup()
 	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
 	hooksecurefunc("WorldMapTrackingOptionsDropDown_OnClick", QuestFrame_Update)
 	hooksecurefunc("WorldMap_UpdateQuestBonusObjectives", UpdateQuestBonusObjectives)
+	hooksecurefunc("WorldMap_AddQuestTimeToTooltip", AddQuestTimeToTooltip)
 
 	myTaskPOI = WorldMap_GetOrCreateTaskPOI("AWQ0")
 	myTaskPOI:Hide()

@@ -1,3 +1,8 @@
+## v0.16.3
+
+* Tooltips for World Quests with over 1 day time left now show more precise time left.
+* If "DropDownMenu" library is present it will be used over builtin dropdown menus, so to not cause taint.
+
 ## v0.16.2
 
 * Shift-clicking on a World Quest with chatbox open now links the World Quest
