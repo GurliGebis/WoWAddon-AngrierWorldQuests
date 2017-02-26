@@ -1,3 +1,7 @@
+## v0.16.4
+
+* Added a new filter for showing Dungeon World Quests.
+
 ## v0.16.3
 
 * Tooltips for World Quests with over 1 day time left now show more precise time left.
