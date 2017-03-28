@@ -1,3 +1,8 @@
+## v0.17.0
+
+* Update for 7.2.
+* Added Legionfall War Supplies Filter.
+
 ## v0.16.4
 
 * Added a new filter for showing Dungeon World Quests.
