@@ -550,6 +550,57 @@ local function GetFilterButton(index)
 	return filterButtons[index]
 end
 
+local function TaskPOI_IsFilteredReward(selectedFilters, questID)
+	local positiveMatch = false
+
+	local money = GetQuestLogRewardMoney(questID)
+	if money > 0 and selectedFilters[FILTER_GOLD] then
+		positiveMatch = true
+	end	
+
+	local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
+	for i = 1, numQuestCurrencies do
+		local name, texture, numItems = GetQuestLogRewardCurrencyInfo(i, questID)
+		if name == FILTER_NAMES[FILTER_ORDER_RESOURCES] and selectedFilters[FILTER_ORDER_RESOURCES] then
+			positiveMatch = true
+		end
+		if name == FILTER_NAMES[FILTER_WAR_SUPPLIES] and selectedFilters[FILTER_WAR_SUPPLIES] then
+			positiveMatch = true
+		end
+	end
+
+	local numQuestRewards = GetNumQuestLogRewards(questID)
+	if numQuestRewards > 0 then
+		local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
+		if itemName and itemTexture then
+			local artifactPower = Addon.Data:ItemArtifactPower(itemID)
+			local iLevel = Addon.Data:RewardItemLevel(itemID, questID)
+			if artifactPower then
+				if selectedFilters[FILTER_ARTIFACT_POWER] then
+					positiveMatch = true
+				end
+			else
+				if iLevel then
+					local upgradesOnly = Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)
+					if selectedFilters[FILTER_LOOT] and (not upgradesOnly or Addon.Data:RewardIsUpgrade(itemID, questID)) then
+						positiveMatch = true
+					end
+				else
+					if selectedFilters[FILTER_ITEMS] then
+						positiveMatch = true
+					end
+				end
+			end
+		end
+	end
+
+	if positiveMatch then
+		return false
+	elseif selectedFilters[FILTER_ORDER_RESOURCES] or selectedFilters[FILTER_WAR_SUPPLIES] or selectedFilters[FILTER_ARTIFACT_POWER] or selectedFilters[FILTER_LOOT] or selectedFilters[FILTER_ITEMS] then
+		return true
+	end
+end
+
 local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 	if bounties == nil then
 		local currentMapID, continentMapID = GetMapAreaIDs()
@@ -570,41 +621,11 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 	local isFiltered = hasFilters
 
 	if hasFilters then
-		local money = GetQuestLogRewardMoney(self.questID)
-		if ( money > 0 ) then
-			isFiltered = not selectedFilters[FILTER_GOLD]
-		end	
-
-		local numQuestCurrencies = GetNumQuestLogRewardCurrencies(self.questID)
-		for i = 1, numQuestCurrencies do
-			local name, texture, numItems = GetQuestLogRewardCurrencyInfo(i, self.questID)
-			if name == FILTER_NAMES[FILTER_ORDER_RESOURCES] then
-				isFiltered = not selectedFilters[FILTER_ORDER_RESOURCES]
-			end
-			if name == FILTER_NAMES[FILTER_WAR_SUPPLIES] then
-				isFiltered = not selectedFilters[FILTER_WAR_SUPPLIES]
-			end
+		local lootFiltered = TaskPOI_IsFilteredReward(selectedFilters, self.questID)
+		if lootFiltered ~= nil then
+			isFiltered = lootFiltered
 		end
-
-		local numQuestRewards = GetNumQuestLogRewards(self.questID)
-		if numQuestRewards > 0 then
-			local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, self.questID)
-			if itemName and itemTexture then
-				local artifactPower = Addon.Data:ItemArtifactPower(itemID)
-				local iLevel = Addon.Data:RewardItemLevel(itemID, self.questID)
-				if artifactPower then
-					isFiltered = not selectedFilters[FILTER_ARTIFACT_POWER]
-				else
-					if iLevel then
-						local upgradesOnly = Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)
-						isFiltered = not selectedFilters[FILTER_LOOT] or (upgradesOnly and not Addon.Data:RewardIsUpgrade(itemID, self.questID))
-					else
-						isFiltered = not selectedFilters[FILTER_ITEMS]
-					end
-				end
-			end
-		end
-
+		
 		if selectedFilters[FILTER_FACTION] then
 			if (factionID == Config.filterFaction or Addon.Data:QuestHasFaction(self.questID, Config.filterFaction)) then
 				isFiltered = false

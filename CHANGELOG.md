@@ -1,3 +1,7 @@
+## v0.17.1
+
+* Bugfix for Legionfall War Supplies filter.
+
 ## v0.17.0
 
 * Update for 7.2.
