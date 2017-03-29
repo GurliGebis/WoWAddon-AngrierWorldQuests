@@ -52,7 +52,7 @@ local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION, SORT_REWARDS
 local REWARDS_ORDER = { [FILTER_ARTIFACT_POWER] = 1, [FILTER_LOOT] = 2, [FILTER_ORDER_RESOURCES] = 3, [FILTER_GOLD] = 4, [FILTER_ITEMS] = 5 }
 QF.SortOrder = SORT_ORDER
 
-local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859, 1090 }
+local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045 }
 
 local FILTER_LOOT_ALL = 1
 local FILTER_LOOT_UPGRADES = 2
@@ -101,7 +101,11 @@ end
 
 local function ArtifactPowerTruncate(power)
 	-- return AbbreviateNumbers(power):lower()
-	if power >= 20000 then
+	if power >= 20000000 then
+		return floor(power / 1000000) .. "m"
+	elseif power >= 1000000 then
+		return (floor(power / 100000) / 10) .. "m"
+	elseif power >= 20000 then
 		return floor(power / 1000) .. "k"
 	elseif power >= 1000 then
 		return (floor(power / 100) / 10) .. "k"

@@ -1,3 +1,7 @@
+## v0.17.2
+
+* Added Armies of Legionfall to faction filter.
+
 ## v0.17.1
 
 * Bugfix for Legionfall War Supplies filter.
