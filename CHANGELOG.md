@@ -1,3 +1,8 @@
+## v0.17.3
+
+* Added support for Raid World Quest type.
+* Adjusted display of Legionfall War Supplies rewards.
+
 ## v0.17.2
 
 * Added Armies of Legionfall to faction filter.

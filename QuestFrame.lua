@@ -19,7 +19,7 @@ local CURRENCYID_WAR_SUPPLIES = 1342
 
 local FILTER_COUNT = 17
 local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet", "", "inv_misc_map_01", "icon_treasuremap", "achievement_raregarrisonquests_x", "achievement_general_stayclassy", "inv_misc_summonable_boss_token" }
-local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL, TRACKING, ZONE, ITEM_QUALITY3_DESC, DUNGEONS, "Legionfall War Supplies" }
+local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL, TRACKING, ZONE, ITEM_QUALITY3_DESC, GROUP_FINDER, "Legionfall War Supplies" }
 local FILTER_EMISSARY = 1
 local FILTER_ARTIFACT_POWER = 2
 local FILTER_LOOT = 3
@@ -674,7 +674,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 		end
 
 		if selectedFilters[FILTER_DUNGEON] then
-			if worldQuestType == LE_QUEST_TAG_TYPE_DUNGEON then
+			if worldQuestType == LE_QUEST_TAG_TYPE_DUNGEON or worldQuestType == LE_QUEST_TAG_TYPE_RAID then
 				isFiltered = false
 			end
 		end
@@ -937,6 +937,8 @@ local function QuestFrame_Update()
 									button.TaskIcon:SetAtlas("worldquest-icon-petbattle", true)
 								elseif worldQuestType == LE_QUEST_TAG_TYPE_DUNGEON then
 									button.TaskIcon:SetAtlas("worldquest-icon-dungeon", true)
+								elseif worldQuestType == LE_QUEST_TAG_TYPE_RAID then
+									button.TaskIcon:SetAtlas("worldquest-icon-raid", true)
 								elseif ( worldQuestType == LE_QUEST_TAG_TYPE_PROFESSION and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
 									button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
 								elseif isElite then
@@ -949,7 +951,7 @@ local function QuestFrame_Update()
 									button.TaskIcon:Hide()
 								end
 
-								if ( timeLeftMinutes and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
+								if ( timeLeftMinutes and timeLeftMinutes > 0 and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
 									button.TimeIcon:Show()
 									if hasIcon then
 										button.TimeIcon:SetSize(14, 14)
@@ -983,11 +985,17 @@ local function QuestFrame_Update()
 								local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
 								if numQuestCurrencies > 0 then
 									local name, texture, numItems = GetQuestLogRewardCurrencyInfo(1, questID)
-									tagText = numItems
-									tagTexture = texture
-									tagTexCoords = nil
-									button.rewardCategory = FILTER_ORDER_RESOURCES
-									button.rewardValue = numItems
+									if money == 0 or name ~= FILTER_NAMES[FILTER_WAR_SUPPLIES] then
+										tagText = numItems
+										tagTexture = texture
+										tagTexCoords = nil
+										if name == FILTER_NAMES[FILTER_WAR_SUPPLIES] then
+											button.rewardCategory = FILTER_WAR_SUPPLIES
+										else
+											button.rewardCategory = FILTER_ORDER_RESOURCES
+										end
+										button.rewardValue = numItems
+									end
 								end
 
 								local numQuestRewards = GetNumQuestLogRewards(questID)
