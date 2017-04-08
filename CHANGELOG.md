@@ -1,3 +1,7 @@
+## v0.17.4
+
+* Support for display Artifact Power amounts over 1 million.
+
 ## v0.17.3
 
 * Added support for Raid World Quest type.

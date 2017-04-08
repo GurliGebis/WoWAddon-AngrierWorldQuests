@@ -1271,7 +1271,7 @@ end
 
 function AddQuestTimeToTooltip(questID)
 	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
-	if timeLeftMinutes and timeLeftMinutes >= 24 * 60 + WORLD_QUESTS_TIME_CRITICAL_MINUTES then
+	if timeLeftMinutes and timeLeftMinutes > 0 and timeLeftMinutes >= 24 * 60 + WORLD_QUESTS_TIME_CRITICAL_MINUTES then
 		local daysLeft = math.floor( (timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) / 1440 )
 		local hoursLeft = math.floor( (timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES - daysLeft * 1440) / 60 )
 
