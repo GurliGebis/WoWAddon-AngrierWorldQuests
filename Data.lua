@@ -187,7 +187,7 @@ function Data:ItemArtifactPower(itemID)
 		return cachedPower[itemID]
 	end
 
-	if apItemAmounts[itemID] then
+	if apItemAmounts[itemID] and cachedKnowledgeLevel > 25 then
 		local power = apItemAmounts[itemID]
 
 		if cachedKnowledgeLevel and cachedKnowledgeLevel > 0 and apKnowledgeMulti[cachedKnowledgeLevel] then
