@@ -1,3 +1,11 @@
+## v0.17.6
+
+* Added Nethershard filter.
+
+## v0.17.5
+
+* Update for Faction filter reputation.
+
 ## v0.17.4
 
 * Support for display Artifact Power amounts over 1 million.

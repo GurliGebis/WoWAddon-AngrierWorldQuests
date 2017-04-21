@@ -3,7 +3,7 @@ require 'nokogiri'
 require 'open-uri'
 require 'json'
 
-url = 'http://www.wowhead.com/quests/legion/type:118:129:115:116:131:137:111:123:122:112:110:114:130:119:126:125:117:120:113:136:135:124:121:109'
+url = 'http://www.wowhead.com/legion-quests/type:118:129:115:116:131:137:111:123:122:112:110:114:130:119:126:125:117:120:113:136:135:124:121:109'
 
 page = open(url).read
 

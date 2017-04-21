@@ -16,10 +16,11 @@ local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH]
 
 local CURRENCYID_RESOURCES = 1220
 local CURRENCYID_WAR_SUPPLIES = 1342
+local CURRENCYID_NETHERSHARD = 1226
 
-local FILTER_COUNT = 17
-local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet", "", "inv_misc_map_01", "icon_treasuremap", "achievement_raregarrisonquests_x", "achievement_general_stayclassy", "inv_misc_summonable_boss_token" }
-local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL, TRACKING, ZONE, ITEM_QUALITY3_DESC, GROUP_FINDER, "Legionfall War Supplies" }
+local FILTER_COUNT = 18
+local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet", "", "inv_misc_map_01", "icon_treasuremap", "achievement_raregarrisonquests_x", "achievement_general_stayclassy", "inv_misc_summonable_boss_token", "inv_datacrystal01" }
+local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL, TRACKING, ZONE, ITEM_QUALITY3_DESC, GROUP_FINDER, "Legionfall War Supplies", "Nethershard" }
 local FILTER_EMISSARY = 1
 local FILTER_ARTIFACT_POWER = 2
 local FILTER_LOOT = 3
@@ -37,7 +38,8 @@ local FILTER_ZONE = 14
 local FILTER_RARE = 15
 local FILTER_DUNGEON = 16
 local FILTER_WAR_SUPPLIES = 17
-local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ZONE, FILTER_TRACKED, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_WAR_SUPPLIES, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE, FILTER_RARE, FILTER_DUNGEON, FILTER_SORT }
+local FILTER_NETHERSHARD = 18
+local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ZONE, FILTER_TRACKED, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_WAR_SUPPLIES, FILTER_NETHERSHARD, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE, FILTER_RARE, FILTER_DUNGEON, FILTER_SORT }
 QF.FilterNames = FILTER_NAMES
 QF.FilterOrder = FILTER_ORDER
 local FILTER_TIME_VALUES = { 1, 3, 6, 12, 24 }
@@ -571,6 +573,9 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 		if name == FILTER_NAMES[FILTER_WAR_SUPPLIES] and selectedFilters[FILTER_WAR_SUPPLIES] then
 			positiveMatch = true
 		end
+		if name == FILTER_NAMES[FILTER_NETHERSHARD] and selectedFilters[FILTER_NETHERSHARD] then
+			positiveMatch = true
+		end
 	end
 
 	local numQuestRewards = GetNumQuestLogRewards(questID)
@@ -600,7 +605,7 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 
 	if positiveMatch then
 		return false
-	elseif selectedFilters[FILTER_ORDER_RESOURCES] or selectedFilters[FILTER_WAR_SUPPLIES] or selectedFilters[FILTER_ARTIFACT_POWER] or selectedFilters[FILTER_LOOT] or selectedFilters[FILTER_ITEMS] then
+	elseif selectedFilters[FILTER_ORDER_RESOURCES] or selectedFilters[FILTER_WAR_SUPPLIES] or selectedFilters[FILTER_NETHERSHARD] or selectedFilters[FILTER_ARTIFACT_POWER] or selectedFilters[FILTER_LOOT] or selectedFilters[FILTER_ITEMS] then
 		return true
 	end
 end
@@ -984,17 +989,19 @@ local function QuestFrame_Update()
 
 								local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
 								if numQuestCurrencies > 0 then
-									local name, texture, numItems = GetQuestLogRewardCurrencyInfo(1, questID)
-									if money == 0 or name ~= FILTER_NAMES[FILTER_WAR_SUPPLIES] then
-										tagText = numItems
-										tagTexture = texture
-										tagTexCoords = nil
-										if name == FILTER_NAMES[FILTER_WAR_SUPPLIES] then
-											button.rewardCategory = FILTER_WAR_SUPPLIES
-										else
-											button.rewardCategory = FILTER_ORDER_RESOURCES
+									for currencyNum = 1, numQuestCurrencies do 
+										local name, texture, numItems = GetQuestLogRewardCurrencyInfo(currencyNum, questID)
+										if (money == 0 or name ~= FILTER_NAMES[FILTER_WAR_SUPPLIES]) and name ~= FILTER_NAMES[FILTER_NETHERSHARD] then
+											tagText = numItems
+											tagTexture = texture
+											tagTexCoords = nil
+											if name == FILTER_NAMES[FILTER_WAR_SUPPLIES] then
+												button.rewardCategory = FILTER_WAR_SUPPLIES
+											else
+												button.rewardCategory = FILTER_ORDER_RESOURCES
+											end
+											button.rewardValue = numItems
 										end
-										button.rewardValue = numItems
 									end
 								end
 
@@ -1286,6 +1293,7 @@ function QF:Startup()
 
 	FILTER_NAMES[FILTER_ORDER_RESOURCES] = select(1, GetCurrencyInfo(CURRENCYID_RESOURCES)) -- Add in localized name of Order Resources
 	FILTER_NAMES[FILTER_WAR_SUPPLIES] = select(1, GetCurrencyInfo(CURRENCYID_WAR_SUPPLIES)) -- Add in localized name of Legionfall War Supplies
+	FILTER_NAMES[FILTER_NETHERSHARD] = select(1, GetCurrencyInfo(CURRENCYID_NETHERSHARD)) -- Add in localized name of Nethershards
 
 	if UnitFactionGroup("player") == "Alliance" then FILTER_ICONS[ FILTER_PVP ] = "pvpcurrency-honor-alliance" end
 
