@@ -991,7 +991,7 @@ local function QuestFrame_Update()
 								if numQuestCurrencies > 0 then
 									for currencyNum = 1, numQuestCurrencies do 
 										local name, texture, numItems = GetQuestLogRewardCurrencyInfo(currencyNum, questID)
-										if (money == 0 or name ~= FILTER_NAMES[FILTER_WAR_SUPPLIES]) and name ~= FILTER_NAMES[FILTER_NETHERSHARD] then
+										if name ~= FILTER_NAMES[FILTER_WAR_SUPPLIES] and name ~= FILTER_NAMES[FILTER_NETHERSHARD] then
 											tagText = numItems
 											tagTexture = texture
 											tagTexCoords = nil
