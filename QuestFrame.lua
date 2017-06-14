@@ -799,6 +799,7 @@ local function QuestFrame_Update()
 
 	headerIndex = headerIndex + 1
 	local button = GetHeaderButton(headerIndex)
+	button:SetFrameLevel(50)
 	button:SetText(TRACKER_HEADER_WORLD_QUESTS)
 	button:SetHitRectInsets(0, -button.ButtonText:GetWidth(), 0, 0)
 	if (questsCollapsed) then
@@ -839,6 +840,7 @@ local function QuestFrame_Update()
 			local i = j
 			if not filtersOwnRow then i = #FILTER_ORDER - i + 1 end
 			local filterButton = GetFilterButton(FILTER_ORDER[i])
+			filterButton:SetFrameLevel(50 + i)
 			if Config:GetFilterDisabled(FILTER_ORDER[i]) then
 				filterButton:Hide()
 			else
