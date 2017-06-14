@@ -1,3 +1,7 @@
+## v0.17.7
+
+* Bug fix for 7.2.5
+
 ## v0.17.6
 
 * Added Nethershard filter.
