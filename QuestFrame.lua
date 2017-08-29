@@ -122,7 +122,7 @@ end
 
 local function HeaderButton_OnClick(self, button)
 	local questsCollapsed = Config.collapsed
-	PlaySound("igMainMenuOptionCheckBoxOn")
+	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 	if ( button == "LeftButton" ) then
 		questsCollapsed = not questsCollapsed
 		Config:Set('collapsed', questsCollapsed)
@@ -229,7 +229,7 @@ local function TitleButton_OnClick(self, button)
 			UIErrorsFrame:AddMessage(WORLD_QUEST_CANT_COMPLETE_BY_SPELL, RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
 		end
 	else
-		PlaySound("igMainMenuOptionCheckBoxOn")
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 		if ChatEdit_TryInsertQuestLinkForQuestID(self.questID) then
 			
 		elseif ( button == "RightButton" ) then
@@ -414,7 +414,7 @@ local function FilterButton_ShowMenu(self)
 end
 
 local function FilterButton_OnClick(self, button)
-	PlaySound("igMainMenuOptionCheckBoxOn")
+	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 	if (button == 'RightButton' and (self.index == FILTER_EMISSARY or self.index == FILTER_LOOT or self.index == FILTER_FACTION or self.index == FILTER_ZONE  or self.index == FILTER_TIME))
 			or (self.index == FILTER_SORT)
 			or (self.index == FILTER_FACTION and not Config:GetFilter(FILTER_FACTION) and Config.filterFaction == 0) then

@@ -1,3 +1,7 @@
+## v0.17.8
+
+* Bug fix for 7.3.0
+
 ## v0.17.7
 
 * Bug fix for 7.2.5
