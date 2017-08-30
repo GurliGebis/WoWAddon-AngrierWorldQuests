@@ -11,16 +11,23 @@ local MAPID_HIGHMOUNTAIN = 1024
 local MAPID_SURAMAR = 1033
 local MAPID_EYEOFAZSHARA = 1096
 local MAPID_BROKENSHORE = 1021
-local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE }
-local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6, [MAPID_EYEOFAZSHARA] = 7, [MAPID_BROKENSHORE] = 8 }
+local MAPID_ARGUS = 1184
+local MAPID_ANTORANWASTES = 1171
+local MAPID_KROKUUN = 1135
+local MAPID_MACAREE = 1170
+local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
+local MAPID_ALL_BROKENISLES = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE }
+local MAPID_ALL_ARGUS = { MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
+local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6, [MAPID_EYEOFAZSHARA] = 7, [MAPID_BROKENSHORE] = 8, [MAPID_ANTORANWASTES] = 9, [MAPID_KROKUUN] = 10, [MAPID_MACAREE] = 11 }
 
 local CURRENCYID_RESOURCES = 1220
 local CURRENCYID_WAR_SUPPLIES = 1342
 local CURRENCYID_NETHERSHARD = 1226
+local CURRENCYID_VEILED_ARGUNITE = 1508
 
-local FILTER_COUNT = 18
-local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet", "", "inv_misc_map_01", "icon_treasuremap", "achievement_raregarrisonquests_x", "achievement_general_stayclassy", "inv_misc_summonable_boss_token", "inv_datacrystal01" }
-local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL, TRACKING, ZONE, ITEM_QUALITY3_DESC, GROUP_FINDER, "Legionfall War Supplies", "Nethershard" }
+local FILTER_COUNT = 19
+local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet", "", "inv_misc_map_01", "icon_treasuremap", "achievement_raregarrisonquests_x", "achievement_general_stayclassy", "inv_misc_summonable_boss_token", "inv_datacrystal01", "oshugun_crystalfragments" }
+local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL, TRACKING, ZONE, ITEM_QUALITY3_DESC, GROUP_FINDER, "Legionfall War Supplies", "Nethershard", "Veiled Argunite" }
 local FILTER_EMISSARY = 1
 local FILTER_ARTIFACT_POWER = 2
 local FILTER_LOOT = 3
@@ -39,7 +46,8 @@ local FILTER_RARE = 15
 local FILTER_DUNGEON = 16
 local FILTER_WAR_SUPPLIES = 17
 local FILTER_NETHERSHARD = 18
-local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ZONE, FILTER_TRACKED, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_WAR_SUPPLIES, FILTER_NETHERSHARD, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE, FILTER_RARE, FILTER_DUNGEON, FILTER_SORT }
+local FILTER_VEILED_ARGUNITE = 19
+local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ZONE, FILTER_TRACKED, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_WAR_SUPPLIES, FILTER_NETHERSHARD, FILTER_VEILED_ARGUNITE, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE, FILTER_RARE, FILTER_DUNGEON, FILTER_SORT }
 QF.FilterNames = FILTER_NAMES
 QF.FilterOrder = FILTER_ORDER
 local FILTER_TIME_VALUES = { 1, 3, 6, 12, 24 }
@@ -54,7 +62,7 @@ local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION, SORT_REWARDS
 local REWARDS_ORDER = { [FILTER_ARTIFACT_POWER] = 1, [FILTER_LOOT] = 2, [FILTER_ORDER_RESOURCES] = 3, [FILTER_GOLD] = 4, [FILTER_ITEMS] = 5 }
 QF.SortOrder = SORT_ORDER
 
-local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045 }
+local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2165 }
 
 local FILTER_LOOT_ALL = 1
 local FILTER_LOOT_UPGRADES = 2
@@ -573,6 +581,9 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 		if name == FILTER_NAMES[FILTER_WAR_SUPPLIES] and selectedFilters[FILTER_WAR_SUPPLIES] then
 			positiveMatch = true
 		end
+		if name == FILTER_NAMES[FILTER_VEILED_ARGUNITE] and selectedFilters[FILTER_VEILED_ARGUNITE] then
+			positiveMatch = true
+		end
 		if name == FILTER_NAMES[FILTER_NETHERSHARD] and selectedFilters[FILTER_NETHERSHARD] then
 			positiveMatch = true
 		end
@@ -605,7 +616,7 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 
 	if positiveMatch then
 		return false
-	elseif selectedFilters[FILTER_ORDER_RESOURCES] or selectedFilters[FILTER_WAR_SUPPLIES] or selectedFilters[FILTER_NETHERSHARD] or selectedFilters[FILTER_ARTIFACT_POWER] or selectedFilters[FILTER_LOOT] or selectedFilters[FILTER_ITEMS] then
+	elseif selectedFilters[FILTER_ORDER_RESOURCES] or selectedFilters[FILTER_WAR_SUPPLIES] or selectedFilters[FILTER_VEILED_ARGUNITE] or selectedFilters[FILTER_NETHERSHARD] or selectedFilters[FILTER_ARTIFACT_POWER] or selectedFilters[FILTER_LOOT] or selectedFilters[FILTER_ITEMS] then
 		return true
 	end
 end
@@ -883,11 +894,17 @@ local function QuestFrame_Update()
 		if currentMapID == MAPID_BROKENISLES or (not Config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
 			questMapIDs = MAPID_ALL
 		end
-
+		if currentMapID == MAPID_ARGUS or (not Config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
+			questMapIDs = MAPID_ALL_ARGUS
+		end
 
 		for _, mapID in ipairs(questMapIDs) do
+			local contID = continentMapID
+			if tContains(MAPID_ALL_ARGUS, mapID) then
+				contID = mapID
+			end
 
-			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, continentMapID)
+			local questsList = C_TaskQuest.GetQuestsForPlayerByMapID(mapID, contID)
 			if (questsList and #questsList > 0) then
 				for i, questInfo in ipairs(questsList) do
 					local questID = questInfo.questId
@@ -1296,6 +1313,7 @@ function QF:Startup()
 	FILTER_NAMES[FILTER_ORDER_RESOURCES] = select(1, GetCurrencyInfo(CURRENCYID_RESOURCES)) -- Add in localized name of Order Resources
 	FILTER_NAMES[FILTER_WAR_SUPPLIES] = select(1, GetCurrencyInfo(CURRENCYID_WAR_SUPPLIES)) -- Add in localized name of Legionfall War Supplies
 	FILTER_NAMES[FILTER_NETHERSHARD] = select(1, GetCurrencyInfo(CURRENCYID_NETHERSHARD)) -- Add in localized name of Nethershards
+	FILTER_NAMES[FILTER_VEILED_ARGUNITE] = select(1, GetCurrencyInfo(CURRENCYID_VEILED_ARGUNITE)) -- Add in localized name of Veiled Argunite
 
 	if UnitFactionGroup("player") == "Alliance" then FILTER_ICONS[ FILTER_PVP ] = "pvpcurrency-honor-alliance" end
 

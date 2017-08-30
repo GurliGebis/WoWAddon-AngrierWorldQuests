@@ -3,7 +3,7 @@ local Data = Addon:NewModule('Data')
 
 local KNOWLEDGE_CURRENCY_ID = 1171
 local fakeTooltip
-local cachedKnowledgeLevel
+local cachedKnowledgeMultiplier
 local cachedPower = {}
 local cachedItems = {}
 
@@ -176,51 +176,116 @@ local function GetAllArtifactRelics()
 	return ret
 end
 
-function Data:ItemArtifactPower(itemID)
-	local currentKnowledge = select(2, GetCurrencyInfo(KNOWLEDGE_CURRENCY_ID))
-	if cachedKnowledgeLevel ~= currentKnowledge then
-		wipe(cachedPower)
-		cachedKnowledgeLevel = currentKnowledge
-	end
+local AP_NAME = format("%s|r", ARTIFACT_POWER)
 
+local apStringValueOne = {
+	--1.000.000
+	["enUS"] = "(%d*[%p%s]?%d+) million",
+	["enGB"] = "(%d*[%p%s]?%d+) million",
+	["ptBR"] = "(%d*[%p%s]?%d+) [[milhão][milhões]]?",
+	["esMX"] = "(%d*[%p%s]?%d+) [[millón][millones]]?",
+	["deDE"] = "(%d*[%p%s]?%d+) [[Million][Millionen]]?",
+	["esES"] = "(%d*[%p%s]?%d+) [[millón][millones]]?",
+	["frFR"] = "(%d*[%p%s]?%d+) [[million][millions]]?",
+	["itIT"] = "(%d*[%p%s]?%d+) [[milione][milioni]]?",
+	["ruRU"] = "(%d*[%p%s]?%d+) млн",
+	--10.000, not 1.000.000
+	["koKR"] = "(%d*[%p%s]?%d+)만",
+	["zhTW"] = "(%d*[%p%s]?%d+)萬",
+	["zhCN"] = "(%d*[%p%s]?%d+) 万",
+}
+
+local apValueMultiplierOne = {
+	["koKR"] = 1e4,
+	["zhTW"] = 1e4,
+	["zhCN"] = 1e4,
+}
+
+local apStringValueTwo = {
+	--1.000.000
+	["enUS"] = "(%d*[%p%s]?%d+) million",
+	["enGB"] = "(%d*[%p%s]?%d+) million",
+	["ptBR"] = "(%d*[%p%s]?%d+) [[milhão][milhões]]?",
+	["esMX"] = "(%d*[%p%s]?%d+) [[millón][millones]]?",
+	["deDE"] = "(%d*[%p%s]?%d+) [[Million][Millionen]]?",
+	["esES"] = "(%d*[%p%s]?%d+) [[millón][millones]]?",
+	["frFR"] = "(%d*[%p%s]?%d+) [[million][millions]]?",
+	["itIT"] = "(%d*[%p%s]?%d+) [[milione][milioni]]?",
+	["ruRU"] = "(%d*[%p%s]?%d+) млн",
+	--100.000.000
+	["koKR"] = "(%d*[%p%s]?%d+)억",
+	["zhTW"] = "(%d*[%p%s]?%d+)億",
+	["zhCN"] = "(%d*[%p%s]?%d+) 亿",
+}
+
+local apValueMultiplierTwo = {
+	["koKR"] = 1e8,
+	["zhTW"] = 1e8,
+	["zhCN"] = 1e8,
+}
+
+local apStringValueOneLocal = apStringValueOne[GetLocale()]
+local apStringValueTwoLocal = apStringValueTwo[GetLocale()] --Only Asian clients use a secondary higher multiplier
+local apValueMultiplierOneLocal = (apValueMultiplierOne[GetLocale()] or 1e6) --Fallback to 1e6 which is used by all non-Asian clients
+local apValueMultiplierTwoLocal = (apValueMultiplierTwo[GetLocale()] or 1e6) --Fallback to 1e6 which is used by all non-Asian clients
+
+function Data:ItemArtifactPower(itemID)
 	if cachedPower[itemID] ~= nil then
 		return cachedPower[itemID]
 	end
 
-	if apItemAmounts[itemID] and cachedKnowledgeLevel > 25 then
-		local power = apItemAmounts[itemID]
-
-		if cachedKnowledgeLevel and cachedKnowledgeLevel > 0 and apKnowledgeMulti[cachedKnowledgeLevel] then
-			power = power * apKnowledgeMulti[cachedKnowledgeLevel]
-		end
-
-		cachedPower[itemID] = power
-		return power
-	else
+	if IsArtifactPowerItem(itemID) then
 		fakeTooltip:SetOwner(UIParent, "ANCHOR_NONE")
 		fakeTooltip:SetItemByID(itemID)
 
-		local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
-		local textLine3 = AWQFakeTooltipTextLeft3 and AWQFakeTooltipTextLeft3:IsShown() and AWQFakeTooltipTextLeft3:GetText()
-		local textLine4 = AWQFakeTooltipTextLeft4 and AWQFakeTooltipTextLeft4:IsShown() and AWQFakeTooltipTextLeft4:GetText()
-		local textLine5 = AWQFakeTooltipTextLeft5 and AWQFakeTooltipTextLeft4:IsShown() and AWQFakeTooltipTextLeft5:GetText()
+		local apValue = false
+		local apFound
+		local i = 3
+		local tooltipText = _G["AWQFakeTooltipTextLeft"..i]:GetText()
+		while tooltipText do
+			if (tooltipText and not strmatch(tooltipText, AP_NAME)) then
+				local digit1, digit2, digit3, ap
+				local value = strmatch(tooltipText, apStringValueOneLocal)
 
-		if textLine2 and textLine4 and textLine2:match("|cFFE6CC80") then
-			local power = textLine4:gsub("%p", ""):match("%d[%d%s]+"):gsub("%s+", "")
-			power = tonumber(power)
+				if (value) then
+					digit1, digit2 = strmatch(value, "(%d+)[%p%s](%d+)")
+					if (digit1 and digit2) then
+						ap = tonumber(format("%s.%s", digit1, digit2)) * apValueMultiplierOneLocal --Multiply by 1 million (or 10.000 for asian clients)
+					else
+						ap = tonumber(value) * apValueMultiplierOneLocal --Multiply by 1 million (or 10.000 for asian clients)
+					end
+				else
+					value = strmatch(tooltipText, apStringValueTwoLocal)
+					if (value) then
+						--This should only match for Asian clients
+						digit1, digit2 = strmatch(value, "(%d+)[%p%s](%d+)")
+						if (digit1 and digit2) then
+							ap = tonumber(format("%s.%s", digit1, digit2)) * apValueMultiplierTwoLocal --Multiply by 100 million
+						else
+							ap = tonumber(value) * apValueMultiplierTwoLocal --Multiply by 100 million
+						end
+					else
+						digit1, digit2, digit3 = strmatch(tooltipText,"(%d+)[%p%s]?(%d+)[%p%s]?(%d*)")
+						ap = tonumber(format("%s%s%s", digit1 or "", digit2 or "", (digit2 and digit3) and digit3 or ""))
+					end
+				end
 
-			cachedPower[itemID] = power
-			return power
-		elseif textLine3 and textLine5 and textLine3:match("|cFFE6CC80") then
-			local power = textLine5:gsub("%p", ""):match("%d[%d%s]+"):gsub("%s+", "")
-			power = tonumber(power)
+				if (ap) then
+					apValue = ap
+					apFound = true
+					break
+				end
+			end
 
-			cachedPower[itemID] = power
-			return power
-		else
-			cachedPower[itemID] = false
-			return false
+			i = i + 1
+			tooltipText = _G["AWQFakeTooltipTextLeft"..i]:GetText()
 		end
+
+		cachedPower[itemID] = apValue
+		return apValue
+	else
+		cachedPower[itemID] = false
+		return false
 	end
 end
 
