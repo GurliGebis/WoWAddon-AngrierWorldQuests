@@ -893,8 +893,7 @@ local function QuestFrame_Update()
 		local questMapIDs = { currentMapID }
 		if currentMapID == MAPID_BROKENISLES or (not Config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
 			questMapIDs = MAPID_ALL
-		end
-		if currentMapID == MAPID_ARGUS or (not Config.onlyCurrentZone and continentMapID == MAPID_BROKENISLES) then
+		elseif currentMapID == MAPID_ARGUS then
 			questMapIDs = MAPID_ALL_ARGUS
 		end
 

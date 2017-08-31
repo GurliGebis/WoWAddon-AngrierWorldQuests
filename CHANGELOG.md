@@ -1,3 +1,7 @@
+## v0.18.1
+
+* Bugfix for v0.18.0
+
 ## v0.18.0
 
 * Support for 7.3.0
