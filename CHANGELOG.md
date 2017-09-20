@@ -1,3 +1,7 @@
+## v0.18.2
+
+* Added Argussian Reach to faction filter
+
 ## v0.18.1
 
 * Bugfix for v0.18.0
