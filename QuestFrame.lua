@@ -108,10 +108,15 @@ local function GetMapAreaIDs()
 		return mapID, contID
 	end
 end
+AWQGetMapAreaIDs = GetMapAreaIDs
 
 local function ArtifactPowerTruncate(power)
 	-- return AbbreviateNumbers(power):lower()
-	if power >= 20000000 then
+	if power >= 20000000000 then
+		return floor(power / 1000000000) .. "b"
+	elseif power >= 1000000000 then
+		return (floor(power / 100000000) / 10) .. "b"
+	elseif power >= 20000000 then
 		return floor(power / 1000000) .. "m"
 	elseif power >= 1000000 then
 		return (floor(power / 100000) / 10) .. "m"

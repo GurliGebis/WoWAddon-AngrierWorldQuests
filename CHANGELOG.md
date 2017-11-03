@@ -1,3 +1,7 @@
+## v0.18.3
+
+* Update to support larger AP values
+
 ## v0.18.2
 
 * Added Argussian Reach to faction filter

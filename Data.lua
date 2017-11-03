@@ -202,9 +202,9 @@ local apValueMultiplierOne = {
 }
 
 local apStringValueTwo = {
-	--1.000.000
-	["enUS"] = "(%d*[%p%s]?%d+) million",
-	["enGB"] = "(%d*[%p%s]?%d+) million",
+	--1.000.000.000
+	["enUS"] = "(%d*[%p%s]?%d+) billion",
+	["enGB"] = "(%d*[%p%s]?%d+) billion",
 	["ptBR"] = "(%d*[%p%s]?%d+) [[milhão][milhões]]?",
 	["esMX"] = "(%d*[%p%s]?%d+) [[millón][millones]]?",
 	["deDE"] = "(%d*[%p%s]?%d+) [[Million][Millionen]]?",
@@ -227,7 +227,7 @@ local apValueMultiplierTwo = {
 local apStringValueOneLocal = apStringValueOne[GetLocale()]
 local apStringValueTwoLocal = apStringValueTwo[GetLocale()] --Only Asian clients use a secondary higher multiplier
 local apValueMultiplierOneLocal = (apValueMultiplierOne[GetLocale()] or 1e6) --Fallback to 1e6 which is used by all non-Asian clients
-local apValueMultiplierTwoLocal = (apValueMultiplierTwo[GetLocale()] or 1e6) --Fallback to 1e6 which is used by all non-Asian clients
+local apValueMultiplierTwoLocal = (apValueMultiplierTwo[GetLocale()] or 1e9) --Fallback to 1e6 which is used by all non-Asian clients
 
 function Data:ItemArtifactPower(itemID)
 	if cachedPower[itemID] ~= nil then
