@@ -12,5 +12,5 @@ function Mod:Blizzard_SharedMapDataProviders()
 end
 
 function Mod:Startup()
-	self:RegisterAddOnLoaded("Blizzard_SharedMapDataProviders")
+	--self:RegisterAddOnLoaded("Blizzard_SharedMapDataProviders")
 end
