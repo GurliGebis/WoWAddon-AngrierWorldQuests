@@ -78,6 +78,11 @@ local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION, SORT_REWARDS
 local REWARDS_ORDER = { [FILTER_ARTIFACT_POWER] = 1, [FILTER_LOOT] = 2, [FILTER_ORDER_RESOURCES] = 3, [FILTER_GOLD] = 4, [FILTER_ITEMS] = 5 }
 Mod.SortOrder = SORT_ORDER
 
+local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2165, 2170 }
+
+local FILTER_LOOT_ALL = 1
+local FILTER_LOOT_UPGRADES = 2
+
 local My_HideDropDownMenu, My_DropDownList1, My_UIDropDownMenu_AddButton, My_UIDropDownMenu_Initialize, My_ToggleDropDownMenu, My_UIDropDownMenuTemplate
 function Mod:BeforeStartup()
 	My_HideDropDownMenu = Lib_HideDropDownMenu or HideDropDownMenu
@@ -803,8 +808,8 @@ local function QuestFrame_Update()
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(mapID)
 	if (not Config.showEverywhere) and (not displayLocation or lockedQuestID) then
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
-		spacerFrame:Hide()
-		headerButton:Hide()
+		if spaceFrame then spacerFrame:Hide() end
+		if headerButton then headerButton:Hide() end
 		QuestScrollFrame.Contents:Layout()
 		return
 	end

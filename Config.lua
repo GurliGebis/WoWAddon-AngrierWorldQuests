@@ -343,9 +343,9 @@ local function DropDown_Create(self)
 	DropDown_Index = DropDown_Index + 1
 	local dropdown = CreateFrame("Frame", ADDON.."ConfigDropDown"..DropDown_Index, self, My_UIDropDownMenuTemplate)
 	
-	local text = dropdown:CreateFontString(ADDON.."ConfigDropLabel"..DropDown_Index, "BACKGROUND", "GameFontNormal")
-	text:SetPoint("BOTTOMLEFT", dropdown, "TOPLEFT", 16, 3)
-	dropdown.Text = text
+	local label = dropdown:CreateFontString(ADDON.."ConfigDropLabel"..DropDown_Index, "BACKGROUND", "GameFontNormal")
+	label:SetPoint("BOTTOMLEFT", dropdown, "TOPLEFT", 16, 3)
+	dropdown.Label = label
 	
 	return dropdown
 end
@@ -392,7 +392,7 @@ Panel_OnRefresh = function(self)
 
 		for i,key in ipairs(dropdowns_order) do
 			dropdowns[i] = DropDown_Create(self)
-			dropdowns[i].Text:SetText( Addon.Locale['config_'..key] )
+			dropdowns[i].Label:SetText( Addon.Locale['config_'..key] )
 			dropdowns[i].configKey = key		
 			if i == 1 then
 				dropdowns[i]:SetPoint("TOPLEFT", checkboxes[#checkboxes], "BOTTOMLEFT", -13, -24)

@@ -66,29 +66,6 @@ function Data:RewardIsUpgrade(itemID, questID)
 		end
 
 		return isUpgrade
-	elseif itemRelicTypes[itemID] then 
-		local isUpgrade = false
-		local itemRelicType = itemRelicTypes[itemID]
-
-		local currentRelics = GetAllArtifactRelics()
-		for artifactID, relics in pairs(currentRelics) do
-			for i=1, NUM_RELICS do
-				local relic = relics[i]
-				local relicType = artifactRelicSlots[artifactID][i]
-				if relic ~= false and relicType == itemRelicType then
-					if relic then
-						local relicIlvl = select(4, GetItemInfo(relic))
-						if relicIlvl and ilvl >= (relicIlvl - Addon.Config.lootUpgradesLevel) then
-							isUpgrade = true
-						end
-					else
-						isUpgrade = true
-					end
-				end 
-			end
-		end
-	
-		return isUpgrade
 	else
 		return true
 	end
