@@ -1,3 +1,7 @@
+## v0.19.1
+
+* Continuation of 8.0 update
+
 ## v0.19.0
 
 * Start of 8.0 update. Due to major changes to the World Map in 8.0, a lot of the addon has to be redone. This is just an initial update with just something working. A lot of features are missing, and will be coming back in future versions.
