@@ -27,6 +27,7 @@ local configDefaults = {
 	saveFilters = false,
 }
 local callbacks = {}
+local __filterTable
 
 local My_UIDropDownMenu_SetSelectedValue, My_UIDropDownMenu_GetSelectedValue, My_UIDropDownMenu_CreateInfo, My_UIDropDownMenu_AddButton, My_UIDropDownMenu_Initialize, My_UIDropDownMenuTemplate
 function Config:InitializeDropdown()
@@ -87,6 +88,9 @@ function Config:Set(key, newValue, silent)
 			AngryWorldQuests_Config[key] = newValue
 		end
 	end
+	if key == 'selectedFilters' then 
+		__filterTable = nil
+	end
 	if callbacks[key] and not silent then
 		for _, func in ipairs(callbacks[key]) do
 			func(key, newValue)
@@ -141,12 +145,14 @@ function Config:GetFilter(index)
 end
 
 function Config:GetFilterTable(numFilters)
+	if __filterTable ~= nil then return __filterTable end
 	local value = self:Get('selectedFilters')
 	local ret = {}
 	for i=1, numFilters do
 		local mask = 2^(i-1)
 		ret[i] = bit.band(value, mask) == mask
 	end
+	__filterTable = ret
 	return ret
 end
 

@@ -1,3 +1,7 @@
+## v0.19.2
+
+* Most of 8.0 update is complete, please report any bugs that you encounter
+
 ## v0.19.1
 
 * Continuation of 8.0 update

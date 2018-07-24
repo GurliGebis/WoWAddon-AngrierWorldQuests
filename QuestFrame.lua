@@ -2,6 +2,9 @@ local ADDON, Addon = ...
 local Mod = Addon:NewModule('QuestFrame')
 local Config
 
+local dataProvder
+local hoveredQuestID
+
 local MAPID_BROKENISLES = 619
 local MAPID_DALARAN = 627
 local MAPID_AZSUNA = 630
@@ -15,11 +18,26 @@ local MAPID_ARGUS = 905
 local MAPID_ANTORANWASTES = 885
 local MAPID_KROKUUN = 830
 local MAPID_MACAREE = 882
+
+local MAPID_ZONES_CONTINENTS = {
+	[MAPID_DALARAN] = MAPID_BROKENISLES,
+	[MAPID_AZSUNA] = MAPID_BROKENISLES,
+	[MAPID_STORMHEIM] = MAPID_BROKENISLES,
+	[MAPID_VALSHARAH] = MAPID_BROKENISLES,
+	[MAPID_HIGHMOUNTAIN] = MAPID_BROKENISLES,
+	[MAPID_SURAMAR] = MAPID_BROKENISLES,
+	[MAPID_EYEOFAZSHARA] = MAPID_BROKENISLES,
+	[MAPID_BROKENSHORE] = MAPID_BROKENISLES,
+	[MAPID_ANTORANWASTES] = MAPID_ARGUS,
+	[MAPID_KROKUUN] = MAPID_ARGUS,
+	[MAPID_MACAREE] = MAPID_ARGUS,
+}
+local MAPID_CONTINENTS = { [MAPID_BROKENISLES] = true, [MAPID_ARGUS] = true }
+
 local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
 local MAPID_ALL_BROKENISLES = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE }
 local MAPID_ALL_ARGUS = { MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
 local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6, [MAPID_EYEOFAZSHARA] = 7, [MAPID_BROKENSHORE] = 8, [MAPID_ANTORANWASTES] = 9, [MAPID_KROKUUN] = 10, [MAPID_MACAREE] = 11 }
-local MAPID_ALL_CONTINENTS = { MAPID_BROKENISLES }
 
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
 
@@ -95,6 +113,14 @@ local function TitleButton_OnEnter(self)
 	local _, color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 	
+	hoveredQuestID = self.questID
+
+	if dataProvder then
+		local pin = dataProvder.activePins[self.questID]
+		if pin then
+			pin:EnableDrawLayer("HIGHLIGHT")
+		end
+	end
 	if Config.showComparisonRight then
 		WorldMapTooltip.ItemTooltip.Tooltip.overrideComparisonAnchorSide = "right"
 	end
@@ -106,39 +132,37 @@ local function TitleButton_OnLeave(self)
 	local color = GetQuestDifficultyColor( TitleButton_RarityColorTable[rarity] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
+	hoveredQuestID = nil
+
+	if dataProvder then
+		local pin = dataProvder.activePins[self.questID]
+		if pin then
+			pin:DisableDrawLayer("HIGHLIGHT")
+		end
+	end
 	TaskPOI_OnLeave(self)
 end
 
 local function TitleButton_OnClick(self, button)
-	if false and SpellCanTargetQuest() then
-		if IsQuestIDValidSpellTarget(self.questID) then
-			UseWorldMapActionButtonSpellOnQuest(self.questID)
-			-- Assume success for responsiveness
-			WorldMap_OnWorldQuestCompletedBySpell(self.questID)
-		else
-			UIErrorsFrame:AddMessage(WORLD_QUEST_CANT_COMPLETE_BY_SPELL, RED_FONT_COLOR.r, RED_FONT_COLOR.g, RED_FONT_COLOR.b)
-		end
-	else
-		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-		if ChatEdit_TryInsertQuestLinkForQuestID(self.questID) then
-			
-		elseif ( button == "RightButton" ) then
+	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+	if ( not ChatEdit_TryInsertQuestLinkForQuestID(self.questID) ) then
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+		
+		if ( button == "RightButton" ) then
 			if ( self.mapID ) then
-				SetMapByID(self.mapID)
+				QuestMapFrame:GetParent():SetMapID(self.mapID)
+			end
+		elseif IsShiftKeyDown() then
+			if IsWorldQuestHardWatched(self.questID) or (IsWorldQuestWatched(self.questID) and GetSuperTrackedQuestID() == self.questID) then
+				BonusObjectiveTracker_UntrackWorldQuest(self.questID);
+			else
+				BonusObjectiveTracker_TrackWorldQuest(self.questID, true)
 			end
 		else
-			if IsShiftKeyDown() then
-				if IsWorldQuestHardWatched(self.questID) or (IsWorldQuestWatched(self.questID) and GetSuperTrackedQuestID() == self.questID) then
-					BonusObjectiveTracker_UntrackWorldQuest(self.questID)
-				else
-					BonusObjectiveTracker_TrackWorldQuest(self.questID, true)
-				end
+			if IsWorldQuestHardWatched(self.questID) then
+				SetSuperTrackedQuestID(self.questID);
 			else
-				if IsWorldQuestHardWatched(self.questID) then
-					SetSuperTrackedQuestID(self.questID)
-				else
-					BonusObjectiveTracker_TrackWorldQuest(self.questID)
-				end
+				BonusObjectiveTracker_TrackWorldQuest(self.questID)
 			end
 		end
 	end
@@ -339,8 +363,16 @@ local function FilterButton_OnClick(self, button)
 	end
 end
 
-local function GetQuestsTaskInfo(mapID)
-	return mapID and C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
+local function GetMapIDsForDisplay(mapID)
+	if (Config.showEverywhere and not tContains(MAPID_ALL, mapID)) or mapID == MAPID_BROKENISLES then
+		return { MAPID_BROKENISLES, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
+	elseif not Config.onlyCurrentZone and tContains(MAPID_ALL, mapID) then
+		return { MAPID_BROKENISLES, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
+	elseif mapID == MAPID_ARGUS then
+		return MAPID_ALL_ARGUS
+	else
+		return { mapID }
+	end
 end
 
 local filterButtons = {}
@@ -429,7 +461,7 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 	local totalHeight = 8
 	button.worldQuest = true
 	button.questID = questID
-	button.mapID = mapID
+	button.mapID = questInfo.mapID
 	button.factionID = factionID
 	button.timeLeftMinutes = timeLeftMinutes
 	button.numObjectives = questInfo.numObjectives
@@ -639,33 +671,25 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 	end
 end
 
-local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
-	if bounties == nil then
-		local currentMapID, continentMapID = GetMapAreaIDs()
-		bounties = GetQuestBountyInfoForMapID(currentMapID)
-	end
-	if hasFilters == nil then
-		hasFilters = Config:HasFilters()
-	end
-	if selectedFilters == nil then
-		selectedFilters = Config:GetFilterTable(FILTER_COUNT)
-	end
+local function TaskPOI_IsFiltered(info)
+	local hasFilters = Config:HasFilters()
+	local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
 
-	local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(self.questID)
-	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
-	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(self.questID)
-	C_TaskQuest.RequestPreloadRewardData(self.questID)
+	local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(info.questId)
+	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(info.questId)
+	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(info.questId)
+	C_TaskQuest.RequestPreloadRewardData(info.questId)
 
 	local isFiltered = hasFilters
 
 	if hasFilters then
-		local lootFiltered = TaskPOI_IsFilteredReward(selectedFilters, self.questID)
+		local lootFiltered = TaskPOI_IsFilteredReward(selectedFilters, info.questId)
 		if lootFiltered ~= nil then
 			isFiltered = lootFiltered
 		end
 		
 		if selectedFilters[FILTER_FACTION] then
-			if (factionID == Config.filterFaction or Addon.Data:QuestHasFaction(self.questID, Config.filterFaction)) then
+			if (factionID == Config.filterFaction or Addon.Data:QuestHasFaction(info.questId, Config.filterFaction)) then
 				isFiltered = false
 			end
 		end
@@ -696,7 +720,7 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 		end
 
 		if selectedFilters[FILTER_TRACKED] then
-			if IsWorldQuestHardWatched(self.questID) or GetSuperTrackedQuestID() == self.questID then
+			if IsWorldQuestHardWatched(info.questId) or GetSuperTrackedQuestID() == info.questId then
 				isFiltered = false
 			end
 		end
@@ -718,21 +742,22 @@ local function TaskPOI_IsFiltered(self, bounties, hasFilters, selectedFilters)
 			local filterMapID = Config.filterZone
 
 			if filterMapID ~= 0 then
-				if (self.mapID and self.mapID == filterMapID) or (not self.mapID and currentMapID == filterMapID) then
+				if (info.mapID and info.mapID == filterMapID) or (not info.mapID and currentMapID == filterMapID) then
 					isFiltered = false
 				end
 			else
-				if (self.mapID and self.mapID == currentMapID) or not self.mapID or currentMapID == MAPID_BROKENISLES then
+				if (info.mapID and info.mapID == currentMapID) or not info.mapID or currentMapID == MAPID_BROKENISLES then
 					isFiltered = false
 				end
 			end
 		end
 
 		if selectedFilters[FILTER_EMISSARY] then
+			local bounties = GetQuestBountyInfoForMapID(MAPID_BROKENISLES)
 			local bountyFilter = Config.filterEmissary
 			if GetQuestLogIndexByID(bountyFilter) == 0 or IsQuestComplete(bountyFilter) then bountyFilter = 0 end
 			for _, bounty in ipairs(bounties) do
-				if bounty and not IsQuestComplete(bounty.questID) and IsQuestCriteriaForBounty(self.questID, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
+				if bounty and not IsQuestComplete(bounty.questID) and IsQuestCriteriaForBounty(info.questId, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
 					isFiltered = false
 				end
 			end
@@ -776,7 +801,7 @@ local function QuestFrame_Update()
 	local mapID = QuestMapFrame:GetParent():GetMapID()
 
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(mapID)
-	if not displayLocation or lockedQuestID then
+	if (not Config.showEverywhere) and (not displayLocation or lockedQuestID) then
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 		spacerFrame:Hide()
 		headerButton:Hide()
@@ -869,32 +894,33 @@ local function QuestFrame_Update()
 			end
 		end
 
-		local taskInfo = GetQuestsTaskInfo(mapID)
+		local displayMapIDs = GetMapIDsForDisplay(mapID)
+		for _, mapID in ipairs(displayMapIDs) do
+			local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
 
-		if taskInfo then
-			for i, info in ipairs(taskInfo) do
-				if HaveQuestData(info.questId) and QuestUtils_IsQuestWorldQuest(info.questId) then
-					if WorldMap_DoesWorldQuestInfoPassFilters(info) and (info.mapID == mapID or tContains(MAPID_ALL_CONTINENTS, mapID)) then
-						local button = QuestFrame_AddQuestButton(info)
-						local isFiltered = TaskPOI_IsFiltered(button, bounties, hasFilters, selectedFilters)
-						if isFiltered then
-							button:Hide()
-						else
-							table.insert(usedButtons, button)
+			if taskInfo then
+				for i, info in ipairs(taskInfo) do
+					if HaveQuestData(info.questId) and QuestUtils_IsQuestWorldQuest(info.questId) then
+						if WorldMap_DoesWorldQuestInfoPassFilters(info) and (info.mapID == mapID or MAPID_CONTINENTS[mapID]) then
+							local isFiltered = TaskPOI_IsFiltered(info)
+							if not isFiltered then
+								local button = QuestFrame_AddQuestButton(info)
+								table.insert(usedButtons, button)
+							end
 						end
 					end
 				end
 			end
+		end
 
-			table.sort(usedButtons, TaskPOI_Sorter)
-			for i, button in ipairs(usedButtons) do
-				button.layoutIndex = QuestMapFrame:GetManagedLayoutIndex("AWQ")
-				button:Show()
-				prevButton = button
-				
-				if hoveredQuest == button.questID then
-					TitleButton_OnEnter(button)
-				end
+		table.sort(usedButtons, TaskPOI_Sorter)
+		for i, button in ipairs(usedButtons) do
+			button.layoutIndex = QuestMapFrame:GetManagedLayoutIndex("AWQ")
+			button:Show()
+			prevButton = button
+			
+			if hoveredQuestID == button.questID then
+				TitleButton_OnEnter(button)
 			end
 		end
 	end
@@ -913,17 +939,71 @@ local function QuestFrame_Update()
 	QuestScrollFrame.Contents:Layout()
 end
 
+local function WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest(self, info)
+	if self.focusedQuestID or self:IsQuestSuppressed(info.questId) then
+		return false
+	end
+	local mapID = self:GetMap():GetMapID()
+
+	if Config.showHoveredPOI and hoveredQuestID == info.questId then
+		return true
+	end
+
+	if Config.hideFilteredPOI then
+		if TaskPOI_IsFiltered(info) then
+			return false
+		end
+	end
+	if Config.hideUntrackedPOI then
+		if not (IsWorldQuestHardWatched(info.questId) or GetSuperTrackedQuestID() == info.questId) then
+			return false
+		end
+	end
+
+	if Config.showContinentPOI and MAPID_CONTINENTS[mapID] then
+		return MAPID_ZONES_CONTINENTS[info.mapID] and MAPID_ZONES_CONTINENTS[info.mapID] == mapID
+	else
+		return mapID == info.mapID
+	end
+end
+
+function Mod:Blizzard_WorldMap()
+	for dp,_ in pairs(WorldMapFrame.dataProviders) do
+		if dp.AddWorldQuest then
+			dataProvder = dp
+
+			dataProvder.ShouldShowQuest = WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest
+		end
+	end
+end
+
+local function OverrideLayoutManager()
+	if Config.showAtTop then
+		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 1)
+		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1
+	else
+		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("Other", QUEST_LOG_STORY_LAYOUT_INDEX + 1)
+		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["AWQ"] = QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1
+	end
+end
+
 function Mod:Startup()
 	Config = Addon.Config
 
-	titleFramePool = CreateFramePool("BUTTON", QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
+	self:RegisterAddOnLoaded("Blizzard_WorldMap")
 
-	QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 1);
-	QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 100 + 1
+	titleFramePool = CreateFramePool("BUTTON", QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
+	OverrideLayoutManager()
+
 	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
 
-	Config:RegisterCallback({'onlyCurrentZone', 'sortMethod'}, QuestLogQuests_Update)
-	Config:RegisterCallback({'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'lootUpgradesLevel', 'timeFilterDuration'}, function() 
-		QuestLogQuests_Update()
+	Config:RegisterCallback('showAtTop', function()
+		OverrideLayoutManager()
+		QuestMapFrame_UpdateAll()
+	end)
+
+	Config:RegisterCallback({'showEverywhere', 'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI', 'onlyCurrentZone', 'sortMethod', 'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'lootUpgradesLevel', 'timeFilterDuration'}, function() 
+		QuestMapFrame_UpdateAll()
+		dataProvder:RefreshAllData()
 	end)
 end
