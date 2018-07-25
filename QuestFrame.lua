@@ -19,6 +19,7 @@ local MAPID_ANTORANWASTES = 885
 local MAPID_KROKUUN = 830
 local MAPID_MACAREE = 882
 local MAPID_DARKSHORE = 62
+local MAPID_AZEROTH = 947
 
 local MAPID_ZONES_CONTINENTS = {
 	[MAPID_DALARAN] = MAPID_BROKENISLES,
@@ -35,40 +36,21 @@ local MAPID_ZONES_CONTINENTS = {
 }
 local MAPID_CONTINENTS = { [MAPID_BROKENISLES] = true, [MAPID_ARGUS] = true }
 
-local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE, MAPID_DARKSHORE }
+local MAPID_ALL = { MAPID_AZEROTH, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
 local MAPID_ALL_BROKENISLES = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE }
 local MAPID_ALL_ARGUS = { MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
 local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6, [MAPID_EYEOFAZSHARA] = 7, [MAPID_BROKENSHORE] = 8, [MAPID_ANTORANWASTES] = 9, [MAPID_KROKUUN] = 10, [MAPID_MACAREE] = 11 }
 
+local CURRENCYID_RESOURCES = 1220
+local CURRENCYID_WAR_SUPPLIES = 1342
+local CURRENCYID_NETHERSHARD = 1226
+local CURRENCYID_VEILED_ARGUNITE = 1508
+local CURRENCYID_WAKENING_ESSENCE = 1533
+
 local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
 
-local FILTER_COUNT = 19
-local FILTER_ICONS = { "achievement_reputation_01", "inv_7xp_inscription_talenttome01", "inv_misc_lockboxghostiron", "inv_orderhall_orderresources", "inv_misc_coin_01", "inv_box_01", "ability_bossmagistrix_timewarp2", "achievement_reputation_06", "pvpcurrency-honor-horde", "inv_misc_note_01", "tracking_wildpet", "", "inv_misc_map_01", "icon_treasuremap", "achievement_raregarrisonquests_x", "achievement_general_stayclassy", "inv_misc_summonable_boss_token", "inv_datacrystal01", "oshugun_crystalfragments" }
-local FILTER_NAMES = { BOUNTY_BOARD_LOCKED_TITLE, ARTIFACT_POWER, BONUS_ROLL_REWARD_ITEM, "Order Resources", BONUS_ROLL_REWARD_MONEY, ITEMS, CLOSES_IN, FACTION, PVP, TRADE_SKILLS, SHOW_PET_BATTLES_ON_MAP_TEXT, RAID_FRAME_SORT_LABEL, TRACKING, ZONE, ITEM_QUALITY3_DESC, GROUP_FINDER, "Legionfall War Supplies", "Nethershard", "Veiled Argunite" }
-local FILTER_EMISSARY = 1
-local FILTER_ARTIFACT_POWER = 2
-local FILTER_LOOT = 3
-local FILTER_ORDER_RESOURCES = 4
-local FILTER_GOLD = 5
-local FILTER_ITEMS = 6
-local FILTER_TIME = 7
-local FILTER_FACTION = 8
-local FILTER_PVP = 9
-local FILTER_PROFESSION = 10
-local FILTER_PETBATTLE = 11
-local FILTER_SORT = 12
-local FILTER_TRACKED = 13
-local FILTER_ZONE = 14
-local FILTER_RARE = 15
-local FILTER_DUNGEON = 16
-local FILTER_WAR_SUPPLIES = 17
-local FILTER_NETHERSHARD = 18
-local FILTER_VEILED_ARGUNITE = 19
-local FILTER_ORDER = { FILTER_EMISSARY, FILTER_TIME, FILTER_ZONE, FILTER_TRACKED, FILTER_FACTION, FILTER_ARTIFACT_POWER, FILTER_LOOT, FILTER_ORDER_RESOURCES, FILTER_WAR_SUPPLIES, FILTER_NETHERSHARD, FILTER_VEILED_ARGUNITE, FILTER_GOLD, FILTER_ITEMS, FILTER_PVP, FILTER_PROFESSION, FILTER_PETBATTLE, FILTER_RARE, FILTER_DUNGEON, FILTER_SORT }
-Mod.FilterNames = FILTER_NAMES
-Mod.FilterOrder = FILTER_ORDER
-local FILTER_TIME_VALUES = { 1, 3, 6, 12, 24 }
-Mod.FilterTimeValues = FILTER_TIME_VALUES
+local FILTER_CURRENCY = 1
+local FILTER_ITEMS = 2
 
 local SORT_NAME = 1
 local SORT_TIME = 2
@@ -76,7 +58,7 @@ local SORT_ZONE = 3
 local SORT_FACTION = 4
 local SORT_REWARDS = 5
 local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION, SORT_REWARDS }
-local REWARDS_ORDER = { [FILTER_ARTIFACT_POWER] = 1, [FILTER_LOOT] = 2, [FILTER_ORDER_RESOURCES] = 3, [FILTER_GOLD] = 4, [FILTER_ITEMS] = 5 }
+local REWARDS_ORDER = { ARTIFACT_POWER = 1, LOOT = 2, CURRENCY = 3, GOLD = 4, ITEMS = 5 }
 Mod.SortOrder = SORT_ORDER
 
 local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2165, 2170 }
@@ -85,7 +67,7 @@ local FILTER_LOOT_ALL = 1
 local FILTER_LOOT_UPGRADES = 2
 
 local My_HideDropDownMenu, My_DropDownList1, My_UIDropDownMenu_AddButton, My_UIDropDownMenu_Initialize, My_ToggleDropDownMenu, My_UIDropDownMenuTemplate
-function Mod:BeforeStartup()
+local function MyDropDown_Init()
 	My_HideDropDownMenu = Lib_HideDropDownMenu or HideDropDownMenu
 	My_DropDownList1 = Lib_DropDownList1 or DropDownList1
 	My_UIDropDownMenu_AddButton = Lib_UIDropDownMenu_AddButton or UIDropDownMenu_AddButton
@@ -175,29 +157,29 @@ local function TitleButton_OnClick(self, button)
 end
 
 local function FilterButton_OnEnter(self)
-	local text = FILTER_NAMES[ self.index ]
-	if self.index == FILTER_EMISSARY and Config.filterEmissary and not IsQuestComplete(Config.filterEmissary) then
+	local text = Mod.Filters[ self.filter ].name
+	if self.filter == "EMISSARY" and Config.filterEmissary and not IsQuestComplete(Config.filterEmissary) then
 		local title = GetQuestLogTitle(GetQuestLogIndexByID(Config.filterEmissary))
 		if title then text = text..": "..title end
 	end
-	if self.index == FILTER_LOOT then
+	if self.filter == "LOOT" then
 		if Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades) then
 			text = string.format("%s (%s)", text, Addon.Locale.UPGRADES)
 		end
 	end
-	if self.index == FILTER_FACTION and Config.filterFaction ~= 0 then
+	if self.filter == "FACTION" and Config.filterFaction ~= 0 then
 		local title = GetFactionInfoByID(Config.filterFaction)
 		if title then text = text..": "..title end
 	end
-	if self.index == FILTER_SORT then
+	if self.filter == "SORT" then
 		local title = Addon.Locale["config_sortMethod_"..Config.sortMethod]
 		if title then text = text..": "..title end
 	end
-	if self.index == FILTER_ZONE and Config.filterZone ~= 0 then
+	if self.filter == "ZONE" and Config.filterZone ~= 0 then
 		local title = GetMapNameByID(Config.filterZone)
 		if title then text = text..": "..title end
 	end
-	if self.index == FILTER_TIME then
+	if self.filter == "TIME" then
 		local hours = Config.filterTime ~= 0 and Config.filterTime or Config.timeFilterDuration
 		text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, hours))
 	end
@@ -211,34 +193,34 @@ local function FilterButton_OnLeave(self)
 end
 
 local filterMenu
-local function FilterMenu_OnClick(self, filterIndex)
-	if filterIndex == FILTER_EMISSARY then
+local function FilterMenu_OnClick(self, key)
+	if key == "EMISSARY" then
 		Config:Set('filterEmissary', self.value, true)
 	end
-	if filterIndex == FILTER_LOOT then
+	if key == "LOOT" then
 		Config:Set('filterLoot', self.value, true)
 	end
-	if filterIndex == FILTER_FACTION then
+	if key == "FACTION" then
 		Config:Set('filterFaction', self.value, true)
 	end
-	if filterIndex == FILTER_ZONE then
+	if key == "ZONE" then
 		Config:Set('filterZone', self.value, true)
 	end
-	if filterIndex == FILTER_TIME then
+	if key == "TIME" then
 		Config:Set('filterTime', self.value, true)
 	end
-	if filterIndex == FILTER_SORT then
+	if key == "SORT" then
 		Config:Set('sortMethod', self.value)
 	elseif IsShiftKeyDown() then
-		Config:SetFilter(filterIndex, true)
+		Config:SetFilter(key, true)
 	else
-		Config:SetOnlyFilter(filterIndex)
+		Config:SetOnlyFilter(key)
 	end
 end
 
 local function FilterMenu_Initialize(self, level)
-	local info = { func = FilterMenu_OnClick, arg1 = self.index }
-	if self.index == FILTER_EMISSARY then
+	local info = { func = FilterMenu_OnClick, arg1 = self.filter }
+	if self.filter == "EMISSARY" then
 		local value = Config.filterEmissary
 		if GetQuestLogIndexByID(value) == 0 then value = 0 end
 
@@ -257,7 +239,7 @@ local function FilterMenu_Initialize(self, level)
 				My_UIDropDownMenu_AddButton(info, level)
 			end
 		end
-	elseif self.index == FILTER_LOOT then
+	elseif self.filter == "LOOT" then
 		local value = Config.filterLoot
 		if value == 0 then value = Config.lootFilterUpgrades and FILTER_LOOT_UPGRADES or FILTER_LOOT_ALL end
 
@@ -270,7 +252,7 @@ local function FilterMenu_Initialize(self, level)
 		info.value = FILTER_LOOT_UPGRADES
 		info.checked = info.value == value
 		My_UIDropDownMenu_AddButton(info, level)
-	elseif self.index == FILTER_ZONE then
+	elseif self.filter == "ZONE" then
 		local value = Config.filterZone
 
 		info.text = Addon.Locale.CURRENT_ZONE
@@ -284,7 +266,7 @@ local function FilterMenu_Initialize(self, level)
 			info.checked = info.value == value
 			My_UIDropDownMenu_AddButton(info, level)
 		end
-	elseif self.index == FILTER_FACTION then
+	elseif self.filter == "FACTION" then
 		local value = Config.filterFaction
 
 		for _, factionID in ipairs(FACTION_ORDER) do
@@ -293,19 +275,19 @@ local function FilterMenu_Initialize(self, level)
 			info.checked = info.value == value
 			My_UIDropDownMenu_AddButton(info, level)
 		end
-	elseif self.index == FILTER_TIME then
+	elseif self.filter == "TIME" then
 		local value = Config.filterTime ~= 0 and Config.filterTime or Config.timeFilterDuration
 
-		for _, hours in ipairs(FILTER_TIME_VALUES) do
+		for _, hours in ipairs(Mod.Filters.TIME.values) do
 			info.text = string.format(FORMATED_HOURS, hours)
 			info.value = hours
 			info.checked = info.value == value
 			My_UIDropDownMenu_AddButton(info, level)
 		end
-	elseif self.index == FILTER_SORT then
+	elseif self.filter == "SORT" then
 		local value = Config.sortMethod
 
-		info.text = FILTER_NAMES[ self.index ]
+		info.text = Mod.Filters[ self.filter ].name
 		info.notCheckable = true
 		info.isTitle = true
 		My_UIDropDownMenu_AddButton(info, level)
@@ -327,18 +309,18 @@ local function FilterButton_ShowMenu(self)
 		filterMenu = CreateFrame("Button", "DropDownMenuAWQ", QuestMapFrame, My_UIDropDownMenuTemplate)
 	end
 
-	filterMenu.index = self.index
+	filterMenu.filter = self.filter
 	My_UIDropDownMenu_Initialize(filterMenu, FilterMenu_Initialize, "MENU")
 	My_ToggleDropDownMenu(1, nil, filterMenu, self, 0, 0)
 end
 
 local function FilterButton_OnClick(self, button)
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-	if (button == 'RightButton' and (self.index == FILTER_EMISSARY or self.index == FILTER_LOOT or self.index == FILTER_FACTION or self.index == FILTER_ZONE  or self.index == FILTER_TIME))
-			or (self.index == FILTER_SORT)
-			or (self.index == FILTER_FACTION and not Config:GetFilter(FILTER_FACTION) and Config.filterFaction == 0) then
+	if (button == 'RightButton' and (self.filter == "EMISSARY" or self.filter == "LOOT" or self.filter == "FACTION" or self.filter == "ZONE" or self.filter == "TIME"))
+			or (self.filter == "SORT")
+			or (self.filter == "FACTION" and not Config:GetFilter("FACTION") and Config.filterFaction == 0) then
 		local MY_UIDROPDOWNMENU_OPEN_MENU = Lib_UIDropDownMenu_Initialize and LIB_UIDROPDOWNMENU_OPEN_MENU or UIDROPDOWNMENU_OPEN_MENU
-		if filterMenu and MY_UIDROPDOWNMENU_OPEN_MENU == filterMenu and My_DropDownList1:IsShown() and filterMenu.index == self.index then
+		if filterMenu and MY_UIDROPDOWNMENU_OPEN_MENU == filterMenu and My_DropDownList1:IsShown() and filterMenu.filter == self.filter then
 			My_HideDropDownMenu(1)
 		else
 			My_HideDropDownMenu(1)
@@ -347,22 +329,22 @@ local function FilterButton_OnClick(self, button)
 	else
 		My_HideDropDownMenu(1)
 		if IsShiftKeyDown() then
-			if self.index == FILTER_EMISSARY then Config:Set('filterEmissary', 0, true) end
-			if self.index == FILTER_LOOT then Config:Set('filterLoot', 0, true) end
-			Config:ToggleFilter(self.index)
+			if self.filter == "EMISSARY" then Config:Set('filterEmissary', 0, true) end
+			if self.filter == "LOOT" then Config:Set('filterLoot', 0, true) end
+			Config:ToggleFilter(self.filter)
 		else
-			if Config:IsOnlyFilter(self.index) then
+			if Config:IsOnlyFilter(self.filter) then
 				Config:Set('filterEmissary', 0, true)
 				Config:Set('filterLoot', 0, true)
 				Config:Set('filterZone', 0, true)
 				Config:Set('filterTime', 0, true)
 				Config:SetNoFilter()
 			else
-				if self.index ~= FILTER_EMISSARY then Config:Set('filterEmissary', 0, true) end
-				if self.index ~= FILTER_LOOT then Config:Set('filterLoot', 0, true) end
-				if self.index ~= FILTER_ZONE then Config:Set('filterZone', 0, true) end
-				if self.index ~= FILTER_TIME then Config:Set('filterTime', 0, true) end
-				Config:SetOnlyFilter(self.index)
+				if self.filter ~= "EMISSARY" then Config:Set('filterEmissary', 0, true) end
+				if self.filter ~= "LOOT" then Config:Set('filterLoot', 0, true) end
+				if self.filter ~= "ZONE" then Config:Set('filterZone', 0, true) end
+				if self.filter ~= "TIME" then Config:Set('filterTime', 0, true) end
+				Config:SetOnlyFilter(self.filter)
 			end
 		end
 		FilterButton_OnEnter(self)
@@ -370,27 +352,21 @@ local function FilterButton_OnClick(self, button)
 end
 
 local function GetMapIDsForDisplay(mapID)
-	local ret
-	if (Config.showEverywhere and not tContains(MAPID_ALL, mapID)) or mapID == MAPID_BROKENISLES then
-		ret = CopyTable(MAPID_ALL)
-	elseif not Config.onlyCurrentZone and tContains(MAPID_ALL, mapID) then
-		ret = CopyTable(MAPID_ALL)
+	if not Config.onlyCurrentZone then
+		return MAPID_ALL
 	elseif mapID == MAPID_ARGUS then
-		ret = CopyTable(MAPID_ALL_ARGUS)
+		return MAPID_ALL_ARGUS
 	else
-		ret = { mapID }
+		return { mapID }
 	end
-	if not tContains(ret, mapID) and mapID ~= MAPID_BROKENISLES and mapID ~= MAPID_ARGUS then
-		table.insert(ret, mapID)
-	end
-	return ret
 end
 
 local filterButtons = {}
-local function GetFilterButton(index)
+local function GetFilterButton(key)
+	local index = Mod.Filters[key].index
 	if ( not filterButtons[index] ) then
 		local button = CreateFrame("Button", nil, QuestMapFrame.QuestsFrame.Contents)
-		button.index = index
+		button.filter = key
 
 		button:SetScript("OnEnter", FilterButton_OnEnter)
 		button:SetScript("OnLeave", FilterButton_OnLeave)
@@ -399,7 +375,7 @@ local function GetFilterButton(index)
 
 		button:SetSize(24, 24)
 			
-		if index == FILTER_SORT then
+		if key == "SORT" then
 			button:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up")
 			button:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Down")
 			button:SetDisabledTexture("Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Disabled")
@@ -413,7 +389,7 @@ local function GetFilterButton(index)
 			icon:SetMask("Interface\\CharacterFrame\\TempPortraitAlphaMask")
 			icon:SetSize(16, 16)
 			icon:SetPoint("CENTER", 0, 1)
-			icon:SetTexture("Interface\\Icons\\"..(FILTER_ICONS[index] or "inv_misc_questionmark"))
+			icon:SetTexture(Mod.Filters[key].icon or "inv_misc_questionmark")
 			button.Icon = icon
 		end
 		filterButtons[index] = button
@@ -542,23 +518,19 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 		tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
 		tagTexCoords = { 0, 0.25, 0, 1 }
 		tagText = BreakUpLargeNumbers(gold)
-		button.rewardCategory = FILTER_GOLD
+		button.rewardCategory = "GOLD"
 		button.rewardValue = gold
 	end	
 
 	local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
 	if numQuestCurrencies > 0 then
 		for currencyNum = 1, numQuestCurrencies do 
-			local name, texture, numItems = GetQuestLogRewardCurrencyInfo(currencyNum, questID)
-			if name ~= FILTER_NAMES[FILTER_WAR_SUPPLIES] and name ~= FILTER_NAMES[FILTER_NETHERSHARD] then
+			local name, texture, numItems, currencyID = GetQuestLogRewardCurrencyInfo(currencyNum, questID)
+			if currencyID ~= CURRENCYID_WAR_SUPPLIES and currencyID ~= CURRENCYID_NETHERSHARD then
 				tagText = numItems
 				tagTexture = texture
 				tagTexCoords = nil
-				if name == FILTER_NAMES[FILTER_WAR_SUPPLIES] then
-					button.rewardCategory = FILTER_WAR_SUPPLIES
-				else
-					button.rewardCategory = FILTER_ORDER_RESOURCES
-				end
+				button.rewardCategory = "CURRENCY"
 				button.rewardValue = numItems
 			end
 		end
@@ -575,7 +547,7 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 				tagTexCoords = nil
 				tagText = ArtifactPowerTruncate(artifactPower)
 				tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
-				button.rewardCategory = FILTER_ARTIFACT_POWER
+				button.rewardCategory = "ARTIFACT_POWER"
 				button.rewardValue = artifactPower
 			else
 				tagTexture = itemTexture
@@ -583,11 +555,11 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 				if iLevel then
 					tagText = iLevel
 					tagColor = BAG_ITEM_QUALITY_COLORS[quality]
-					button.rewardCategory = FILTER_LOOT
+					button.rewardCategory = "LOOT"
 					button.rewardValue = iLevel
 				else
 					tagText = quantity > 1 and quantity
-					button.rewardCategory = FILTER_ITEMS
+					button.rewardCategory = "ITEMS"
 					button.rewardValue = quantity
 				end
 			end
@@ -622,26 +594,24 @@ end
 
 local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 	local positiveMatch = false
+	local hasCurrencyFilter = false
 
 	local money = GetQuestLogRewardMoney(questID)
-	if money > 0 and selectedFilters[FILTER_GOLD] then
+	if money > 0 and selectedFilters["GOLD"] then
 		positiveMatch = true
 	end	
 
 	local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
-	for i = 1, numQuestCurrencies do
-		local name, texture, numItems = GetQuestLogRewardCurrencyInfo(i, questID)
-		if name == FILTER_NAMES[FILTER_ORDER_RESOURCES] and selectedFilters[FILTER_ORDER_RESOURCES] then
-			positiveMatch = true
-		end
-		if name == FILTER_NAMES[FILTER_WAR_SUPPLIES] and selectedFilters[FILTER_WAR_SUPPLIES] then
-			positiveMatch = true
-		end
-		if name == FILTER_NAMES[FILTER_VEILED_ARGUNITE] and selectedFilters[FILTER_VEILED_ARGUNITE] then
-			positiveMatch = true
-		end
-		if name == FILTER_NAMES[FILTER_NETHERSHARD] and selectedFilters[FILTER_NETHERSHARD] then
-			positiveMatch = true
+	for key,_ in pairs(selectedFilters) do
+		local filter = Mod.Filters[key]
+		if filter.preset == FILTER_CURRENCY then
+			hasCurrencyFilter = true
+			for i = 1, numQuestCurrencies do
+				local name, texture, numItems, currencyID = GetQuestLogRewardCurrencyInfo(i, questID)
+				if filter.currencyID == currencyID then
+					positiveMatch = true
+				end
+			end
 		end
 	end
 
@@ -652,17 +622,17 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 			local artifactPower = nil--Addon.Data:ItemArtifactPower(itemID)
 			local iLevel = Addon.Data:RewardItemLevel(itemID, questID)
 			if artifactPower then
-				if selectedFilters[FILTER_ARTIFACT_POWER] then
+				if selectedFilters.ARTIFACT_POWER then
 					positiveMatch = true
 				end
 			else
 				if iLevel then
 					local upgradesOnly = Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)
-					if selectedFilters[FILTER_LOOT] and (not upgradesOnly or Addon.Data:RewardIsUpgrade(itemID, questID)) then
+					if selectedFilters.LOOT and (not upgradesOnly or Addon.Data:RewardIsUpgrade(itemID, questID)) then
 						positiveMatch = true
 					end
 				else
-					if selectedFilters[FILTER_ITEMS] then
+					if selectedFilters.ITEMS then
 						positiveMatch = true
 					end
 				end
@@ -672,14 +642,14 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 
 	if positiveMatch then
 		return false
-	elseif selectedFilters[FILTER_ORDER_RESOURCES] or selectedFilters[FILTER_WAR_SUPPLIES] or selectedFilters[FILTER_VEILED_ARGUNITE] or selectedFilters[FILTER_NETHERSHARD] or selectedFilters[FILTER_ARTIFACT_POWER] or selectedFilters[FILTER_LOOT] or selectedFilters[FILTER_ITEMS] then
+	elseif hasCurrencyFilter or selectedFilters.ARTIFACT_POWER or selectedFilters.LOOT or selectedFilters.ITEMS then
 		return true
 	end
 end
 
 local function TaskPOI_IsFiltered(info)
 	local hasFilters = Config:HasFilters()
-	local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
+	local selectedFilters = Config:GetFilterTable()
 
 	local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(info.questId)
 	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(info.questId)
@@ -694,57 +664,57 @@ local function TaskPOI_IsFiltered(info)
 			isFiltered = lootFiltered
 		end
 		
-		if selectedFilters[FILTER_FACTION] then
+		if selectedFilters.FACTION then
 			if (factionID == Config.filterFaction or Addon.Data:QuestHasFaction(info.questId, Config.filterFaction)) then
 				isFiltered = false
 			end
 		end
 
-		if selectedFilters[FILTER_TIME] then
+		if selectedFilters.TIME then
 			local hours = Config.filterTime ~= 0 and Config.filterTime or Config.timeFilterDuration
 			if timeLeftMinutes and (timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) <= (hours * 60) then
 				isFiltered = false
 			end
 		end
 
-		if selectedFilters[FILTER_PVP] then
+		if selectedFilters.PVP then
 			if worldQuestType == LE_QUEST_TAG_TYPE_PVP then
 				isFiltered = false
 			end
 		end
 
-		if selectedFilters[FILTER_PETBATTLE] then
+		if selectedFilters.PETBATTLE then
 			if worldQuestType == LE_QUEST_TAG_TYPE_PET_BATTLE then
 				isFiltered = false
 			end
 		end
 
-		if selectedFilters[FILTER_PROFESSION] then
+		if selectedFilters.PROFESSION then
 			if tradeskillLineIndex then
 				isFiltered = false
 			end
 		end
 
-		if selectedFilters[FILTER_TRACKED] then
+		if selectedFilters.TRACKED then
 			if IsWorldQuestHardWatched(info.questId) or GetSuperTrackedQuestID() == info.questId then
 				isFiltered = false
 			end
 		end
 
-		if selectedFilters[FILTER_RARE] then
+		if selectedFilters.RARE then
 			if rarity ~= LE_WORLD_QUEST_QUALITY_COMMON then
 				isFiltered = false
 			end
 		end
 
-		if selectedFilters[FILTER_DUNGEON] then
+		if selectedFilters.DUNGEON then
 			if worldQuestType == LE_QUEST_TAG_TYPE_DUNGEON or worldQuestType == LE_QUEST_TAG_TYPE_RAID then
 				isFiltered = false
 			end
 		end
 
-		if selectedFilters[FILTER_ZONE] then
-			local currentMapID = GetMapAreaIDs()
+		if selectedFilters.ZONE then
+			local currentMapID = QuestMapFrame:GetParent():GetMapID()
 			local filterMapID = Config.filterZone
 
 			if filterMapID ~= 0 then
@@ -758,7 +728,7 @@ local function TaskPOI_IsFiltered(info)
 			end
 		end
 
-		if selectedFilters[FILTER_EMISSARY] then
+		if selectedFilters.EMISSARY then
 			local bounties = GetQuestBountyInfoForMapID(MAPID_BROKENISLES)
 			local bountyFilter = Config.filterEmissary
 			if GetQuestLogIndexByID(bountyFilter) == 0 or IsQuestComplete(bountyFilter) then bountyFilter = 0 end
@@ -788,7 +758,7 @@ local function TaskPOI_Sorter(a, b)
 			return MAPID_ORDER[a.mapID] < MAPID_ORDER[b.mapID]
 		end
 	elseif Config.sortMethod == SORT_REWARDS then
-		local default_cat = FILTER_COUNT + 1
+		local default_cat = #Mod.Filters + 1
 		local acat = (a.rewardCategory and REWARDS_ORDER[a.rewardCategory]) or default_cat
 		local bcat = (b.rewardCategory and REWARDS_ORDER[b.rewardCategory]) or default_cat
 		if acat ~= bcat then
@@ -807,8 +777,8 @@ local function QuestFrame_Update()
 	local mapID = QuestMapFrame:GetParent():GetMapID()
 
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(mapID)
-	local hasTasksOnMap = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
-	if (not Config.showEverywhere) and (not displayLocation or lockedQuestID) and not hasTasksOnMap then
+	local tasksOnMap = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
+	if (Config.onlyCurrentZone) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) then
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 		if spaceFrame then spacerFrame:Hide() end
 		if headerButton then headerButton:Hide() end
@@ -862,21 +832,21 @@ local function QuestFrame_Update()
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 	else
 		local hasFilters = Config:HasFilters()
-		local selectedFilters = Config:GetFilterTable(FILTER_COUNT)
+		local selectedFilters = Config:GetFilterTable()
 
 		local enabledCount = 0
-		for i=#FILTER_ORDER, 1, -1 do
-			if not Config:GetFilterDisabled(FILTER_ORDER[i]) then enabledCount = enabledCount + 1 end
+		for i=#Mod.FiltersOrder, 1, -1 do
+			if not Config:GetFilterDisabled(Mod.FiltersOrder[i]) then enabledCount = enabledCount + 1 end
 		end
 
 		local prevFilter
 
-		for j=1, #FILTER_ORDER, 1 do
+		for j=1, #Mod.FiltersOrder, 1 do
 			local i = j
-			if not filtersOwnRow then i = #FILTER_ORDER - i + 1 end
-			local filterButton = GetFilterButton(FILTER_ORDER[i])
+			if not filtersOwnRow then i = #Mod.FiltersOrder - i + 1 end
+			local filterButton = GetFilterButton(Mod.FiltersOrder[i])
 			filterButton:SetFrameLevel(50 + i)
-			if Config:GetFilterDisabled(FILTER_ORDER[i]) then
+			if Config:GetFilterDisabled(Mod.FiltersOrder[i]) then
 				filterButton:Hide()
 			else
 				filterButton:Show()
@@ -890,8 +860,8 @@ local function QuestFrame_Update()
 					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
 				end
 
-				if FILTER_ORDER[i] ~= FILTER_SORT then
-					if selectedFilters[FILTER_ORDER[i]] then
+				if Mod.FiltersOrder[i] ~= "SORT" then
+					if selectedFilters[Mod.FiltersOrder[i]] then
 						filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
 					else
 						filterButton:SetNormalAtlas("worldquest-tracker-ring")
@@ -908,7 +878,7 @@ local function QuestFrame_Update()
 			if taskInfo then
 				for i, info in ipairs(taskInfo) do
 					if HaveQuestData(info.questId) and QuestUtils_IsQuestWorldQuest(info.questId) then
-						if WorldMap_DoesWorldQuestInfoPassFilters(info) and (info.mapID == mapID or MAPID_CONTINENTS[mapID]) then
+						if WorldMap_DoesWorldQuestInfoPassFilters(info) and (info.mapID == mapID or MAPID_CONTINENTS[mapID] or mapID == MAPID_AZEROTH) then
 							local isFiltered = TaskPOI_IsFiltered(info)
 							if not isFiltered then
 								local button = QuestFrame_AddQuestButton(info)
@@ -986,12 +956,80 @@ end
 
 local function OverrideLayoutManager()
 	if Config.showAtTop then
-		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 1)
 		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1
+		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 1)
 	else
-		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("Other", QUEST_LOG_STORY_LAYOUT_INDEX + 1)
-		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["AWQ"] = QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1
+		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 1
+		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1)
 	end
+end
+
+function Mod:AddFilter(key, name, icon, default)
+	local filter = {
+		key = key,
+		name = name,
+		icon = "Interface\\Icons\\"..icon,
+		default = default,
+		index = #self.FiltersOrder+1,
+	}
+
+	self.Filters[key] = filter
+	table.insert(self.FiltersOrder, key)
+
+	return filter
+end
+
+function Mod:AddCurrencyFilter(key, currencyID, default)
+	local currencyName, _, currencyTexture = GetCurrencyInfo(currencyID)
+	local name = currencyName
+	local icon = currencyTexture
+
+	local filter = {
+		key = key,
+		name = name,
+		icon = icon,
+		default = default,
+		index = #self.FiltersOrder+1,
+		preset = FILTER_CURRENCY,
+		currencyID = currencyID,
+	}
+
+	self.Filters[key] = filter
+	table.insert(self.FiltersOrder, key)
+
+	return filter
+end
+
+function Mod:BeforeStartup()
+	MyDropDown_Init()
+
+	self.Filters = {}
+	self.FiltersOrder = {}
+
+	self:AddFilter("EMISSARY", BOUNTY_BOARD_LOCKED_TITLE, "achievement_reputation_01", true)
+	self:AddFilter("TIME", CLOSES_IN, "ability_bossmagistrix_timewarp2")
+	self:AddFilter("ZONE", ZONE, "inv_misc_map02")
+	self:AddFilter("TRACKED", TRACKING, "icon_treasuremap")
+	self:AddFilter("FACTION", FACTION, "achievement_reputation_06")
+	self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
+	self:AddFilter("LOOT", BONUS_ROLL_REWARD_ITEM, "inv_misc_lockboxghostiron", true)
+	self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
+	self:AddCurrencyFilter("WAR_SUPPLIES", CURRENCYID_WAR_SUPPLIES)
+	self:AddCurrencyFilter("NETHERSHARD", CURRENCYID_NETHERSHARD)
+	self:AddCurrencyFilter("VEILED_ARGUNITE", CURRENCYID_VEILED_ARGUNITE)
+	self:AddCurrencyFilter("WAKENING_ESSENCE", CURRENCYID_WAKENING_ESSENCE)
+	self:AddFilter("GOLD", BONUS_ROLL_REWARD_MONEY, "inv_misc_coin_01")
+	self:AddFilter("ITEMS", ITEMS, "inv_box_01", true)
+	self:AddFilter("PVP", PVP, "pvpcurrency-honor-horde")
+	self:AddFilter("PROFESSION", TRADE_SKILLS, "inv_misc_note_01")
+	self:AddFilter("PETBATTLE", SHOW_PET_BATTLES_ON_MAP_TEXT, "tracking_wildpet")
+	self:AddFilter("RARE", ITEM_QUALITY3_DESC, "achievement_general_stayclassy")
+	self:AddFilter("DUNGEON", GROUP_FINDER, "inv_misc_summonable_boss_token")
+	self:AddFilter("SORT", RAID_FRAME_SORT_LABEL, "inv_misc_map_01")
+
+	if UnitFactionGroup("player") == "Alliance" then self.Filters.PVP.icon = "Interface\\Icons\\pvpcurrency-honor-alliance" end
+
+	self.Filters.TIME.values = { 1, 3, 6, 12, 24 }
 end
 
 function Mod:Startup()
@@ -1009,7 +1047,7 @@ function Mod:Startup()
 		QuestMapFrame_UpdateAll()
 	end)
 
-	Config:RegisterCallback({'showEverywhere', 'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI', 'onlyCurrentZone', 'sortMethod', 'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'lootUpgradesLevel', 'timeFilterDuration'}, function() 
+	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI', 'onlyCurrentZone', 'sortMethod', 'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'lootUpgradesLevel', 'timeFilterDuration'}, function() 
 		QuestMapFrame_UpdateAll()
 		dataProvder:RefreshAllData()
 	end)

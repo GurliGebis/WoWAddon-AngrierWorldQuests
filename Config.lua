@@ -1,7 +1,7 @@
 local ADDON, Addon = ...
 local Config = Addon:NewModule('Config')
 
-local configVersion = 12
+local configVersion = 20
 local configDefaults = {
 	collapsed = false,
 	showAtTop = true,
@@ -9,7 +9,7 @@ local configDefaults = {
 	onlyCurrentZone = true,
 	showEverywhere = false,
 	selectedFilters = 0,
-	disabledFilters = bit.bor(2^(8-1), 2^(9-1), 2^(10-1), 2^(11-1), 2^(12-1), 2^(13-1), 2^(14-1), 2^(15-1), 2^(16-1), 2^(17-1), 2^(18-1), 2^(19-1)),
+	disabledFilters = 0,
 	filterEmissary = 0,
 	filterLoot = 0,
 	filterFaction = 0,
@@ -26,6 +26,9 @@ local configDefaults = {
 	extendedInfo = false,
 	saveFilters = false,
 }
+
+local FiltersConversion = { EMISSARY = 1, ARTIFACT_POWER = 2, LOOT = 3, ORDER_RESOURCES = 4, GOLD = 5, ITEMS = 6, TIME = 7, FACTION = 8, PVP = 9, PROFESSION = 10, PETBATTLE = 11, SORT = 12, TRACKED = 13, ZONE = 14, RARE = 15, DUNGEON = 16, WAR_SUPPLIES = 17, NETHERSHARD = 18, VEILED_ARGUNITE = 19, WAKENING_ESSENCE = 20 }
+
 local callbacks = {}
 local __filterTable
 
@@ -129,42 +132,47 @@ function Config:UnregisterCallback(key, func)
 	end
 end
 
+function Config:FilterKeyToMask(key)
+	local index = FiltersConversion[key]
+	return 2^(index-1)
+end
+
 function Config:HasFilters()
 	return self:Get('selectedFilters') > 0
 end
-function Config:IsOnlyFilter(index)
+function Config:IsOnlyFilter(key)
 	local value = self:Get('selectedFilters')
-	local mask = 2^(index-1)
+	local mask = self:FilterKeyToMask(key)
 	return mask == value
 end
 
-function Config:GetFilter(index)
+function Config:GetFilter(key)
 	local value = self:Get('selectedFilters')
-	local mask = 2^(index-1)
+	local mask = self:FilterKeyToMask(key)
 	return bit.band(value, mask) == mask
 end
 
 function Config:GetFilterTable(numFilters)
-	if __filterTable ~= nil then return __filterTable end
-	local value = self:Get('selectedFilters')
-	local ret = {}
-	for i=1, numFilters do
-		local mask = 2^(i-1)
-		ret[i] = bit.band(value, mask) == mask
+	if __filterTable == nil then
+		local value = self:Get('selectedFilters')
+		__filterTable = {}
+		for key,i in pairs(FiltersConversion) do
+			local mask = 2^(i-1)
+			if bit.band(value, mask) == mask then __filterTable[key] = true end
+		end
 	end
-	__filterTable = ret
-	return ret
+	return __filterTable
 end
 
-function Config:GetFilterDisabled(index)
+function Config:GetFilterDisabled(key)
 	local value = self:Get('disabledFilters')
-	local mask = 2^(index-1)
+	local mask = self:FilterKeyToMask(key)
 	return bit.band(value, mask) == mask
 end
 
-function Config:SetFilter(index, newValue)
+function Config:SetFilter(key, newValue)
 	local value = self:Get('selectedFilters')
-	local mask = 2^(index-1)
+	local mask = self:FilterKeyToMask(key)
 	if newValue then
 		value = bit.bor(value, mask)
 	else
@@ -177,14 +185,14 @@ function Config:SetNoFilter()
 	self:Set('selectedFilters', 0)
 end
 
-function Config:SetOnlyFilter(index)
-	local mask = 2^(index-1)
+function Config:SetOnlyFilter(key)
+	local mask = self:FilterKeyToMask(key)
 	self:Set('selectedFilters', mask)
 end
 
-function Config:ToggleFilter(index)
+function Config:ToggleFilter(key)
 	local value = self:Get('selectedFilters')
-	local mask = 2^(index-1)
+	local mask = self:FilterKeyToMask(key)
 	local currentValue = bit.band(value, mask) == mask
 	if not currentValue then
 		value = bit.bor(value, mask)
@@ -238,7 +246,7 @@ end
 
 local function FilterCheckBox_Update(self)
 	local value = Config:Get("disabledFilters")
-	local mask = 2^(self.filterIndex-1)
+	local mask = self.filterMask
 	self:SetChecked( bit.band(value,mask) == 0 )
 end
 
@@ -248,7 +256,7 @@ local function FilterCheckBox_OnClick(self)
 		panelOriginalConfig[key] = Config[key]
 	end
 	local value = Config:Get("disabledFilters")
-	local mask = 2^(self.filterIndex-1)
+	local mask = self.filterMask
 	if self:GetChecked() then
 		value = bit.band(value, bit.bnot(mask))
 	else
@@ -299,7 +307,7 @@ local function DropDown_Initialize(self)
 	info.arg1 = self
 
 	if key == 'timeFilterDuration' then
-		for _, hours in ipairs(Addon.QuestFrame.FilterTimeValues) do
+		for _, hours in ipairs(Addon.QuestFrame.Filters.TIME.values) do
 			info.text = string.format(FORMATED_HOURS, hours)
 			info.value = hours
 			if ( selectedValue == info.value ) then
@@ -374,7 +382,7 @@ Panel_OnRefresh = function(self)
 		dropdowns = {}
 		filterCheckboxes = {}
 
-		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showEverywhere", "showContinentPOI", "hideFilteredPOI", "hideUntrackedPOI", "showHoveredPOI", "lootFilterUpgrades" }
+		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showContinentPOI", "hideFilteredPOI", "hideUntrackedPOI", "showHoveredPOI", "lootFilterUpgrades" }
 
 		for i,key in ipairs(checkboxes_order) do
 			checkboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
@@ -407,13 +415,14 @@ Panel_OnRefresh = function(self)
 		label2:SetJustifyV("TOP")
 		label2:SetText(Addon.Locale['config_enabledFilters'])
 
-		for i,index in ipairs(Addon.QuestFrame.FilterOrder) do
+		for i,key in ipairs(Addon.QuestFrame.FiltersOrder) do
+			local filter = Addon.QuestFrame.Filters[key]
 			filterCheckboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
 			filterCheckboxes[i]:SetScript("OnClick", FilterCheckBox_OnClick)
-			filterCheckboxes[i].filterIndex = index
+			filterCheckboxes[i].filterMask = Config:FilterKeyToMask(key)
 			filterCheckboxes[i].Text:SetFontObject("GameFontHighlightSmall")
 			filterCheckboxes[i].Text:SetPoint("LEFT", filterCheckboxes[i], "RIGHT", 0, 1)
-			filterCheckboxes[i].Text:SetText( Addon.QuestFrame.FilterNames[index] )
+			filterCheckboxes[i].Text:SetText( filter.name )
 			if i == 1 then
 				filterCheckboxes[1]:SetPoint("TOPLEFT", label2, "BOTTOMLEFT", 0, -5)
 			else
@@ -434,7 +443,7 @@ Panel_OnRefresh = function(self)
 		My_UIDropDownMenu_Initialize(dropdown, DropDown_Initialize)
 		My_UIDropDownMenu_SetSelectedValue(dropdown, Config:Get(dropdown.configKey))
 	end
-	
+
 	for _, check in ipairs(filterCheckboxes) do
 		FilterCheckBox_Update(check)
 	end
@@ -465,55 +474,6 @@ function Config:BeforeStartup()
 		AngryWorldQuests_CharacterConfig['__version'] = configVersion
 	end
 
-	if AngryWorldQuests_Config['__version'] <= 3 and AngryWorldQuests_Config['disabledFilters'] then
-		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(8-1), AngryWorldQuests_Config['disabledFilters'])
-	end
-	if AngryWorldQuests_Config['__version'] <= 4 and AngryWorldQuests_Config['disabledFilters'] then
-		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(9-1), 2^(10-1), 2^(11-1), AngryWorldQuests_Config['disabledFilters'])
-	end
-	if AngryWorldQuests_Config['__version'] <= 5 and AngryWorldQuests_Config['disabledFilters'] then
-		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(12-1), AngryWorldQuests_Config['disabledFilters'])
-	end
-	if AngryWorldQuests_CharacterConfig['__version'] <= 5 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
-		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(12-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
-	end
-	if AngryWorldQuests_Config['__version'] <= 6 and AngryWorldQuests_Config['disabledFilters'] then
-		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(13-1), 2^(14-1), AngryWorldQuests_Config['disabledFilters'])
-	end
-	if AngryWorldQuests_CharacterConfig['__version'] <= 6 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
-		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(13-1), 2^(14-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
-	end
-	if AngryWorldQuests_Config['__version'] <= 7 and AngryWorldQuests_Config['disabledFilters'] then
-		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(15-1), AngryWorldQuests_Config['disabledFilters'])
-	end
-	if AngryWorldQuests_CharacterConfig['__version'] <= 7 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
-		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(15-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
-	end
-	if AngryWorldQuests_Config['__version'] <= 8 and AngryWorldQuests_Config['disabledFilters'] then
-		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(16-1), AngryWorldQuests_Config['disabledFilters'])
-	end
-	if AngryWorldQuests_CharacterConfig['__version'] <= 8 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
-		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(16-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
-	end
-	if AngryWorldQuests_Config['__version'] <= 9 and AngryWorldQuests_Config['disabledFilters'] then
-		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(17-1), AngryWorldQuests_Config['disabledFilters'])
-	end
-	if AngryWorldQuests_CharacterConfig['__version'] <= 9 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
-		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(17-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
-	end
-	if AngryWorldQuests_Config['__version'] <= 10 and AngryWorldQuests_Config['disabledFilters'] then
-		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(18-1), AngryWorldQuests_Config['disabledFilters'])
-	end
-	if AngryWorldQuests_CharacterConfig['__version'] <= 10 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
-		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(18-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
-	end
-	if AngryWorldQuests_Config['__version'] <= 11 and AngryWorldQuests_Config['disabledFilters'] then
-		AngryWorldQuests_Config['disabledFilters'] = bit.bor(2^(19-1), AngryWorldQuests_Config['disabledFilters'])
-	end
-	if AngryWorldQuests_CharacterConfig['__version'] <= 11 and AngryWorldQuests_CharacterConfig['disabledFilters'] then
-		AngryWorldQuests_CharacterConfig['disabledFilters'] = bit.bor(2^(19-1), AngryWorldQuests_CharacterConfig['disabledFilters'])
-	end
-
 	AngryWorldQuests_Config['__version'] = configVersion
 	AngryWorldQuests_CharacterConfig['__version'] = configVersion
 
@@ -531,6 +491,37 @@ function Config:BeforeStartup()
 		AngryWorldQuests_CharacterConfig.filterZone = nil
 		AngryWorldQuests_CharacterConfig.filterTime = nil
 	end
+
+end
+
+function Config:Startup()
+	local lastFilter = AngryWorldQuests_Config['__filters']
+	local lastFilter2 = AngryWorldQuests_CharacterConfig['__filters']
+	local value = AngryWorldQuests_Config['disabledFilters'] or 0
+	local value2 = AngryWorldQuests_CharacterConfig['disabledFilters'] or 0
+	local maxFilter = 0
+	for key,index in pairs(FiltersConversion) do
+		local mask = 2^(index-1)
+		if not lastFilter or index > lastFilter then
+			if Addon.QuestFrame.Filters[key].default then
+				value = bit.band(value, bit.bnot(mask))
+			else
+				value = bit.bor(value, mask)
+			end
+		end
+		if not lastFilter2 or mask > lastFilter2 then
+			if Addon.QuestFrame.Filters[key].default  then
+				value2 = bit.band(value2, bit.bnot(mask))
+			else
+				value2 = bit.bor(value2, mask)
+			end
+		end
+		if index > maxFilter then maxFilter = index end
+	end
+	AngryWorldQuests_Config['disabledFilters'] = value
+	AngryWorldQuests_Config['__filters'] = maxFilter
+	AngryWorldQuests_CharacterConfig['disabledFilters'] = value2
+	AngryWorldQuests_CharacterConfig['__filters'] = maxFilter
 
 	optionPanel = self:CreatePanel(ADDON)
 end
