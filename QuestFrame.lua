@@ -18,6 +18,7 @@ local MAPID_ARGUS = 905
 local MAPID_ANTORANWASTES = 885
 local MAPID_KROKUUN = 830
 local MAPID_MACAREE = 882
+local MAPID_DARKSHORE = 62
 
 local MAPID_ZONES_CONTINENTS = {
 	[MAPID_DALARAN] = MAPID_BROKENISLES,
@@ -34,7 +35,7 @@ local MAPID_ZONES_CONTINENTS = {
 }
 local MAPID_CONTINENTS = { [MAPID_BROKENISLES] = true, [MAPID_ARGUS] = true }
 
-local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
+local MAPID_ALL = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE, MAPID_DARKSHORE }
 local MAPID_ALL_BROKENISLES = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE }
 local MAPID_ALL_ARGUS = { MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
 local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6, [MAPID_EYEOFAZSHARA] = 7, [MAPID_BROKENSHORE] = 8, [MAPID_ANTORANWASTES] = 9, [MAPID_KROKUUN] = 10, [MAPID_MACAREE] = 11 }
@@ -369,15 +370,20 @@ local function FilterButton_OnClick(self, button)
 end
 
 local function GetMapIDsForDisplay(mapID)
+	local ret
 	if (Config.showEverywhere and not tContains(MAPID_ALL, mapID)) or mapID == MAPID_BROKENISLES then
-		return { MAPID_BROKENISLES, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
+		ret = CopyTable(MAPID_ALL)
 	elseif not Config.onlyCurrentZone and tContains(MAPID_ALL, mapID) then
-		return { MAPID_BROKENISLES, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
+		ret = CopyTable(MAPID_ALL)
 	elseif mapID == MAPID_ARGUS then
-		return MAPID_ALL_ARGUS
+		ret = CopyTable(MAPID_ALL_ARGUS)
 	else
-		return { mapID }
+		ret = { mapID }
 	end
+	if not tContains(ret, mapID) and mapID ~= MAPID_BROKENISLES and mapID ~= MAPID_ARGUS then
+		table.insert(ret, mapID)
+	end
+	return ret
 end
 
 local filterButtons = {}
@@ -503,10 +509,12 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 	elseif ( worldQuestType == LE_QUEST_TAG_TYPE_PROFESSION and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
 		button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
 	elseif isElite then
-		--local tagCoords = QUEST_TAG_TCOORDS[QUEST_TAG_HEROIC]
-		--button.TaskIcon:SetSize(16, 16)
-		--button.TaskIcon:SetTexture("Interface\\QuestFrame\\QuestTypeIcons")
-		--button.TaskIcon:SetTexCoord( unpack(tagCoords) )
+		local tagCoords = QUEST_TAG_TCOORDS[Enum.QuestTag.Heroic]
+		button.TaskIcon:SetSize(16, 16)
+		button.TaskIcon:SetTexture(QUEST_ICONS_FILE)
+		button.TaskIcon:SetTexCoord( unpack(tagCoords) )
+	elseif ( worldQuestType == LE_QUEST_TAG_TYPE_INVASION ) then
+		button.TaskIcon:SetAtlas("worldquest-icon-burninglegion", true)
 	else
 		hasIcon = false
 		button.TaskIcon:Hide()
@@ -607,13 +615,6 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 	end
 
 	button:SetHeight(totalHeight)
-	-- button:ClearAllPoints()
-	-- if prevButton then
-	-- 	button:SetPoint("TOPLEFT", prevButton, "BOTTOMLEFT", 0, 0)
-	-- else
-	-- 	button:SetPoint("TOPLEFT", 1, -6)
-	-- end
-	-- button.layoutIndex = QuestMapFrame:GetManagedLayoutIndex("AWQ")
 	button:Show()
 
 	return button
@@ -806,7 +807,8 @@ local function QuestFrame_Update()
 	local mapID = QuestMapFrame:GetParent():GetMapID()
 
 	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(mapID)
-	if (not Config.showEverywhere) and (not displayLocation or lockedQuestID) then
+	local hasTasksOnMap = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
+	if (not Config.showEverywhere) and (not displayLocation or lockedQuestID) and not hasTasksOnMap then
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 		if spaceFrame then spacerFrame:Hide() end
 		if headerButton then headerButton:Hide() end

@@ -91,7 +91,7 @@ function Data:RewardItemLevel(itemID, questID)
 			local textLine2 = AWQFakeTooltipTextLeft2 and AWQFakeTooltipTextLeft2:IsShown() and AWQFakeTooltipTextLeft2:GetText()
 			local textLine3 = AWQFakeTooltipTextLeft3 and AWQFakeTooltipTextLeft3:IsShown() and AWQFakeTooltipTextLeft3:GetText()
 			local textLine4 = AWQFakeTooltipTextLeft4 and AWQFakeTooltipTextLeft4:IsShown() and AWQFakeTooltipTextLeft4:GetText()
-			local matcher = string.gsub(ITEM_LEVEL_PLUS, "%%d%+", "(%%d+)+")
+			local matcher = string.gsub(ITEM_LEVEL_PLUS, "%%d%+", "(%%d+)+?")
 			local itemLevel
 
 			if textLine2 then
