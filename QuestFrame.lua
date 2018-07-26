@@ -261,7 +261,8 @@ local function FilterMenu_Initialize(self, level)
 		My_UIDropDownMenu_AddButton(info, level)
 
 		for _,mapID in ipairs(MAPID_ALL) do
-			info.text = GetMapNameByID(mapID)
+			local mapInfo = C_Map.GetMapInfo(mapID)
+			info.text = mapInfo and mapInfo.name or "???"
 			info.value = mapID
 			info.checked = info.value == value
 			My_UIDropDownMenu_AddButton(info, level)
@@ -316,7 +317,7 @@ end
 
 local function FilterButton_OnClick(self, button)
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-	if (button == 'RightButton' and (self.filter == "EMISSARY" or self.filter == "LOOT" or self.filter == "FACTION" or self.filter == "ZONE" or self.filter == "TIME"))
+	if (button == 'RightButton' and (self.filter == "EMISSARY" or self.filter == "LOOT" or self.filter == "FACTION" or self.filter == "TIME")) -- or self.filter == "ZONE"
 			or (self.filter == "SORT")
 			or (self.filter == "FACTION" and not Config:GetFilter("FACTION") and Config.filterFaction == 0) then
 		local MY_UIDROPDOWNMENU_OPEN_MENU = Lib_UIDropDownMenu_Initialize and LIB_UIDROPDOWNMENU_OPEN_MENU or UIDROPDOWNMENU_OPEN_MENU
@@ -718,11 +719,11 @@ local function TaskPOI_IsFiltered(info)
 			local filterMapID = Config.filterZone
 
 			if filterMapID ~= 0 then
-				if (info.mapID and info.mapID == filterMapID) or (not info.mapID and currentMapID == filterMapID) then
+				if info.mapID and info.mapID == filterMapID then
 					isFiltered = false
 				end
 			else
-				if (info.mapID and info.mapID == currentMapID) or not info.mapID or currentMapID == MAPID_BROKENISLES then
+				if info.mapID and info.mapID == currentMapID then
 					isFiltered = false
 				end
 			end
@@ -938,7 +939,7 @@ local function WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest(self, info)
 	end
 
 	if Config.showContinentPOI and MAPID_CONTINENTS[mapID] then
-		return MAPID_ZONES_CONTINENTS[info.mapID] and MAPID_ZONES_CONTINENTS[info.mapID] == mapID
+		return mapID == info.mapID or (MAPID_ZONES_CONTINENTS[info.mapID] and MAPID_ZONES_CONTINENTS[info.mapID] == mapID)
 	else
 		return mapID == info.mapID
 	end
@@ -1008,7 +1009,7 @@ function Mod:BeforeStartup()
 
 	self:AddFilter("EMISSARY", BOUNTY_BOARD_LOCKED_TITLE, "achievement_reputation_01", true)
 	self:AddFilter("TIME", CLOSES_IN, "ability_bossmagistrix_timewarp2")
-	self:AddFilter("ZONE", ZONE, "inv_misc_map02")
+	self:AddFilter("ZONE", Addon.Locale.CURRENT_ZONE, "inv_misc_map02") -- ZONE
 	self:AddFilter("TRACKED", TRACKING, "icon_treasuremap")
 	self:AddFilter("FACTION", FACTION, "achievement_reputation_06")
 	self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)

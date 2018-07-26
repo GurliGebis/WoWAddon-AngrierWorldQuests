@@ -1,3 +1,7 @@
+## v0.19.5
+
+* Bug fixes
+
 ## v0.19.4
 
 * Support for prepatch World Quests

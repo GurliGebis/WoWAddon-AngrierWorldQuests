@@ -7,7 +7,6 @@ local configDefaults = {
 	showAtTop = true,
 	showHoveredPOI = false,
 	onlyCurrentZone = true,
-	showEverywhere = false,
 	selectedFilters = 0,
 	disabledFilters = 0,
 	filterEmissary = 0,
@@ -509,7 +508,7 @@ function Config:Startup()
 				value = bit.bor(value, mask)
 			end
 		end
-		if not lastFilter2 or mask > lastFilter2 then
+		if not lastFilter2 or index > lastFilter2 then
 			if Addon.QuestFrame.Filters[key].default  then
 				value2 = bit.band(value2, bit.bnot(mask))
 			else
