@@ -1,3 +1,7 @@
+## v0.20.0
+
+* Small update for lvl 120 quests, more to come
+
 ## v0.19.5
 
 * Bug fixes

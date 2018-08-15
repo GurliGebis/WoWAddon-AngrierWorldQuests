@@ -37,8 +37,8 @@ local MAPID_ZONES_CONTINENTS = {
 local MAPID_CONTINENTS = { [MAPID_BROKENISLES] = true, [MAPID_ARGUS] = true }
 
 local MAPID_ALL = { MAPID_AZEROTH, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
-local MAPID_ALL_BROKENISLES = { MAPID_SURAMAR, MAPID_AZSUNA, MAPID_VALSHARAH, MAPID_HIGHMOUNTAIN, MAPID_STORMHEIM, MAPID_DALARAN, MAPID_EYEOFAZSHARA, MAPID_BROKENSHORE }
 local MAPID_ALL_ARGUS = { MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
+local MAPID_LEGION = { [MAPID_SURAMAR]=1, [MAPID_AZSUNA]=1, [MAPID_VALSHARAH]=1, [MAPID_HIGHMOUNTAIN]=1, [MAPID_STORMHEIM]=1, [MAPID_DALARAN]=1, [MAPID_EYEOFAZSHARA]=1, [MAPID_BROKENSHORE]=1, [MAPID_ANTORANWASTES]=1, [MAPID_KROKUUN]=1, [MAPID_MACAREE]=1 }
 local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6, [MAPID_EYEOFAZSHARA] = 7, [MAPID_BROKENSHORE] = 8, [MAPID_ANTORANWASTES] = 9, [MAPID_KROKUUN] = 10, [MAPID_MACAREE] = 11 }
 
 local CURRENCYID_RESOURCES = 1220
@@ -46,8 +46,11 @@ local CURRENCYID_WAR_SUPPLIES = 1342
 local CURRENCYID_NETHERSHARD = 1226
 local CURRENCYID_VEILED_ARGUNITE = 1508
 local CURRENCYID_WAKENING_ESSENCE = 1533
+local CURRENCYID_AZERITE = 1553
+local CURRENCYID_WAR_RESOURCES = 1560
 
-local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
+local TitleButton_RarityColorTable_Old = { [LE_WORLD_QUEST_QUALITY_COMMON] = 110, [LE_WORLD_QUEST_QUALITY_RARE] = 113, [LE_WORLD_QUEST_QUALITY_EPIC] = 120 }
+local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 120, [LE_WORLD_QUEST_QUALITY_RARE] = 123, [LE_WORLD_QUEST_QUALITY_EPIC] = 130 }
 
 local FILTER_CURRENCY = 1
 local FILTER_ITEMS = 2
@@ -659,6 +662,12 @@ local function TaskPOI_IsFiltered(info)
 
 	local isFiltered = hasFilters
 
+	if UnitLevel("player") > 110 then
+		if MAPID_LEGION[info.mapID] then
+			return true
+		end
+	end
+
 	if hasFilters then
 		local lootFiltered = TaskPOI_IsFilteredReward(selectedFilters, info.questId)
 		if lootFiltered ~= nil then
@@ -945,26 +954,6 @@ local function WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest(self, info)
 	end
 end
 
-function Mod:Blizzard_WorldMap()
-	for dp,_ in pairs(WorldMapFrame.dataProviders) do
-		if dp.AddWorldQuest then
-			dataProvder = dp
-
-			dataProvder.ShouldShowQuest = WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest
-		end
-	end
-end
-
-local function OverrideLayoutManager()
-	if Config.showAtTop then
-		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1
-		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 1)
-	else
-		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 1
-		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1)
-	end
-end
-
 function Mod:AddFilter(key, name, icon, default)
 	local filter = {
 		key = key,
@@ -1014,11 +1003,16 @@ function Mod:BeforeStartup()
 	self:AddFilter("FACTION", FACTION, "achievement_reputation_06")
 	self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
 	self:AddFilter("LOOT", BONUS_ROLL_REWARD_ITEM, "inv_misc_lockboxghostiron", true)
-	self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
-	self:AddCurrencyFilter("WAR_SUPPLIES", CURRENCYID_WAR_SUPPLIES)
-	self:AddCurrencyFilter("NETHERSHARD", CURRENCYID_NETHERSHARD)
-	self:AddCurrencyFilter("VEILED_ARGUNITE", CURRENCYID_VEILED_ARGUNITE)
-	self:AddCurrencyFilter("WAKENING_ESSENCE", CURRENCYID_WAKENING_ESSENCE)
+
+	-- self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
+	-- self:AddCurrencyFilter("WAR_SUPPLIES", CURRENCYID_WAR_SUPPLIES)
+	-- self:AddCurrencyFilter("NETHERSHARD", CURRENCYID_NETHERSHARD)
+	-- self:AddCurrencyFilter("VEILED_ARGUNITE", CURRENCYID_VEILED_ARGUNITE)
+	-- self:AddCurrencyFilter("WAKENING_ESSENCE", CURRENCYID_WAKENING_ESSENCE)
+
+	self:AddCurrencyFilter("AZERITE", CURRENCYID_AZERITE, true)
+	self:AddCurrencyFilter("WAR_RESOURCES", CURRENCYID_WAR_RESOURCES, true)
+
 	self:AddFilter("GOLD", BONUS_ROLL_REWARD_MONEY, "inv_misc_coin_01")
 	self:AddFilter("ITEMS", ITEMS, "inv_box_01", true)
 	self:AddFilter("PVP", PVP, "pvpcurrency-honor-horde")
@@ -1031,6 +1025,31 @@ function Mod:BeforeStartup()
 	if UnitFactionGroup("player") == "Alliance" then self.Filters.PVP.icon = "Interface\\Icons\\pvpcurrency-honor-alliance" end
 
 	self.Filters.TIME.values = { 1, 3, 6, 12, 24 }
+end
+
+function Mod:Blizzard_WorldMap()
+	for dp,_ in pairs(WorldMapFrame.dataProviders) do
+		if dp.AddWorldQuest and dp.AddWorldQuest == WorldMap_WorldQuestDataProviderMixin.AddWorldQuest then
+			dataProvder = dp
+
+			dataProvder.ShouldShowQuest = WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest
+		end
+	end
+	for _,of in ipairs(WorldMapFrame.overlayFrames) do
+		if of.OnLoad and of.OnLoad == WorldMapTrackingOptionsButtonMixin.OnLoad then
+			hooksecurefunc(of, "OnSelection", QuestMapFrame_UpdateAll)
+		end
+	end
+end
+
+local function OverrideLayoutManager()
+	if Config.showAtTop then
+		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1
+		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 1)
+	else
+		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 1
+		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1)
+	end
 end
 
 function Mod:Startup()
