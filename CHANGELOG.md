@@ -1,3 +1,7 @@
+## v0.20.2
+
+* Bug fix for last release
+
 ## v0.20.1
 
 * Further lvl 120 update

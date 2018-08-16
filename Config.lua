@@ -500,22 +500,24 @@ function Config:Startup()
 	local value2 = AngryWorldQuests_CharacterConfig['disabledFilters'] or 0
 	local maxFilter = 0
 	for key,index in pairs(FiltersConversion) do
-		local mask = 2^(index-1)
-		if not lastFilter or index > lastFilter then
-			if Addon.QuestFrame.Filters[key].default then
-				value = bit.band(value, bit.bnot(mask))
-			else
-				value = bit.bor(value, mask)
+		if Addon.QuestFrame.Filters[key] then
+			local mask = 2^(index-1)
+			if not lastFilter or index > lastFilter then
+				if Addon.QuestFrame.Filters[key].default then
+					value = bit.band(value, bit.bnot(mask))
+				else
+					value = bit.bor(value, mask)
+				end
 			end
-		end
-		if not lastFilter2 or index > lastFilter2 then
-			if Addon.QuestFrame.Filters[key].default  then
-				value2 = bit.band(value2, bit.bnot(mask))
-			else
-				value2 = bit.bor(value2, mask)
+			if not lastFilter2 or index > lastFilter2 then
+				if Addon.QuestFrame.Filters[key].default  then
+					value2 = bit.band(value2, bit.bnot(mask))
+				else
+					value2 = bit.bor(value2, mask)
+				end
 			end
+			if index > maxFilter then maxFilter = index end
 		end
-		if index > maxFilter then maxFilter = index end
 	end
 	AngryWorldQuests_Config['disabledFilters'] = value
 	AngryWorldQuests_Config['__filters'] = maxFilter
