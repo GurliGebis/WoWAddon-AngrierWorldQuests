@@ -54,7 +54,26 @@ local MAPID_CONTINENTS = { [MAPID_BROKENISLES] = true, [MAPID_ARGUS] = true, [MA
 
 local MAPID_ALL = { MAPID_AZEROTH, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
 local MAPID_ALL_ARGUS = { MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
-local MAPID_ORDER = { [MAPID_SURAMAR] = 1, [MAPID_AZSUNA] = 2, [MAPID_VALSHARAH] = 3, [MAPID_HIGHMOUNTAIN] = 4, [MAPID_STORMHEIM] = 5, [MAPID_DALARAN] = 6, [MAPID_EYEOFAZSHARA] = 7, [MAPID_BROKENSHORE] = 8, [MAPID_ANTORANWASTES] = 9, [MAPID_KROKUUN] = 10, [MAPID_MACAREE] = 11 }
+local MAPID_ORDER = {
+	[MAPID_VOLDUN] = 1,
+	[MAPID_NAZMIR] = 2,
+	[MAPID_ZULDAZAR] = 3,
+	[MAPID_STORMSONG_VALLEY] = 4,
+	[MAPID_DRUSTVAR] = 5,
+	[MAPID_TIRAGARDE_SOUND] = 6,
+	[MAPID_TOL_DAGOR] = 7,
+	[MAPID_SURAMAR] = 51,
+	[MAPID_AZSUNA] = 52,
+	[MAPID_VALSHARAH] = 53,
+	[MAPID_HIGHMOUNTAIN] = 54,
+	[MAPID_STORMHEIM] = 55,
+	[MAPID_DALARAN] = 56,
+	[MAPID_EYEOFAZSHARA] = 57,
+	[MAPID_BROKENSHORE] = 58,
+	[MAPID_ANTORANWASTES] = 59,
+	[MAPID_KROKUUN] = 60,
+	[MAPID_MACAREE] = 61
+}
 
 local CURRENCYID_RESOURCES = 1220
 local CURRENCYID_WAR_SUPPLIES = 1342
@@ -78,7 +97,9 @@ local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION, SORT_REWARDS
 local REWARDS_ORDER = { ARTIFACT_POWER = 1, LOOT = 2, CURRENCY = 3, GOLD = 4, ITEMS = 5 }
 Mod.SortOrder = SORT_ORDER
 
-local FACTION_ORDER = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2165, 2170 }
+local FACTION_ORDER_HORDE = { 2157, 2164, 2156, 2158, 2103, 2163 }
+local FACTION_ORDER_ALLIANCE = { 2159, 2164, 2160, 2161, 2162, 2163 }
+local FACTION_ORDER
 
 local FILTER_LOOT_ALL = 1
 local FILTER_LOOT_UPGRADES = 2
@@ -113,8 +134,8 @@ local function IsLegionMap(mapID)
 	return __legionMap[mapID]
 end
 
-local function IsLegionWorldQuest(questID, mapID)
-	return IsLegionMap(mapID)
+local function IsLegionWorldQuest(info)
+	return IsLegionMap(info.mapID)
 end
 
 -- =================
@@ -354,7 +375,7 @@ local function FilterButton_OnClick(self, button)
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 	if (button == 'RightButton' and (self.filter == "EMISSARY" or self.filter == "LOOT" or self.filter == "FACTION" or self.filter == "TIME")) -- or self.filter == "ZONE"
 			or (self.filter == "SORT")
-			or (self.filter == "FACTION" and not Config:GetFilter("FACTION") and Config.filterFaction == 0) then
+			or (self.filter == "FACTION" and not Config:GetFilter("FACTION")) then -- and Config.filterFaction == 0
 		local MY_UIDROPDOWNMENU_OPEN_MENU = Lib_UIDropDownMenu_Initialize and LIB_UIDROPDOWNMENU_OPEN_MENU or UIDROPDOWNMENU_OPEN_MENU
 		if filterMenu and MY_UIDROPDOWNMENU_OPEN_MENU == filterMenu and My_DropDownList1:IsShown() and filterMenu.filter == self.filter then
 			My_HideDropDownMenu(1)
@@ -370,12 +391,14 @@ local function FilterButton_OnClick(self, button)
 			Config:ToggleFilter(self.filter)
 		else
 			if Config:IsOnlyFilter(self.filter) then
+				Config:Set('filterFaction', 0, true)
 				Config:Set('filterEmissary', 0, true)
 				Config:Set('filterLoot', 0, true)
 				Config:Set('filterZone', 0, true)
 				Config:Set('filterTime', 0, true)
 				Config:SetNoFilter()
 			else
+				if self.filter ~= "FACTION" then Config:Set('filterFaction', 0, true) end
 				if self.filter ~= "EMISSARY" then Config:Set('filterEmissary', 0, true) end
 				if self.filter ~= "LOOT" then Config:Set('filterLoot', 0, true) end
 				if self.filter ~= "ZONE" then Config:Set('filterZone', 0, true) end
@@ -692,7 +715,10 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 	local isFiltered = hasFilters
 
 	if UnitLevel("player") > 110 then
-		if IsLegionWorldQuest(info.questId, info.mapID) and not IsLegionMap(displayMapID) then
+		if IsLegionWorldQuest(info) and not IsLegionMap(displayMapID) then
+			return true
+		end
+		if not IsLegionWorldQuest(info) and IsLegionMap(displayMapID) then
 			return true
 		end
 	end
@@ -1034,7 +1060,7 @@ function Mod:BeforeStartup()
 	self:AddFilter("ZONE", Addon.Locale.CURRENT_ZONE, "inv_misc_map02") -- ZONE
 	self:AddFilter("TRACKED", TRACKING, "icon_treasuremap")
 	self:AddFilter("FACTION", FACTION, "achievement_reputation_06")
-	self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
+	-- self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
 	self:AddFilter("LOOT", BONUS_ROLL_REWARD_ITEM, "inv_misc_lockboxghostiron", true)
 
 	-- self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
@@ -1048,14 +1074,14 @@ function Mod:BeforeStartup()
 
 	self:AddFilter("GOLD", BONUS_ROLL_REWARD_MONEY, "inv_misc_coin_01")
 	self:AddFilter("ITEMS", ITEMS, "inv_box_01", true)
-	self:AddFilter("PVP", PVP, "pvpcurrency-honor-horde")
+	-- self:AddFilter("PVP", PVP, "pvpcurrency-honor-horde")
 	self:AddFilter("PROFESSION", TRADE_SKILLS, "inv_misc_note_01")
 	self:AddFilter("PETBATTLE", SHOW_PET_BATTLES_ON_MAP_TEXT, "tracking_wildpet")
 	self:AddFilter("RARE", ITEM_QUALITY3_DESC, "achievement_general_stayclassy")
 	self:AddFilter("DUNGEON", GROUP_FINDER, "inv_misc_summonable_boss_token")
 	self:AddFilter("SORT", RAID_FRAME_SORT_LABEL, "inv_misc_map_01")
 
-	if UnitFactionGroup("player") == "Alliance" then self.Filters.PVP.icon = "Interface\\Icons\\pvpcurrency-honor-alliance" end
+	-- if UnitFactionGroup("player") == "Alliance" then self.Filters.PVP.icon = "Interface\\Icons\\pvpcurrency-honor-alliance" end
 
 	self.Filters.TIME.values = { 1, 3, 6, 12, 24 }
 end
@@ -1087,6 +1113,12 @@ end
 
 function Mod:Startup()
 	Config = Addon.Config
+
+	if UnitFactionGroup("player") == "Alliance" then
+		FACTION_ORDER = FACTION_ORDER_ALLIANCE
+	else
+		FACTION_ORDER = FACTION_ORDER_HORDE
+	end
 
 	self:RegisterAddOnLoaded("Blizzard_WorldMap")
 
