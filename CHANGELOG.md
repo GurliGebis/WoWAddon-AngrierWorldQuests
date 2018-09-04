@@ -1,3 +1,7 @@
+## v0.20.3
+
+* Use Legion factions for faction filter while on a Legion map
+
 ## v0.20.2
 
 * Updated faction filter

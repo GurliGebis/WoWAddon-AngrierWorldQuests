@@ -99,6 +99,7 @@ Mod.SortOrder = SORT_ORDER
 
 local FACTION_ORDER_HORDE = { 2157, 2164, 2156, 2158, 2103, 2163 }
 local FACTION_ORDER_ALLIANCE = { 2159, 2164, 2160, 2161, 2162, 2163 }
+local FACTION_ORDER_LEGION = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2165, 2170 }
 local FACTION_ORDER
 
 local FILTER_LOOT_ALL = 1
@@ -326,7 +327,10 @@ local function FilterMenu_Initialize(self, level)
 	elseif self.filter == "FACTION" then
 		local value = Config.filterFaction
 
-		for _, factionID in ipairs(FACTION_ORDER) do
+		local mapID = QuestMapFrame:GetParent():GetMapID()
+		local factions = IsLegionMap(mapID) and FACTION_ORDER_LEGION or FACTION_ORDER
+
+		for _, factionID in ipairs(factions) do
 			info.text =  GetFactionInfoByID(factionID)
 			info.value = factionID
 			info.checked = info.value == value
