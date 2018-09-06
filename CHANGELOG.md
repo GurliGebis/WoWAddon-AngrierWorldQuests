@@ -1,3 +1,7 @@
+## v0.20.4
+
+* Improvements to faction filter for multifaction quests
+
 ## v0.20.3
 
 * Use Legion factions for faction filter while on a Legion map
