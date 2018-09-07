@@ -3,7 +3,7 @@ require 'nokogiri'
 require 'open-uri'
 require 'json'
 
-url = 'https://www.wowhead.com/battle-for-azeroth-quests/type:118:129:115:116:131:137:111:123:122:112:110:114:130:119:126:125:117:142:139:146:145:144:151:120:113:136:135:124:121:152:109'
+url = 'https://www.wowhead.com/quests/type:118:129:115:116:131:137:111:123:122:112:110:114:130:119:126:125:117:142:139:146:145:144:151:120:113:136:135:124:121:152:109?filter=35;8;0'
 
 page = open(url).read
 
