@@ -824,7 +824,7 @@ local function TaskPOI_Sorter(a, b)
 		end
 	elseif Config.sortMethod == SORT_ZONE then
 		if MAPID_ORDER[a.mapID] ~= MAPID_ORDER[b.mapID] then
-			return MAPID_ORDER[a.mapID] < MAPID_ORDER[b.mapID]
+			return (MAPID_ORDER[a.mapID] or 0) < (MAPID_ORDER[b.mapID] or 0)
 		end
 	elseif Config.sortMethod == SORT_REWARDS then
 		local default_cat = #Mod.Filters + 1

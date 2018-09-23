@@ -1,3 +1,7 @@
+## v0.20.6
+
+* Bugfix
+
 ## v0.20.5
 
 * Fix for faction filter for quests with multiple faction rewards
