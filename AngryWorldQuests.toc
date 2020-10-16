@@ -1,4 +1,4 @@
-## Interface: 80000
+## Interface: 90001
 ## Title: Angry World Quests
 ## Notes: Adds World Quests to the quest list
 ## Author: Ermad
