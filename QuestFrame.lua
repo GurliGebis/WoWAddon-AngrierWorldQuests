@@ -5,6 +5,8 @@ local Config
 local dataProvder
 local hoveredQuestID
 
+local MAPID_AZEROTH = 947
+-- Legion
 local MAPID_BROKENISLES = 619
 local MAPID_DALARAN = 627
 local MAPID_AZSUNA = 630
@@ -18,8 +20,9 @@ local MAPID_ARGUS = 905
 local MAPID_ANTORANWASTES = 885
 local MAPID_KROKUUN = 830
 local MAPID_MACAREE = 882
+-- BfA
 local MAPID_DARKSHORE = 62
-local MAPID_AZEROTH = 947
+local MAPID_ARATHI_HIGHLANDS = 14
 local MAPID_ZANDALAR = 875
 local MAPID_VOLDUN = 864
 local MAPID_NAZMIR = 863
@@ -29,51 +32,8 @@ local MAPID_STORMSONG_VALLEY = 942
 local MAPID_DRUSTVAR = 896
 local MAPID_TIRAGARDE_SOUND = 895
 local MAPID_TOL_DAGOR = 1169
-
-local MAPID_ZONES_CONTINENTS = {
-	[MAPID_DALARAN] = MAPID_BROKENISLES,
-	[MAPID_AZSUNA] = MAPID_BROKENISLES,
-	[MAPID_STORMHEIM] = MAPID_BROKENISLES,
-	[MAPID_VALSHARAH] = MAPID_BROKENISLES,
-	[MAPID_HIGHMOUNTAIN] = MAPID_BROKENISLES,
-	[MAPID_SURAMAR] = MAPID_BROKENISLES,
-	[MAPID_EYEOFAZSHARA] = MAPID_BROKENISLES,
-	[MAPID_BROKENSHORE] = MAPID_BROKENISLES,
-	[MAPID_ANTORANWASTES] = MAPID_ARGUS,
-	[MAPID_KROKUUN] = MAPID_ARGUS,
-	[MAPID_MACAREE] = MAPID_ARGUS,
-	[MAPID_VOLDUN] = MAPID_ZANDALAR,
-	[MAPID_NAZMIR] = MAPID_ZANDALAR,
-	[MAPID_ZULDAZAR] = MAPID_ZANDALAR,
-	[MAPID_STORMSONG_VALLEY] = MAPID_KUL_TIRAS,
-	[MAPID_DRUSTVAR] = MAPID_KUL_TIRAS,
-	[MAPID_TIRAGARDE_SOUND] = MAPID_KUL_TIRAS,
-	[MAPID_TOL_DAGOR] = MAPID_KUL_TIRAS,
-}
-local MAPID_CONTINENTS = { [MAPID_BROKENISLES] = true, [MAPID_ARGUS] = true, [MAPID_ZANDALAR] = true, [MAPID_KUL_TIRAS] = true }
-
-local MAPID_ALL = { MAPID_AZEROTH, MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
-local MAPID_ALL_ARGUS = { MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE }
-local MAPID_ORDER = {
-	[MAPID_VOLDUN] = 1,
-	[MAPID_NAZMIR] = 2,
-	[MAPID_ZULDAZAR] = 3,
-	[MAPID_STORMSONG_VALLEY] = 4,
-	[MAPID_DRUSTVAR] = 5,
-	[MAPID_TIRAGARDE_SOUND] = 6,
-	[MAPID_TOL_DAGOR] = 7,
-	[MAPID_SURAMAR] = 51,
-	[MAPID_AZSUNA] = 52,
-	[MAPID_VALSHARAH] = 53,
-	[MAPID_HIGHMOUNTAIN] = 54,
-	[MAPID_STORMHEIM] = 55,
-	[MAPID_DALARAN] = 56,
-	[MAPID_EYEOFAZSHARA] = 57,
-	[MAPID_BROKENSHORE] = 58,
-	[MAPID_ANTORANWASTES] = 59,
-	[MAPID_KROKUUN] = 60,
-	[MAPID_MACAREE] = 61
-}
+local MAPID_NAZJATAR = 1355
+local MAPID_MECHAGON_ISLAND = 1462
 
 local CURRENCYID_RESOURCES = 1220
 local CURRENCYID_WAR_SUPPLIES = 1342
@@ -83,7 +43,7 @@ local CURRENCYID_WAKENING_ESSENCE = 1533
 local CURRENCYID_AZERITE = 1553
 local CURRENCYID_WAR_RESOURCES = 1560
 
-local TitleButton_RarityColorTable = { [LE_WORLD_QUEST_QUALITY_COMMON] = 0, [LE_WORLD_QUEST_QUALITY_RARE] = 3, [LE_WORLD_QUEST_QUALITY_EPIC] = 10 }
+local TitleButton_RarityColorTable = { [Enum.WorldQuestQuality.Common] = 0, [Enum.WorldQuestQuality.Rare] = 3, [Enum.WorldQuestQuality.Epic] = 10 }
 
 local FILTER_CURRENCY = 1
 local FILTER_ITEMS = 2
@@ -118,6 +78,23 @@ end
 -- ===================
 --  Utility Functions
 -- ===================
+
+--TODO: MapUtil.GetMapParentInfo(mapID, Enum.UIMapType.Continent, true)
+
+
+local __continentMapID = {}
+local function GetMapContinentMapID(mapID)
+
+	if __continentMapID[mapID] == nil then
+		local continentInfo = MapUtil.GetMapParentInfo(mapID, Enum.UIMapType.Continent)
+		if continentInfo then
+			__continentMapID[mapID] = continentInfo.mapID
+		end
+	end
+
+	return __continentMapID[mapID]
+end
+
 
 local __legionMap = {}
 local function IsLegionMap(mapID)
@@ -154,8 +131,8 @@ local function HeaderButton_OnClick(self, button)
 end
 
 local function TitleButton_OnEnter(self)
-	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
-	local _, color = GetQuestDifficultyColor( UnitLevel("player") + TitleButton_RarityColorTable[rarity] )
+	local questTagInfo = C_QuestLog.GetQuestTagInfo(self.questID)
+	local _, color = GetQuestDifficultyColor( UnitLevel("player") + TitleButton_RarityColorTable[questTagInfo.quality] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 	
 	hoveredQuestID = self.questID
@@ -173,8 +150,8 @@ local function TitleButton_OnEnter(self)
 end
 
 local function TitleButton_OnLeave(self)
-	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(self.questID)
-	local color = GetQuestDifficultyColor( UnitLevel("player") + TitleButton_RarityColorTable[rarity] )
+	local questTagInfo = C_QuestLog.GetQuestTagInfo(self.questID)
+	local color = GetQuestDifficultyColor( UnitLevel("player") + TitleButton_RarityColorTable[questTagInfo.quality] )
 	self.Text:SetTextColor( color.r, color.g, color.b )
 
 	hoveredQuestID = nil
@@ -215,8 +192,8 @@ end
 
 local function FilterButton_OnEnter(self)
 	local text = Mod.Filters[ self.filter ].name
-	if self.filter == "EMISSARY" and Config.filterEmissary and not IsQuestComplete(Config.filterEmissary) then
-		local title = GetQuestLogTitle(GetQuestLogIndexByID(Config.filterEmissary))
+	if self.filter == "EMISSARY" and Config.filterEmissary and not C_QuestLog.IsComplete(Config.filterEmissary) then
+		local title = C_QuestLog.GetTitleForQuestID(Config.filterEmissary)
 		if title then text = text..": "..title end
 	end
 	if self.filter == "LOOT" then
@@ -279,21 +256,25 @@ local function FilterMenu_Initialize(self, level)
 	local info = { func = FilterMenu_OnClick, arg1 = self.filter }
 	if self.filter == "EMISSARY" then
 		local value = Config.filterEmissary
-		if GetQuestLogIndexByID(value) == 0 then value = 0 end
+		if not C_QuestLog.IsOnQuest(value) then value = 0 end -- specific bounty not found, show all
 
 		info.text = ALL
 		info.value = 0
 		info.checked = info.value == value
 		My_UIDropDownMenu_AddButton(info, level)
 
-		local bounties = GetQuestBountyInfoForMapID(UnitLevel("player") and MAPID_KUL_TIRAS or MAPID_BROKENISLES)
-		for _, bounty in ipairs(bounties) do
-			if not IsQuestComplete(bounty.questID) then
-				info.text =  GetQuestLogTitle(GetQuestLogIndexByID(bounty.questID))
-				info.icon = bounty.icon
-				info.value = bounty.questID
-				info.checked = info.value == value
-				My_UIDropDownMenu_AddButton(info, level)
+		local mapID = QuestMapFrame:GetParent():GetMapID()
+		if mapID == MAPID_BROKENISLES then mapID = MAPID_DALARAN end -- fix no emissary on broken isles continent map
+		local bounties = C_QuestLog.GetBountiesForMapID(mapID)
+		if bounties then
+			for _, bounty in ipairs(bounties) do
+				if not C_QuestLog.IsComplete(bounty.questID) then
+					info.text =  C_QuestLog.GetTitleForQuestID(bounty.questID)
+					info.icon = bounty.icon
+					info.value = bounty.questID
+					info.checked = info.value == value
+					My_UIDropDownMenu_AddButton(info, level)
+				end
 			end
 		end
 	elseif self.filter == "LOOT" then
@@ -316,14 +297,6 @@ local function FilterMenu_Initialize(self, level)
 		info.value = 0
 		info.checked = info.value == value
 		My_UIDropDownMenu_AddButton(info, level)
-
-		for _,mapID in ipairs(MAPID_ALL) do
-			local mapInfo = C_Map.GetMapInfo(mapID)
-			info.text = mapInfo and mapInfo.name or "???"
-			info.value = mapID
-			info.checked = info.value == value
-			My_UIDropDownMenu_AddButton(info, level)
-		end
 	elseif self.filter == "FACTION" then
 		local value = Config.filterFaction
 
@@ -414,15 +387,24 @@ local function FilterButton_OnClick(self, button)
 	end
 end
 
+local MAPID_DISPLAY_OVERRIDE = {
+	[MAPID_NAZJATAR] = {MAPID_NAZJATAR},
+	[MAPID_ARGUS] = { MAPID_ANTORANWASTES, MAPID_KROKUUN, MAPID_MACAREE },
+	[MAPID_AZEROTH] = { MAPID_KUL_TIRAS, MAPID_ZANDALAR, MAPID_NAZJATAR }
+}
+
 local function GetMapIDsForDisplay(mapID)
-	if not Config.onlyCurrentZone then
-		return MAPID_ALL
-	elseif mapID == MAPID_ARGUS then
-		return MAPID_ALL_ARGUS
+	if MAPID_DISPLAY_OVERRIDE[mapID] then
+		return MAPID_DISPLAY_OVERRIDE[mapID]
+	end
+
+	if Config.onlyCurrentZone then
+		return {mapID}
 	else
-		return { mapID }
+		return {GetMapContinentMapID(mapID)}
 	end
 end
+
 
 local filterButtons = {}
 local function GetFilterButton(key)
@@ -503,8 +485,8 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 
 	local questID = questInfo.questId
 	local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(questID)
-	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(questID)
-	local tradeskillLineID = tradeskillLineIndex and select(7, GetProfessionInfo(tradeskillLineIndex))
+	local questTagInfo = C_QuestLog.GetQuestTagInfo(questID)
+	local tradeskillLineID = questTagInfo.tradeskillLineID--tradeskillLineIndex and select(7, GetProfessionInfo(tradeskillLineIndex))
 	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
 	C_TaskQuest.RequestPreloadRewardData(questID)
 
@@ -517,14 +499,14 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 	button.numObjectives = questInfo.numObjectives
 	button.infoX = questInfo.x
 	button.infoY = questInfo.y
-	local difficultyColor = GetQuestDifficultyColor( UnitLevel("player") + TitleButton_RarityColorTable[rarity] )
+	local difficultyColor = GetQuestDifficultyColor( UnitLevel("player") + TitleButton_RarityColorTable[questTagInfo.quality] )
 
 	button.Text:SetText(title)
 	button.Text:SetTextColor( difficultyColor.r, difficultyColor.g, difficultyColor.b )
 
 	totalHeight = totalHeight + button.Text:GetHeight()
 
-	if ( IsWorldQuestHardWatched(questID) or GetSuperTrackedQuestID() == questID ) then
+	if ( WorldMap_IsWorldQuestEffectivelyTracked(questID) ) then
 		button.Check:Show()
 		button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0)
 	else
@@ -537,22 +519,22 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 	if questInfo.inProgress then
 		button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
 		button.TaskIcon:SetSize(10, 15)
-	elseif worldQuestType == LE_QUEST_TAG_TYPE_PVP then
+	elseif questTagInfo.worldQuestType == Enum.QuestTagType.PvP then
 		button.TaskIcon:SetAtlas("worldquest-icon-pvp-ffa", true)
-	elseif worldQuestType == LE_QUEST_TAG_TYPE_PET_BATTLE then
+	elseif questTagInfo.worldQuestType == Enum.QuestTagType.PetBattle then
 		button.TaskIcon:SetAtlas("worldquest-icon-petbattle", true)
-	elseif worldQuestType == LE_QUEST_TAG_TYPE_DUNGEON then
+	elseif questTagInfo.worldQuestType == Enum.QuestTagType.Dungeon then
 		button.TaskIcon:SetAtlas("worldquest-icon-dungeon", true)
-	elseif worldQuestType == LE_QUEST_TAG_TYPE_RAID then
+	elseif questTagInfo.worldQuestType == Enum.QuestTagType.Raid then
 		button.TaskIcon:SetAtlas("worldquest-icon-raid", true)
-	elseif ( worldQuestType == LE_QUEST_TAG_TYPE_PROFESSION and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
+	elseif ( questTagInfo.worldQuestType == Enum.QuestTagType.Profession and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
 		button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
-	elseif isElite then
+	elseif questTagInfo.isElite then
 		local tagCoords = QUEST_TAG_TCOORDS[Enum.QuestTag.Heroic]
 		button.TaskIcon:SetSize(16, 16)
 		button.TaskIcon:SetTexture(QUEST_ICONS_FILE)
 		button.TaskIcon:SetTexCoord( unpack(tagCoords) )
-	elseif ( worldQuestType == LE_QUEST_TAG_TYPE_INVASION ) then
+	elseif ( questTagInfo.worldQuestType == Enum.QuestTagType.Invasion ) then
 		button.TaskIcon:SetAtlas("worldquest-icon-burninglegion", true)
 	else
 		hasIcon = false
@@ -595,7 +577,7 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 				tagTexture = texture
 				tagTexCoords = nil
 				if currencyID == CURRENCYID_AZERITE then
-					tagColor = BAG_ITEM_QUALITY_COLORS[LE_ITEM_QUALITY_ARTIFACT]
+					tagColor = BAG_ITEM_QUALITY_COLORS[Enum.ItemQuality.Artifact]
 				end
 				button.rewardCategory = "CURRENCY"
 				button.rewardValue = currencyID
@@ -712,13 +694,13 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 	local selectedFilters = Config:GetFilterTable()
 
 	local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(info.questId)
-	local tagID, tagName, worldQuestType, rarity, isElite, tradeskillLineIndex = GetQuestTagInfo(info.questId)
+	local questTagInfo = C_QuestLog.GetQuestTagInfo(info.questId)
 	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(info.questId)
 	C_TaskQuest.RequestPreloadRewardData(info.questId)
 
 	local isFiltered = hasFilters
 
-	if UnitLevel("player") > 110 then
+	if C_QuestLog.IsQuestFlaggedCompleted(51722) then -- BfA World Quest unlocked
 		if IsLegionWorldQuest(info) and not IsLegionMap(displayMapID) then
 			return true
 		end
@@ -747,19 +729,19 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 		end
 
 		if selectedFilters.PVP then
-			if worldQuestType == LE_QUEST_TAG_TYPE_PVP then
+			if questTagInfo.worldQuestType == Enum.QuestTagType.PvP then
 				isFiltered = false
 			end
 		end
 
 		if selectedFilters.PETBATTLE then
-			if worldQuestType == LE_QUEST_TAG_TYPE_PET_BATTLE then
+			if questTagInfo.worldQuestType == Enum.QuestTagType.PetBattle then
 				isFiltered = false
 			end
 		end
 
 		if selectedFilters.PROFESSION then
-			if tradeskillLineIndex then
+			if questTagInfo.tradeskillLineIndex then
 				isFiltered = false
 			end
 		end
@@ -771,13 +753,13 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 		end
 
 		if selectedFilters.RARE then
-			if rarity ~= LE_WORLD_QUEST_QUALITY_COMMON then
+			if questTagInfo.quality ~= Enum.WorldQuestQuality.Common then
 				isFiltered = false
 			end
 		end
 
 		if selectedFilters.DUNGEON then
-			if worldQuestType == LE_QUEST_TAG_TYPE_DUNGEON or worldQuestType == LE_QUEST_TAG_TYPE_RAID then
+			if questTagInfo.worldQuestType == Enum.QuestTagType.Dungeon or questTagInfo.worldQuestType == Enum.QuestTagType.Raid then
 				isFiltered = false
 			end
 		end
@@ -798,12 +780,16 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 		end
 
 		if selectedFilters.EMISSARY then
-			local bounties = GetQuestBountyInfoForMapID(UnitLevel("player") and MAPID_KUL_TIRAS or MAPID_BROKENISLES)
-			local bountyFilter = Config.filterEmissary
-			if GetQuestLogIndexByID(bountyFilter) == 0 or IsQuestComplete(bountyFilter) then bountyFilter = 0 end
-			for _, bounty in ipairs(bounties) do
-				if bounty and not IsQuestComplete(bounty.questID) and IsQuestCriteriaForBounty(info.questId, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
-					isFiltered = false
+			local mapID = QuestMapFrame:GetParent():GetMapID()
+			if mapID == MAPID_BROKENISLES then mapID = MAPID_DALARAN end -- fix no emissary on broken isles continent map
+			local bounties = C_QuestLog.GetBountiesForMapID(mapID)
+			if bounties then
+				local bountyFilter = Config.filterEmissary
+				if not C_QuestLog.IsOnQuest(bountyFilter) or C_QuestLog.IsComplete(bountyFilter) then bountyFilter = 0 end -- show all bounties
+				for _, bounty in ipairs(bounties) do
+					if bounty and not C_QuestLog.IsComplete(bounty.questID) and C_QuestLog.IsQuestCriteriaForBounty(info.questId, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
+						isFiltered = false
+					end
 				end
 			end
 		end
@@ -823,8 +809,8 @@ local function TaskPOI_Sorter(a, b)
 			return (a.timeLeftMinutes or 0) < (b.timeLeftMinutes or 0)
 		end
 	elseif Config.sortMethod == SORT_ZONE then
-		if MAPID_ORDER[a.mapID] ~= MAPID_ORDER[b.mapID] then
-			return (MAPID_ORDER[a.mapID] or 0) < (MAPID_ORDER[b.mapID] or 0)
+		if a.mapID ~= b.mapID then
+			return (a.mapID or 0) < (b.mapID or 0)
 		end
 	elseif Config.sortMethod == SORT_REWARDS then
 		local default_cat = #Mod.Filters + 1
@@ -849,9 +835,10 @@ local function QuestFrame_Update()
 
 	local mapID = QuestMapFrame:GetParent():GetMapID()
 
-	local bounties, displayLocation, lockedQuestID = GetQuestBountyInfoForMapID(mapID)
+	local displayLocation, lockedQuestID = C_QuestLog.GetBountySetInfoForMapID(mapID);
+
 	local tasksOnMap = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
-	if (Config.onlyCurrentZone) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) then
+	if (Config.onlyCurrentZone) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) and (mapID ~= MAPID_ARGUS) then
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 		if spaceFrame then spacerFrame:Hide() end
 		if headerButton then headerButton:Hide() end
@@ -862,18 +849,24 @@ local function QuestFrame_Update()
 	local questsCollapsed = Config.collapsed
 
 	local button, firstButton, storyButton, prevButton
+	local layoutIndex = Config.showAtTop and 0 or 10000
 
 	local storyAchievementID, storyMapID = C_QuestLog.GetZoneStoryInfo(mapID)
 	if storyAchievementID then
 		storyButton = QuestScrollFrame.Contents.StoryHeader
+		if layoutIndex == 0 then 
+			layoutIndex = storyButton.layoutIndex + 0.001;
+		end
 	end
 
 	for header in QuestScrollFrame.headerFramePool:EnumerateActive() do
 		if header.questLogIndex == 1 then
 			firstButton = header
+			if layoutIndex == 0 then
+				layoutIndex = firstButton.layoutIndex - 1 + 0.001
+			end
 		end
 	end
-	QuestScrollFrame.Background:SetAtlas("QuestLogBackground", true) -- Always show quest background
 
 	if not headerButton then
 		headerButton = CreateFrame("BUTTON", nil, QuestMapFrame.QuestsFrame.Contents, "QuestLogHeaderTemplate")
@@ -882,18 +875,16 @@ local function QuestFrame_Update()
 		headerButton:SetHitRectInsets(0, -headerButton.ButtonText:GetWidth(), 0, 0)
 		headerButton:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
 	end
-	if (questsCollapsed) then
-		headerButton:SetNormalTexture("Interface\\Buttons\\UI-PlusButton-Up")
-	else
-		headerButton:SetNormalTexture("Interface\\Buttons\\UI-MinusButton-Up")
-	end
+	headerButton:SetNormalAtlas(questsCollapsed and "Campaign_HeaderIcon_Closed" or "Campaign_HeaderIcon_Open" );
+	headerButton:SetPushedAtlas(questsCollapsed and "Campaign_HeaderIcon_ClosedPressed" or "Campaign_HeaderIcon_OpenPressed");
 	headerButton:ClearAllPoints()
 	if storyButton then
 		headerButton:SetPoint("TOPLEFT", storyButton, "BOTTOMLEFT", 0, 0)
 	else
 		headerButton:SetPoint("TOPLEFT", 1, -6)
 	end
-	headerButton.layoutIndex = QuestMapFrame:GetManagedLayoutIndex("AWQ")
+	headerButton.layoutIndex = layoutIndex
+	layoutIndex = layoutIndex + 0.001
 	headerButton:Show()
 	prevButton = headerButton
 
@@ -951,7 +942,7 @@ local function QuestFrame_Update()
 			if taskInfo then
 				for i, info in ipairs(taskInfo) do
 					if HaveQuestData(info.questId) and QuestUtils_IsQuestWorldQuest(info.questId) then
-						if WorldMap_DoesWorldQuestInfoPassFilters(info) and (info.mapID == mID or MAPID_CONTINENTS[mID] or mID == MAPID_AZEROTH) then
+						if WorldMap_DoesWorldQuestInfoPassFilters(info) then
 							local isFiltered = TaskPOI_IsFiltered(info, mapID)
 							if not isFiltered then
 								local button = QuestFrame_AddQuestButton(info)
@@ -965,7 +956,8 @@ local function QuestFrame_Update()
 
 		table.sort(usedButtons, TaskPOI_Sorter)
 		for i, button in ipairs(usedButtons) do
-			button.layoutIndex = QuestMapFrame:GetManagedLayoutIndex("AWQ")
+			button.layoutIndex = layoutIndex
+			layoutIndex = layoutIndex + 0.001
 			button:Show()
 			prevButton = button
 			
@@ -981,7 +973,8 @@ local function QuestFrame_Update()
 	end
 	if #usedButtons > 0 then
 		spacerFrame:Show()
-		spacerFrame.layoutIndex = QuestMapFrame:GetManagedLayoutIndex("AWQ")
+		spacerFrame.layoutIndex = layoutIndex
+		layoutIndex = layoutIndex + 0.001
 	else
 		spacerFrame:Hide()
 	end
@@ -990,9 +983,14 @@ local function QuestFrame_Update()
 end
 
 local function WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest(self, info)
-	if self.focusedQuestID or self:IsQuestSuppressed(info.questId) then
-		return false
+	if self:IsQuestSuppressed(info.questId) then
+		return false;
 	end
+
+	if self.focusedQuestID then
+		return C_QuestLog.IsQuestCalling(self.focusedQuestID) and self:ShouldHighlightInfo(info.questId);
+	end
+
 	local mapID = self:GetMap():GetMapID()
 
 	if Config.showHoveredPOI and hoveredQuestID == info.questId then
@@ -1005,13 +1003,15 @@ local function WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest(self, info)
 		end
 	end
 	if Config.hideUntrackedPOI then
-		if not (IsWorldQuestHardWatched(info.questId) or GetSuperTrackedQuestID() == info.questId) then
+		if not (WorldMap_IsWorldQuestEffectivelyTracked(info.questId)) then
 			return false
 		end
 	end
 
-	if Config.showContinentPOI and MAPID_CONTINENTS[mapID] then
-		return mapID == info.mapID or (MAPID_ZONES_CONTINENTS[info.mapID] and MAPID_ZONES_CONTINENTS[info.mapID] == mapID)
+	local mapInfo = C_Map.GetMapInfo(mapID)
+
+	if Config.showContinentPOI and mapInfo.mapType == Enum.UIMapType.Continent then
+		return mapID == info.mapID or (GetMapContinentMapID(info.mapID) == mapID)
 	else
 		return mapID == info.mapID
 	end
@@ -1033,9 +1033,9 @@ function Mod:AddFilter(key, name, icon, default)
 end
 
 function Mod:AddCurrencyFilter(key, currencyID, default)
-	local currencyName, _, currencyTexture = GetCurrencyInfo(currencyID)
-	local name = currencyName
-	local icon = currencyTexture
+	local currencyInfo = C_CurrencyInfo.GetCurrencyInfo(currencyID)
+	local name = currencyInfo.name
+	local icon = currencyInfo.iconFileID
 
 	local filter = {
 		key = key,
@@ -1104,7 +1104,7 @@ function Mod:Blizzard_WorldMap()
 		end
 	end
 end
-
+--[[
 local function OverrideLayoutManager()
 	if Config.showAtTop then
 		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1
@@ -1114,7 +1114,7 @@ local function OverrideLayoutManager()
 		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1)
 	end
 end
-
+]]
 function Mod:Startup()
 	Config = Addon.Config
 
@@ -1127,12 +1127,10 @@ function Mod:Startup()
 	self:RegisterAddOnLoaded("Blizzard_WorldMap")
 
 	titleFramePool = CreateFramePool("BUTTON", QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
-	OverrideLayoutManager()
 
 	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
 
 	Config:RegisterCallback('showAtTop', function()
-		OverrideLayoutManager()
 		QuestMapFrame_UpdateAll()
 	end)
 
