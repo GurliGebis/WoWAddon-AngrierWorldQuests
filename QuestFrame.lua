@@ -170,7 +170,6 @@ local function TitleButton_OnClick(self, button)
 	if ( not ChatEdit_TryInsertQuestLinkForQuestID(self.questID) ) then
 		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
 		local watchType = C_QuestLog.GetQuestWatchType(self.questID);
-		
 		if ( button == "RightButton" ) then
 			if ( self.mapID ) then
 				QuestMapFrame:GetParent():SetMapID(self.mapID)
@@ -179,13 +178,13 @@ local function TitleButton_OnClick(self, button)
 			if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and C_SuperTrack.GetSuperTrackedQuestID() == self.questID) then
 				BonusObjectiveTracker_UntrackWorldQuest(self.questID);
 			else
-				BonusObjectiveTracker_TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual)
+				BonusObjectiveTracker_TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual);
 			end
 		else
 			if watchType == Enum.QuestWatchType.Manual then
 				C_SuperTrack.SetSuperTrackedQuestID(self.questID);
 			else
-				BonusObjectiveTracker_TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic)
+				BonusObjectiveTracker_TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic);
 			end
 		end
 	end
@@ -469,7 +468,7 @@ local function TitleButton_Initiliaze(button)
 		button.TagTexture:SetSize(16, 16)
 		button.TagText:ClearAllPoints()
 		button.TagText:SetPoint("RIGHT", button.TagTexture , "LEFT", -3, 0)
-		button.TagText:SetFont(filename, fontHeight, "")
+		button.TagText:SetFont(filename, fontHeight, "OUTLINE")
 
 		button.awq = true
 	end
@@ -516,7 +515,7 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 
 	local hasIcon = true
 	button.TaskIcon:Show()
-	button.TaskIcon:SetTexCoord(0, 1, 0, 1)
+	button.TaskIcon:SetTexCoord(.08, .92, .08, .92)
 	if questInfo.inProgress then
 		button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
 		button.TaskIcon:SetSize(10, 15)
@@ -625,7 +624,7 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 		if tagTexCoords then
 			button.TagTexture:SetTexCoord( unpack(tagTexCoords) )
 		else
-			button.TagTexture:SetTexCoord( 0, 1, 0, 1 )
+			button.TagTexture:SetTexCoord(.08, .92, .08, .92)
 		end
 	end
 
@@ -696,6 +695,7 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 
 	local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(info.questId)
 	local questTagInfo = C_QuestLog.GetQuestTagInfo(info.questId)
+	if not questTagInfo then return end -- fix for nil tag
 	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(info.questId)
 	C_TaskQuest.RequestPreloadRewardData(info.questId)
 
@@ -888,6 +888,16 @@ local function QuestFrame_Update()
 	layoutIndex = layoutIndex + 0.001
 	headerButton:Show()
 	prevButton = headerButton
+
+	if not headerButton.styled then
+		local hasSkin = NDui or AuroraClassic
+		if hasSkin then
+			hasSkin[1].ReskinCollapse(headerButton, true)
+			headerButton:GetPushedTexture():SetAlpha(0)
+			headerButton:GetHighlightTexture():SetAlpha(0)
+		end
+		headerButton.styled = true
+	end
 
 	local displayedQuestIDs = {}
 	local usedButtons = {}

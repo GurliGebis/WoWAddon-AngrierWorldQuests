@@ -18,10 +18,10 @@ local configDefaults = {
 	lootUpgradesLevel = -1,
 	timeFilterDuration = 6,
 	hideUntrackedPOI = false,
-	hideFilteredPOI = false,
-	showContinentPOI = false,
+	hideFilteredPOI = true,
+	showContinentPOI = true,
 	showComparisonRight = false,
-	sortMethod = 1,
+	sortMethod = 2,
 	extendedInfo = false,
 	saveFilters = false,
 }
