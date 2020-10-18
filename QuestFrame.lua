@@ -799,7 +799,11 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 
 	if Config.onlyCurrentZone and info.mapID ~= displayMapID then
 		-- Needed since C_TaskQuest.GetQuestsForPlayerByMapID returns quests not on the passed map.....
-		isFiltered = true
+		-- But, if we are on a continent (the quest continent map id matches the currently shown map)
+		-- we should not be changing anything, since quests should be shown here.
+		if (GetMapContinentMapID(info.mapID) ~= displayMapID) then
+			isFiltered = true
+		end
 	end
 
 	return isFiltered
