@@ -696,6 +696,7 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 	local title, factionID, capped = C_TaskQuest.GetQuestInfoByQuestID(info.questId)
 	local questTagInfo = C_QuestLog.GetQuestTagInfo(info.questId)
 	if not questTagInfo then return end -- fix for nil tag
+	local tradeskillLineID = questTagInfo.tradeskillLineID
 	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(info.questId)
 	C_TaskQuest.RequestPreloadRewardData(info.questId)
 
@@ -742,7 +743,7 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 		end
 
 		if selectedFilters.PROFESSION then
-			if questTagInfo.tradeskillLineIndex then
+			if tradeskillLineID and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] then
 				isFiltered = false
 			end
 		end
