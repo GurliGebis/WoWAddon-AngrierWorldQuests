@@ -661,10 +661,9 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 	if numQuestRewards > 0 then
 		local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
 		if itemName and itemTexture then
-			local artifactPower = nil--Addon.Data:ItemArtifactPower(itemID)
 			local iLevel = Addon.Data:RewardItemLevel(itemID, questID)
-			if artifactPower then
-				if selectedFilters.ARTIFACT_POWER then
+			if C_Item.IsAnimaItemByID(itemID) then
+				if selectedFilters.ANIMA then
 					positiveMatch = true
 				end
 			else
@@ -1087,6 +1086,7 @@ function Mod:BeforeStartup()
 	self:AddFilter("FACTION", FACTION, "achievement_reputation_06")
 	-- self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
 	self:AddFilter("LOOT", BONUS_ROLL_REWARD_ITEM, "inv_misc_lockboxghostiron", true)
+	self:AddFilter("ANIMA", ANIMA, "Spell_AnimaBastion_Orb", true)
 
 	-- self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
 	-- self:AddCurrencyFilter("WAR_SUPPLIES", CURRENCYID_WAR_SUPPLIES)
