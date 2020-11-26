@@ -44,6 +44,7 @@ local CURRENCYID_AZERITE = 1553
 local CURRENCYID_WAR_RESOURCES = 1560
 
 local TitleButton_RarityColorTable = { [Enum.WorldQuestQuality.Common] = 0, [Enum.WorldQuestQuality.Rare] = 3, [Enum.WorldQuestQuality.Epic] = 10 }
+local ANIMA_ITEM_COLOR = { r=.6, g=.8, b=1 }
 
 local FILTER_CURRENCY = 1
 local FILTER_ITEMS = 2
@@ -617,6 +618,10 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 				button.rewardCategory = "ITEMS"
 				button.rewardValue = quantity
 				button.rewardValue2 = 0
+			end
+			if C_Item.IsAnimaItemByID(itemID) then
+				tagTexture = 3528288 -- Interface/Icons/Spell_AnimaBastion_Orb
+				tagColor = ANIMA_ITEM_COLOR
 			end
 		end
 	end
