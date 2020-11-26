@@ -29,6 +29,7 @@ langs.enUS = {
 	config_lootUpgradesLevelValue2 = "Up to same ilvl",
 	config_lootUpgradesLevelValue = "Up to %d ilvls less",
 	CURRENT_ZONE = "Current Zone",
+	CODUIT_ITEMS = "Conduit items",
 }
 langs.enGB = langs.enUS
 
@@ -132,6 +133,7 @@ langs.zhCN = {
 	config_lootUpgradesLevelValue2 = "显示最高同等级",
 	config_lootUpgradesLevelValue = "最多相差%d装等",
 	CURRENT_ZONE = "当前区域",
+	CODUIT_ITEMS = "导灵器",
 }
 
 langs.zhTW = {
@@ -158,6 +160,7 @@ langs.zhTW = {
 	config_lootUpgradesLevelValue2 = "顯示最高同裝等物品",
 	config_lootUpgradesLevelValue = "最多相差%d裝等",
 	CURRENT_ZONE = "當前區域",
+	CODUIT_ITEMS = "靈印",
 }
 
 langs.ruRU = {

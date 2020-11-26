@@ -668,8 +668,9 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 				end
 			else
 				if iLevel then
+					local isConduit = C_Soulbinds.IsItemConduitByItemInfo(itemID)
 					local upgradesOnly = Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)
-					if selectedFilters.LOOT and (not upgradesOnly or Addon.Data:RewardIsUpgrade(itemID, questID)) then
+					if selectedFilters.CONDUIT and isConduit or selectedFilters.LOOT and (not upgradesOnly or Addon.Data:RewardIsUpgrade(itemID, questID)) and not isConduit then
 						positiveMatch = true
 					end
 				else
@@ -683,7 +684,7 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 
 	if positiveMatch then
 		return false
-	elseif hasCurrencyFilter or selectedFilters.ARTIFACT_POWER or selectedFilters.LOOT or selectedFilters.ITEMS then
+	elseif hasCurrencyFilter or selectedFilters.ANIMA or selectedFilters.LOOT or selectedFilters.ITEMS then
 		return true
 	end
 end
@@ -1086,6 +1087,7 @@ function Mod:BeforeStartup()
 	self:AddFilter("FACTION", FACTION, "achievement_reputation_06", true)
 	-- self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
 	self:AddFilter("LOOT", BONUS_ROLL_REWARD_ITEM, "inv_misc_lockboxghostiron", true)
+	self:AddFilter("CONDUIT", Addon.Locale.CODUIT_ITEMS, "Spell_Shadow_SoulGem", true)
 	self:AddFilter("ANIMA", ANIMA, "Spell_AnimaBastion_Orb", true)
 
 	-- self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
