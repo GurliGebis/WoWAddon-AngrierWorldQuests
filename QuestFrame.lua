@@ -60,6 +60,7 @@ Mod.SortOrder = SORT_ORDER
 local FACTION_ORDER_HORDE = { 2157, 2164, 2156, 2158, 2103, 2163 }
 local FACTION_ORDER_ALLIANCE = { 2159, 2164, 2160, 2161, 2162, 2163 }
 local FACTION_ORDER_LEGION = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2165, 2170 }
+local FACTION_ORDER_9_0 = { 2413, 2407, 2410, 2465 }
 local FACTION_ORDER
 
 local FILTER_LOOT_ALL = 1
@@ -114,6 +115,18 @@ end
 
 local function IsLegionWorldQuest(info)
 	return IsLegionMap(info.mapID)
+end
+
+local shadowLandsMaps = {
+	[1550] = true, -- shadowlands
+	[1543] = true, -- the maw
+	[1536] = true, -- maldraxxus
+	[1525] = true, -- revendreth
+	[1533] = true, -- bastion
+	[1565] = true, -- ardenweald
+}
+local function IsInShadowLands(mapID)
+	return shadowLandsMaps[mapID]
 end
 
 -- =================
@@ -301,7 +314,7 @@ local function FilterMenu_Initialize(self, level)
 		local value = Config.filterFaction
 
 		local mapID = QuestMapFrame:GetParent():GetMapID()
-		local factions = IsLegionMap(mapID) and FACTION_ORDER_LEGION or FACTION_ORDER
+		local factions = IsInShadowLands(mapID) and FACTION_ORDER_9_0 or IsLegionMap(mapID) and FACTION_ORDER_LEGION or FACTION_ORDER
 
 		for _, factionID in ipairs(factions) do
 			info.text =  GetFactionInfoByID(factionID)
@@ -1080,7 +1093,7 @@ function Mod:BeforeStartup()
 	self.Filters = {}
 	self.FiltersOrder = {}
 
-	self:AddFilter("EMISSARY", BOUNTY_BOARD_LOCKED_TITLE, "achievement_reputation_01", true)
+	self:AddFilter("EMISSARY", BOUNTY_BOARD_LOCKED_TITLE, "achievement_reputation_01")
 	self:AddFilter("TIME", CLOSES_IN, "ability_bossmagistrix_timewarp2")
 	self:AddFilter("ZONE", Addon.Locale.CURRENT_ZONE, "inv_misc_map02") -- ZONE
 	self:AddFilter("TRACKED", TRACKING, "icon_treasuremap")
