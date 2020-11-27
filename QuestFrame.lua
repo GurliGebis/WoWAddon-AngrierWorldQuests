@@ -44,6 +44,7 @@ local CURRENCYID_AZERITE = 1553
 local CURRENCYID_WAR_RESOURCES = 1560
 
 local TitleButton_RarityColorTable = { [Enum.WorldQuestQuality.Common] = 0, [Enum.WorldQuestQuality.Rare] = 3, [Enum.WorldQuestQuality.Epic] = 10 }
+local ANIMA_ITEM_COLOR = { r=.6, g=.8, b=1 }
 
 local FILTER_CURRENCY = 1
 local FILTER_ITEMS = 2
@@ -60,6 +61,7 @@ Mod.SortOrder = SORT_ORDER
 local FACTION_ORDER_HORDE = { 2157, 2164, 2156, 2158, 2103, 2163 }
 local FACTION_ORDER_ALLIANCE = { 2159, 2164, 2160, 2161, 2162, 2163 }
 local FACTION_ORDER_LEGION = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2165, 2170 }
+local FACTION_ORDER_9_0 = { 2413, 2407, 2410, 2465 }
 local FACTION_ORDER
 
 local FILTER_LOOT_ALL = 1
@@ -114,6 +116,18 @@ end
 
 local function IsLegionWorldQuest(info)
 	return IsLegionMap(info.mapID)
+end
+
+local shadowLandsMaps = {
+	[1550] = true, -- shadowlands
+	[1543] = true, -- the maw
+	[1536] = true, -- maldraxxus
+	[1525] = true, -- revendreth
+	[1533] = true, -- bastion
+	[1565] = true, -- ardenweald
+}
+local function IsInShadowLands(mapID)
+	return shadowLandsMaps[mapID]
 end
 
 -- =================
@@ -301,7 +315,7 @@ local function FilterMenu_Initialize(self, level)
 		local value = Config.filterFaction
 
 		local mapID = QuestMapFrame:GetParent():GetMapID()
-		local factions = IsLegionMap(mapID) and FACTION_ORDER_LEGION or FACTION_ORDER
+		local factions = IsInShadowLands(mapID) and FACTION_ORDER_9_0 or IsLegionMap(mapID) and FACTION_ORDER_LEGION or FACTION_ORDER
 
 		for _, factionID in ipairs(factions) do
 			info.text =  GetFactionInfoByID(factionID)
@@ -605,6 +619,10 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 				button.rewardValue = quantity
 				button.rewardValue2 = 0
 			end
+			if C_Item.IsAnimaItemByID(itemID) then
+				tagTexture = 3528288 -- Interface/Icons/Spell_AnimaBastion_Orb
+				tagColor = ANIMA_ITEM_COLOR
+			end
 		end
 	end
 
@@ -661,16 +679,16 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 	if numQuestRewards > 0 then
 		local itemName, itemTexture, quantity, quality, isUsable, itemID = GetQuestLogRewardInfo(1, questID)
 		if itemName and itemTexture then
-			local artifactPower = nil--Addon.Data:ItemArtifactPower(itemID)
 			local iLevel = Addon.Data:RewardItemLevel(itemID, questID)
-			if artifactPower then
-				if selectedFilters.ARTIFACT_POWER then
+			if C_Item.IsAnimaItemByID(itemID) then
+				if selectedFilters.ANIMA then
 					positiveMatch = true
 				end
 			else
 				if iLevel then
+					local isConduit = C_Soulbinds.IsItemConduitByItemInfo(itemID)
 					local upgradesOnly = Config.filterLoot == FILTER_LOOT_UPGRADES or (Config.filterLoot == 0 and Config.lootFilterUpgrades)
-					if selectedFilters.LOOT and (not upgradesOnly or Addon.Data:RewardIsUpgrade(itemID, questID)) then
+					if selectedFilters.CONDUIT and isConduit or selectedFilters.LOOT and (not upgradesOnly or Addon.Data:RewardIsUpgrade(itemID, questID)) and not isConduit then
 						positiveMatch = true
 					end
 				else
@@ -684,7 +702,7 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 
 	if positiveMatch then
 		return false
-	elseif hasCurrencyFilter or selectedFilters.ARTIFACT_POWER or selectedFilters.LOOT or selectedFilters.ITEMS then
+	elseif hasCurrencyFilter or selectedFilters.ANIMA or selectedFilters.LOOT or selectedFilters.ITEMS then
 		return true
 	end
 end
@@ -1080,13 +1098,15 @@ function Mod:BeforeStartup()
 	self.Filters = {}
 	self.FiltersOrder = {}
 
-	self:AddFilter("EMISSARY", BOUNTY_BOARD_LOCKED_TITLE, "achievement_reputation_01", true)
+	self:AddFilter("EMISSARY", BOUNTY_BOARD_LOCKED_TITLE, "achievement_reputation_01")
 	self:AddFilter("TIME", CLOSES_IN, "ability_bossmagistrix_timewarp2")
 	self:AddFilter("ZONE", Addon.Locale.CURRENT_ZONE, "inv_misc_map02") -- ZONE
 	self:AddFilter("TRACKED", TRACKING, "icon_treasuremap")
-	self:AddFilter("FACTION", FACTION, "achievement_reputation_06")
+	self:AddFilter("FACTION", FACTION, "achievement_reputation_06", true)
 	-- self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
 	self:AddFilter("LOOT", BONUS_ROLL_REWARD_ITEM, "inv_misc_lockboxghostiron", true)
+	self:AddFilter("CONDUIT", Addon.Locale.CODUIT_ITEMS, "Spell_Shadow_SoulGem", true)
+	self:AddFilter("ANIMA", ANIMA, "Spell_AnimaBastion_Orb", true)
 
 	-- self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
 	-- self:AddCurrencyFilter("WAR_SUPPLIES", CURRENCYID_WAR_SUPPLIES)
@@ -1094,14 +1114,14 @@ function Mod:BeforeStartup()
 	-- self:AddCurrencyFilter("VEILED_ARGUNITE", CURRENCYID_VEILED_ARGUNITE)
 	-- self:AddCurrencyFilter("WAKENING_ESSENCE", CURRENCYID_WAKENING_ESSENCE)
 
-	self:AddCurrencyFilter("AZERITE", CURRENCYID_AZERITE, true)
-	self:AddCurrencyFilter("WAR_RESOURCES", CURRENCYID_WAR_RESOURCES, true)
+	self:AddCurrencyFilter("AZERITE", CURRENCYID_AZERITE)
+	self:AddCurrencyFilter("WAR_RESOURCES", CURRENCYID_WAR_RESOURCES)
 
 	self:AddFilter("GOLD", BONUS_ROLL_REWARD_MONEY, "inv_misc_coin_01")
-	self:AddFilter("ITEMS", ITEMS, "inv_box_01", true)
+	self:AddFilter("ITEMS", ITEMS, "inv_box_01")
 	-- self:AddFilter("PVP", PVP, "pvpcurrency-honor-horde")
-	self:AddFilter("PROFESSION", TRADE_SKILLS, "inv_misc_note_01")
-	self:AddFilter("PETBATTLE", SHOW_PET_BATTLES_ON_MAP_TEXT, "tracking_wildpet")
+	self:AddFilter("PROFESSION", TRADE_SKILLS, "inv_misc_note_01", true)
+	self:AddFilter("PETBATTLE", SHOW_PET_BATTLES_ON_MAP_TEXT, "tracking_wildpet", true)
 	self:AddFilter("RARE", ITEM_QUALITY3_DESC, "achievement_general_stayclassy")
 	self:AddFilter("DUNGEON", GROUP_FINDER, "inv_misc_summonable_boss_token")
 	self:AddFilter("SORT", RAID_FRAME_SORT_LABEL, "inv_misc_map_01")
