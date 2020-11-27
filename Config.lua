@@ -18,15 +18,15 @@ local configDefaults = {
 	lootUpgradesLevel = -1,
 	timeFilterDuration = 6,
 	hideUntrackedPOI = false,
-	hideFilteredPOI = false,
-	showContinentPOI = false,
+	hideFilteredPOI = true,
+	showContinentPOI = true,
 	showComparisonRight = false,
-	sortMethod = 1,
+	sortMethod = 2,
 	extendedInfo = false,
 	saveFilters = false,
 }
 
-local FiltersConversion = { EMISSARY = 1, ARTIFACT_POWER = 2, LOOT = 3, ORDER_RESOURCES = 4, GOLD = 5, ITEMS = 6, TIME = 7, FACTION = 8, PVP = 9, PROFESSION = 10, PETBATTLE = 11, SORT = 12, TRACKED = 13, ZONE = 14, RARE = 15, DUNGEON = 16, WAR_SUPPLIES = 17, NETHERSHARD = 18, VEILED_ARGUNITE = 19, WAKENING_ESSENCE = 20, AZERITE = 21, WAR_RESOURCES = 22 }
+local FiltersConversion = { EMISSARY = 1, ARTIFACT_POWER = 2, LOOT = 3, ORDER_RESOURCES = 4, GOLD = 5, ITEMS = 6, TIME = 7, FACTION = 8, PVP = 9, PROFESSION = 10, PETBATTLE = 11, SORT = 12, TRACKED = 13, ZONE = 14, RARE = 15, DUNGEON = 16, WAR_SUPPLIES = 17, NETHERSHARD = 18, VEILED_ARGUNITE = 19, WAKENING_ESSENCE = 20, AZERITE = 21, WAR_RESOURCES = 22, ANIMA = 23, CONDUIT = 24}
 
 local callbacks = {}
 local __filterTable
