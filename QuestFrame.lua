@@ -44,8 +44,6 @@ local CURRENCYID_AZERITE = 1553
 local CURRENCYID_WAR_RESOURCES = 1560
 
 local TitleButton_RarityColorTable = { [Enum.WorldQuestQuality.Common] = 0, [Enum.WorldQuestQuality.Rare] = 3, [Enum.WorldQuestQuality.Epic] = 10 }
-local ANIMA_ITEM_COLOR = { r=.6, g=.8, b=1 }
-local ANIMA_SPELLID = {[347555] = 3, [345706] = 5, [336327] = 35, [336456] = 250}
 
 local FILTER_CURRENCY = 1
 local FILTER_ITEMS = 2
@@ -119,6 +117,7 @@ local function IsLegionWorldQuest(info)
 	return IsLegionMap(info.mapID)
 end
 
+-- 9.0 ShadowLands
 local shadowLandsMaps = {
 	[1550] = true, -- shadowlands
 	[1543] = true, -- the maw
@@ -129,6 +128,14 @@ local shadowLandsMaps = {
 }
 local function IsInShadowLands(mapID)
 	return shadowLandsMaps[mapID]
+end
+
+local ANIMA_ITEM_COLOR = { r=.6, g=.8, b=1 }
+local ANIMA_SPELLID = {[347555] = 3, [345706] = 5, [336327] = 35, [336456] = 250}
+
+local function GetAnimaValue(itemID)
+	local _, spellID = GetItemSpell(itemID)
+	return ANIMA_SPELLID[spellID] or 1
 end
 
 -- =================
@@ -621,10 +628,9 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 				button.rewardValue2 = 0
 			end
 			if C_Item.IsAnimaItemByID(itemID) then
-				local _, spellID = GetItemSpell(itemID)
 				tagTexture = 3528288 -- Interface/Icons/Spell_AnimaBastion_Orb
 				tagColor = ANIMA_ITEM_COLOR
-				tagText = quantity * ANIMA_SPELLID[spellID]
+				tagText = quantity * GetAnimaValue(itemID)
 			end
 		end
 	end
