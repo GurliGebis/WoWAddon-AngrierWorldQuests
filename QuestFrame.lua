@@ -621,7 +621,7 @@ local function QuestFrame_AddQuestButton(questInfo, prevButton)
 				button.rewardValue2 = 0
 			end
 			if C_Item.IsAnimaItemByID(itemID) then
-				_, spellID = GetItemSpell(itemID)
+				local _, spellID = GetItemSpell(itemID)
 				tagTexture = 3528288 -- Interface/Icons/Spell_AnimaBastion_Orb
 				tagColor = ANIMA_ITEM_COLOR
 				tagText = quantity * ANIMA_SPELLID[spellID]
