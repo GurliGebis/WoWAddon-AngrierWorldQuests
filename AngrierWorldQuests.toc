@@ -1,9 +1,9 @@
 ## Interface: 90002
-## Title: Angry World Quests
+## Title: Angrier World Quests
 ## Notes: Adds World Quests to the quest list
-## Author: Ermad
-## SavedVariables: AngryWorldQuests_Config
-## SavedVariablesPerCharacter: AngryWorldQuests_CharacterConfig
+## Author: GurliGebis
+## SavedVariables: AngrierWorldQuests_Config
+## SavedVariablesPerCharacter: AngierWorldQuests_CharacterConfig
 ## X-Packaged-Version: @project-version@
 
 Core.lua

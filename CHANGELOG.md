@@ -1,3 +1,12 @@
+## v0.30.1
+
+* Renamed to Angrier World Quests, since this is now a fork.
+* Misc Shadowlands fixes
+
+## v0.30.0
+
+* Misc Shadowlands fixes
+
 ## v0.20.6
 
 * Bugfix

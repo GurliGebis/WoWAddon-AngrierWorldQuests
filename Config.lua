@@ -62,16 +62,16 @@ setmetatable(Config, {
 
 function Config:Get(key)
 	if self:CharacterConfig() then
-		if AngryWorldQuests_CharacterConfig == nil or AngryWorldQuests_CharacterConfig[key] == nil then
+		if AngrierWorldQuests_CharacterConfig == nil or AngrierWorldQuests_CharacterConfig[key] == nil then
 			return configDefaults[key]
 		else
-			return AngryWorldQuests_CharacterConfig[key]
+			return AngrierWorldQuests_CharacterConfig[key]
 		end
 	else
-		if AngryWorldQuests_Config == nil or AngryWorldQuests_Config[key] == nil then
+		if AngrierWorldQuests_Config == nil or AngrierWorldQuests_Config[key] == nil then
 			return configDefaults[key]
 		else
-			return AngryWorldQuests_Config[key]
+			return AngrierWorldQuests_Config[key]
 		end
 	end
 end
@@ -79,15 +79,15 @@ end
 function Config:Set(key, newValue, silent)
 	if self:CharacterConfig() then
 		if configDefaults[key] == newValue then
-			AngryWorldQuests_CharacterConfig[key] = nil
+			AngrierWorldQuests_CharacterConfig[key] = nil
 		else
-			AngryWorldQuests_CharacterConfig[key] = newValue
+			AngrierWorldQuests_CharacterConfig[key] = newValue
 		end
 	else
 		if configDefaults[key] == newValue then
-			AngryWorldQuests_Config[key] = nil
+			AngrierWorldQuests_Config[key] = nil
 		else
-			AngryWorldQuests_Config[key] = newValue
+			AngrierWorldQuests_Config[key] = newValue
 		end
 	end
 	if key == 'selectedFilters' then 
@@ -203,15 +203,15 @@ function Config:ToggleFilter(key)
 end
 
 function Config:CharacterConfig()
-	return AngryWorldQuests_CharacterConfig and AngryWorldQuests_CharacterConfig['__enabled']
+	return AngrierWorldQuests_CharacterConfig and AngrierWorldQuests_CharacterConfig['__enabled']
 end
 
 function Config:SetCharacterConfig(enabled)
-	AngryWorldQuests_CharacterConfig['__enabled'] = enabled
-	if not AngryWorldQuests_CharacterConfig['__init'] then
-		AngryWorldQuests_CharacterConfig['__init'] = true
-		for key,value in pairs(AngryWorldQuests_Config) do
-			AngryWorldQuests_CharacterConfig[key] = value
+	AngrierWorldQuests_CharacterConfig['__enabled'] = enabled
+	if not AngrierWorldQuests_CharacterConfig['__init'] then
+		AngrierWorldQuests_CharacterConfig['__init'] = true
+		for key,value in pairs(AngrierWorldQuests_Config) do
+			AngrierWorldQuests_CharacterConfig[key] = value
 		end
 	end
 end
@@ -227,14 +227,14 @@ end
 
 local function Panel_OnCancel(self)
 	-- for key, value in pairs(panelOriginalConfig) do
-	-- 	if key == "disabledFilters" then AngryWorldQuests_Config["selectedFilters"] = nil end
+	-- 	if key == "disabledFilters" then AngrierWorldQuests_Config["selectedFilters"] = nil end
 	-- 	Config:Set(key, value)
 	-- end
 	wipe(panelOriginalConfig)
 end
 
 local function Panel_OnDefaults(self)
-	AngryWorldQuests_Config = { __version = configVersion }
+	AngrierWorldQuests_Config = { __version = configVersion }
 	for key,callbacks_key in pairs(callbacks) do
 		for _, func in ipairs(callbacks_key) do
 			func(key, configDefaults[key])
@@ -261,7 +261,7 @@ local function FilterCheckBox_OnClick(self)
 	else
 		value = bit.bor(value, mask)
 	end
-	AngryWorldQuests_Config["selectedFilters"] = nil
+	AngrierWorldQuests_Config["selectedFilters"] = nil
 	Config:Set(key, value)
 end
 
@@ -463,41 +463,41 @@ function Config:CreatePanel()
 end
 
 function Config:BeforeStartup()
-	if AngryWorldQuests_Config == nil then AngryWorldQuests_Config = {} end
-	if AngryWorldQuests_CharacterConfig == nil then AngryWorldQuests_CharacterConfig = {} end
+	if AngrierWorldQuests_Config == nil then AngrierWorldQuests_Config = {} end
+	if AngrierWorldQuests_CharacterConfig == nil then AngrierWorldQuests_CharacterConfig = {} end
 
-	if not AngryWorldQuests_Config['__version'] then
-		AngryWorldQuests_Config['__version'] = configVersion
+	if not AngrierWorldQuests_Config['__version'] then
+		AngrierWorldQuests_Config['__version'] = configVersion
 	end
-	if not AngryWorldQuests_CharacterConfig['__version'] then
-		AngryWorldQuests_CharacterConfig['__version'] = configVersion
+	if not AngrierWorldQuests_CharacterConfig['__version'] then
+		AngrierWorldQuests_CharacterConfig['__version'] = configVersion
 	end
 
-	AngryWorldQuests_Config['__version'] = configVersion
-	AngryWorldQuests_CharacterConfig['__version'] = configVersion
+	AngrierWorldQuests_Config['__version'] = configVersion
+	AngrierWorldQuests_CharacterConfig['__version'] = configVersion
 
 	if not self:Get('saveFilters') then
-		AngryWorldQuests_Config.selectedFilters = nil
-		AngryWorldQuests_Config.filterEmissary = nil
-		AngryWorldQuests_Config.filterLoot = nil
-		AngryWorldQuests_Config.filterFaction = nil
-		AngryWorldQuests_Config.filterZone = nil
-		AngryWorldQuests_Config.filterTime = nil
-		AngryWorldQuests_CharacterConfig.selectedFilters = nil
-		AngryWorldQuests_CharacterConfig.filterEmissary = nil
-		AngryWorldQuests_CharacterConfig.filterLoot = nil
-		AngryWorldQuests_CharacterConfig.filterFaction = nil
-		AngryWorldQuests_CharacterConfig.filterZone = nil
-		AngryWorldQuests_CharacterConfig.filterTime = nil
+		AngrierWorldQuests_Config.selectedFilters = nil
+		AngrierWorldQuests_Config.filterEmissary = nil
+		AngrierWorldQuests_Config.filterLoot = nil
+		AngrierWorldQuests_Config.filterFaction = nil
+		AngrierWorldQuests_Config.filterZone = nil
+		AngrierWorldQuests_Config.filterTime = nil
+		AngrierWorldQuests_CharacterConfig.selectedFilters = nil
+		AngrierWorldQuests_CharacterConfig.filterEmissary = nil
+		AngrierWorldQuests_CharacterConfig.filterLoot = nil
+		AngrierWorldQuests_CharacterConfig.filterFaction = nil
+		AngrierWorldQuests_CharacterConfig.filterZone = nil
+		AngrierWorldQuests_CharacterConfig.filterTime = nil
 	end
 
 end
 
 function Config:Startup()
-	local lastFilter = AngryWorldQuests_Config['__filters']
-	local lastFilter2 = AngryWorldQuests_CharacterConfig['__filters']
-	local value = AngryWorldQuests_Config['disabledFilters'] or 0
-	local value2 = AngryWorldQuests_CharacterConfig['disabledFilters'] or 0
+	local lastFilter = AngrierWorldQuests_Config['__filters']
+	local lastFilter2 = AngrierWorldQuests_CharacterConfig['__filters']
+	local value = AngrierWorldQuests_Config['disabledFilters'] or 0
+	local value2 = AngrierWorldQuests_CharacterConfig['disabledFilters'] or 0
 	local maxFilter = 0
 	for key,index in pairs(FiltersConversion) do
 		if Addon.QuestFrame.Filters[key] then
@@ -519,17 +519,17 @@ function Config:Startup()
 			if index > maxFilter then maxFilter = index end
 		end
 	end
-	AngryWorldQuests_Config['disabledFilters'] = value
-	AngryWorldQuests_Config['__filters'] = maxFilter
-	AngryWorldQuests_CharacterConfig['disabledFilters'] = value2
-	AngryWorldQuests_CharacterConfig['__filters'] = maxFilter
+	AngrierWorldQuests_Config['disabledFilters'] = value
+	AngrierWorldQuests_Config['__filters'] = maxFilter
+	AngrierWorldQuests_CharacterConfig['disabledFilters'] = value2
+	AngrierWorldQuests_CharacterConfig['__filters'] = maxFilter
 
 	optionPanel = self:CreatePanel(ADDON)
 end
 
-SLASH_ANGRYWORLDQUESTS1 = "/awq"
-SLASH_ANGRYWORLDQUESTS2 = "/angryworldquests"
-function SlashCmdList.ANGRYWORLDQUESTS(msg, editbox)
+SLASH_ANGRIERWORLDQUESTS1 = "/awq"
+SLASH_ANGRIERWORLDQUESTS2 = "/angrierworldquests"
+function SlashCmdList.ANGRIERWORLDQUESTS(msg, editbox)
 	if optionPanel then
 		InterfaceOptionsFrame_OpenToCategory(optionPanel)
 		InterfaceOptionsFrame_OpenToCategory(optionPanel)
