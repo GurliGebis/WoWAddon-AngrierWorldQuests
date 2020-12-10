@@ -1,4 +1,5 @@
 ### This addon is based on **[Angry World Quests](https://www.curseforge.com/wow/addons/angry-world-quests)** by Ermad
+### It can be found on **[CurseForge](https://www.curseforge.com/wow/addons/angrier-world-quests)**
 
 Adds a filterable lists of world quests and their rewards to quest log on the world map. So you can easily browse through all the world quests available to you.
 
