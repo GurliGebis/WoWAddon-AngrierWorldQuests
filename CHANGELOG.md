@@ -1,3 +1,12 @@
+## v0.31.1
+
+* Updated russian translations
+
+## v0.31.0
+
+* Minor changes to files to help CurseForge generate the correct package.
+* Minor changes to files to help clients detect the version correctly.
+
 ## v0.30.1
 
 * Renamed to Angrier World Quests, since this is now a fork.

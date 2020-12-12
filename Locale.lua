@@ -180,6 +180,15 @@ langs.ruRU = {
 	config_sortMethod_2 = "Оставшееся время",
 	config_sortMethod_3 = "Зона",
 	config_sortMethod_4 = "Фракция",
+	config_sortMethod_5 = "Награды",
+	config_characterConfig = "Настройки персонажа",
+	config_saveFilters = "Сохранять активные фильтры между входами",
+	config_lootUpgradesLevel = "Фильтр добычи показывает улучшения",
+	config_lootUpgradesLevelValue1 = "Только более высокий уровень экипировки",
+	config_lootUpgradesLevelValue2 = "До того же уровня экипировки",
+	config_lootUpgradesLevelValue = "На %d уровень экипировки меньше",
+	CURRENT_ZONE = "Текущая локация",
+	CODUIT_ITEMS = "Предметы медиума",
 }
 
 function Locale:Get(key)
