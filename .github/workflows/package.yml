@@ -1,0 +1,16 @@
+name: Package and Release
+
+on:
+  push:
+    tags: 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+      - name: Packager
+        uses: BigWigsMods/packager@master
