@@ -1,3 +1,7 @@
+## v0.32.1
+
+* Changed questLogIndex to layoutIndex, since it is the parameter that should be used.
+
 ## v0.32.0
 
 * Fixed problem with quests being shown above campaign.

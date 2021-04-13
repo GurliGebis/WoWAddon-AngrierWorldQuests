@@ -899,12 +899,12 @@ local function QuestFrame_Update()
 
 	if Config.showAtTop then
 		for header in QuestScrollFrame.headerFramePool:EnumerateActive() do
-			if firstButton == nil or header.questLogIndex < firstButton.layoutIndex then
+			if firstButton == nil or header.layoutIndex < firstButton.layoutIndex then
 				firstButton = header
 			end
 		end
 
-		layoutIndex = firstButton.questLogIndex + 0.001
+		layoutIndex = firstButton.layoutIndex - 1 + 0.001
 	end
 
 	if not headerButton then
