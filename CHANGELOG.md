@@ -1,3 +1,7 @@
+## v0.32.0
+
+* Fixed problem with quests being shown above campaign.
+
 ## v0.31.1
 
 * Updated russian translations

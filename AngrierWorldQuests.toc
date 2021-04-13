@@ -1,4 +1,4 @@
-## Interface: 90002
+## Interface: 90005
 ## Title: Angrier World Quests
 ## Notes: Adds World Quests to the quest list
 ## Author: GurliGebis
