@@ -904,6 +904,10 @@ local function QuestFrame_Update()
 				layoutIndex = firstButton.layoutIndex - 1 + 0.001
 			end
 		end
+		-- if no storyheader and no quests, stay on bottom
+		if layoutIndex == 0 then
+			layoutIndex = 10000
+		end
 	end
 
 	if not headerButton then
