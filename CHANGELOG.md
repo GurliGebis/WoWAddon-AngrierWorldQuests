@@ -1,3 +1,7 @@
+## v0.32.2
+
+* Fix bug when the questlog is empty, bugfix supplied by siweia on github.
+
 ## v0.32.1
 
 * Changed questLogIndex to layoutIndex, since it is the parameter that should be used.
