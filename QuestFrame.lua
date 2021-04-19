@@ -498,8 +498,7 @@ local titleFramePool
 local headerButton
 local spacerFrame
 
-local function QuestFrame_AddQuestButton(questInfo, prevButton)
-	local totalHeight = 8
+local function QuestFrame_AddQuestButton(questInfo)
 	local button = titleFramePool:Acquire()
 	TitleButton_Initiliaze(button)
 
@@ -883,7 +882,7 @@ local function QuestFrame_Update()
 
 	local questsCollapsed = Config.collapsed
 
-	local button, firstButton, storyButton, prevButton
+	local firstButton, storyButton, prevButton
 	local layoutIndex = Config.showAtTop and 0 or 10000
 
 	local storyAchievementID, storyMapID = C_QuestLog.GetZoneStoryInfo(mapID)
@@ -937,7 +936,6 @@ local function QuestFrame_Update()
 		headerButton.styled = true
 	end
 
-	local displayedQuestIDs = {}
 	local usedButtons = {}
 	local filtersOwnRow = false
 
