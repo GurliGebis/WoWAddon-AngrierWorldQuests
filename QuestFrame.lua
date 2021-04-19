@@ -947,14 +947,7 @@ local function QuestFrame_Update()
 	if questsCollapsed then
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 	else
-		local hasFilters = Config:HasFilters()
 		local selectedFilters = Config:GetFilterTable()
-
-		local enabledCount = 0
-		for i=#Mod.FiltersOrder, 1, -1 do
-			if not Config:GetFilterDisabled(Mod.FiltersOrder[i]) then enabledCount = enabledCount + 1 end
-		end
-
 		local prevFilter
 
 		for j=1, #Mod.FiltersOrder, 1 do
