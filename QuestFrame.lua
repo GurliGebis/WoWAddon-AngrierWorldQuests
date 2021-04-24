@@ -934,7 +934,7 @@ local function QuestFrame_Update()
 	end
 
 	if not headerButton then
-		headerButton = CreateFrame("BUTTON", nil, QuestMapFrame.QuestsFrame.Contents, "QuestLogHeaderTemplate")
+		headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", QuestMapFrame.QuestsFrame.Contents, "QuestLogHeaderTemplate")
 		headerButton:SetScript("OnClick", HeaderButton_OnClick)
 		headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
 		headerButton:SetHitRectInsets(0, -headerButton.ButtonText:GetWidth(), 0, 0)
@@ -952,16 +952,6 @@ local function QuestFrame_Update()
 	layoutIndex = layoutIndex + 0.001
 	headerButton:Show()
 	prevButton = headerButton
-
-	if not headerButton.styled then
-		local hasSkin = NDui or AuroraClassic
-		if hasSkin then
-			hasSkin[1].ReskinCollapse(headerButton, true)
-			headerButton:GetPushedTexture():SetAlpha(0)
-			headerButton:GetHighlightTexture():SetAlpha(0)
-		end
-		headerButton.styled = true
-	end
 
 	local usedButtons = {}
 	local filtersOwnRow = false
