@@ -116,6 +116,29 @@ end
 local function IsLegionWorldQuest(info)
 	return IsLegionMap(info.mapID)
 end
+-- BfA
+local bfaMaps = {
+	[12] = true, -- Kalimdor
+	[13] = true, -- Eastern Kingdoms
+	[1527] = true, -- Uldum
+	[13] = true, -- Eastern Kingdoms
+	[MAPID_DARKSHORE] = true,
+	[MAPID_ARATHI_HIGHLANDS] = true,
+	[MAPID_ZANDALAR] = true,
+	[MAPID_VOLDUN] = true,
+	[MAPID_NAZMIR] = true,
+	[MAPID_ZULDAZAR] = true,
+	[MAPID_KUL_TIRAS] = true,
+	[MAPID_STORMSONG_VALLEY] = true,
+	[MAPID_DRUSTVAR] = true,
+	[MAPID_TIRAGARDE_SOUND] = true,
+	[MAPID_TOL_DAGOR] = true,
+	[MAPID_NAZJATAR] = true,
+	[MAPID_MECHAGON_ISLAND] = true,
+}
+local function IsInBfA(mapID)
+	return bfaMaps[mapID]
+end
 
 -- 9.0 ShadowLands
 local shadowLandsMaps = {
@@ -843,6 +866,13 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 			end
 		end
 
+		-- don't filter quests if not in the right map
+		for key in pairs(selectedFilters) do
+			local index, rightMap = IsFilterOnRightMap(key, displayMapID)
+			if index and not rightMap then
+				isFiltered = false
+			end
+		end
 	end
 
 	if Config.onlyCurrentZone and info.mapID ~= displayMapID then
