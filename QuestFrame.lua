@@ -82,7 +82,6 @@ end
 
 --TODO: MapUtil.GetMapParentInfo(mapID, Enum.UIMapType.Continent, true)
 
-
 local __continentMapID = {}
 local function GetMapContinentMapID(mapID)
 
@@ -95,7 +94,6 @@ local function GetMapContinentMapID(mapID)
 
 	return __continentMapID[mapID]
 end
-
 
 local __legionMap = {}
 local function IsLegionMap(mapID)
@@ -447,7 +445,6 @@ local function GetMapIDsForDisplay(mapID)
 		return {GetMapContinentMapID(mapID)}
 	end
 end
-
 
 local filterButtons = {}
 local function GetFilterButton(key)
@@ -852,7 +849,7 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 		end
 	end
 
-	if Config.onlyCurrentZone and info.mapID ~= displayMapID then
+	if Config.onlyCurrentZone and info.mapID ~= displayMapID and displayMapID ~= MAPID_AZEROTH then
 		-- Needed since C_TaskQuest.GetQuestsForPlayerByMapID returns quests not on the passed map.....
 		-- But, if we are on a continent (the quest continent map id matches the currently shown map)
 		-- we should not be changing anything, since quests should be shown here.
