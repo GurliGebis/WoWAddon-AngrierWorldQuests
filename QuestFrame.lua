@@ -1156,7 +1156,7 @@ function Mod:BeforeStartup()
 
 	self:AddFilter("EMISSARY", BOUNTY_BOARD_LOCKED_TITLE, "achievement_reputation_01")
 	self:AddFilter("TIME", CLOSES_IN, "ability_bossmagistrix_timewarp2")
-	self:AddFilter("ZONE", Addon.Locale.CURRENT_ZONE, "inv_misc_map02") -- ZONE
+	--self:AddFilter("ZONE", Addon.Locale.CURRENT_ZONE, "inv_misc_map02") -- ZONE
 	self:AddFilter("TRACKED", TRACKING, "icon_treasuremap")
 	self:AddFilter("FACTION", FACTION, "achievement_reputation_06", true)
 	-- self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
