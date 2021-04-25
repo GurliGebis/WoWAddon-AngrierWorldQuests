@@ -20,7 +20,6 @@ local configDefaults = {
 	hideUntrackedPOI = false,
 	hideFilteredPOI = true,
 	showContinentPOI = true,
-	showComparisonRight = false,
 	sortMethod = 2,
 	extendedInfo = false,
 	saveFilters = false,
@@ -151,7 +150,7 @@ function Config:GetFilter(key)
 	return bit.band(value, mask) == mask
 end
 
-function Config:GetFilterTable(numFilters)
+function Config:GetFilterTable()
 	if __filterTable == nil then
 		local value = self:Get('selectedFilters')
 		__filterTable = {}

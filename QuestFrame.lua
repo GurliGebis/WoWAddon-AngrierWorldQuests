@@ -82,7 +82,6 @@ end
 
 --TODO: MapUtil.GetMapParentInfo(mapID, Enum.UIMapType.Continent, true)
 
-
 local __continentMapID = {}
 local function GetMapContinentMapID(mapID)
 
@@ -95,7 +94,6 @@ local function GetMapContinentMapID(mapID)
 
 	return __continentMapID[mapID]
 end
-
 
 local __legionMap = {}
 local function IsLegionMap(mapID)
@@ -138,6 +136,29 @@ local function GetAnimaValue(itemID)
 	return ANIMA_SPELLID[spellID] or 1
 end
 
+-- Smart filter
+local FILTER_LIST_7_0 = {
+	["ORDER_RESOURCES"] = true,
+	["WAKENING_ESSENCE"] = true,
+}
+local FILTER_LIST_8_0 = {
+	["AZERITE"] = true,
+	["WAR_RESOURCES"] = true,
+}
+local FILTER_LIST_9_0 = {
+	["ANIMA"] = true,
+	["CONDUIT"] = true,
+}
+local function IsFilterOnRightMap(key, mapID)
+	if FILTER_LIST_7_0[key] then
+		return 7, IsLegionMap(mapID)
+	elseif FILTER_LIST_8_0[key] then
+		return 8, not IsLegionMap(mapID) and not IsInShadowLands(mapID)
+	elseif FILTER_LIST_9_0[key] then
+		return 9, IsInShadowLands(mapID)
+	end
+end
+
 -- =================
 --  Event Functions
 -- =================
@@ -164,9 +185,6 @@ local function TitleButton_OnEnter(self)
 		if pin then
 			pin:EnableDrawLayer("HIGHLIGHT")
 		end
-	end
-	if Config.showComparisonRight then
-		WorldMapTooltip.ItemTooltip.Tooltip.overrideComparisonAnchorSide = "right"
 	end
 	TaskPOI_OnEnter(self)
 end
@@ -232,7 +250,8 @@ local function FilterButton_OnEnter(self)
 		if title then text = text..": "..title end
 	end
 	if self.filter == "ZONE" and Config.filterZone ~= 0 then
-		local title = GetMapNameByID(Config.filterZone)
+		local mapInfo = C_Map.GetMapInfo(Config.filterZone)
+		local title = mapInfo and mapInfo.name
 		if title then text = text..": "..title end
 	end
 	if self.filter == "TIME" then
@@ -427,7 +446,6 @@ local function GetMapIDsForDisplay(mapID)
 	end
 end
 
-
 local filterButtons = {}
 local function GetFilterButton(key)
 	local index = Mod.Filters[key].index
@@ -500,8 +518,7 @@ local titleFramePool
 local headerButton
 local spacerFrame
 
-local function QuestFrame_AddQuestButton(questInfo, prevButton)
-	local totalHeight = 8
+local function QuestFrame_AddQuestButton(questInfo)
 	local button = titleFramePool:Acquire()
 	TitleButton_Initiliaze(button)
 
@@ -776,7 +793,7 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 		end
 
 		if selectedFilters.TRACKED then
-			if IsWorldQuestHardWatched(info.questId) or GetSuperTrackedQuestID() == info.questId then
+			if C_QuestLog.GetQuestWatchType(info.questId) == Enum.QuestWatchType.Manual or C_SuperTrack.GetSuperTrackedQuestID() == info.questId then
 				isFiltered = false
 			end
 		end
@@ -823,9 +840,16 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 			end
 		end
 
+		-- don't filter quests if not in the right map
+		for key in pairs(selectedFilters) do
+			local index, rightMap = IsFilterOnRightMap(key, displayMapID)
+			if index and not rightMap then
+				isFiltered = false
+			end
+		end
 	end
 
-	if Config.onlyCurrentZone and info.mapID ~= displayMapID then
+	if Config.onlyCurrentZone and info.mapID ~= displayMapID and displayMapID ~= MAPID_AZEROTH then
 		-- Needed since C_TaskQuest.GetQuestsForPlayerByMapID returns quests not on the passed map.....
 		-- But, if we are on a continent (the quest continent map id matches the currently shown map)
 		-- we should not be changing anything, since quests should be shown here.
@@ -878,7 +902,6 @@ local function QuestFrame_Update()
 	local tasksOnMap = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
 	if (Config.onlyCurrentZone) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) and (mapID ~= MAPID_ARGUS) then
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
-		if spaceFrame then spacerFrame:Hide() end
 		if headerButton then headerButton:Hide() end
 		QuestScrollFrame.Contents:Layout()
 		return
@@ -886,7 +909,7 @@ local function QuestFrame_Update()
 
 	local questsCollapsed = Config.collapsed
 
-	local button, firstButton, storyButton, prevButton
+	local firstButton, storyButton, prevButton
 	local layoutIndex = Config.showAtTop and 0 or 10000
 
 	local storyAchievementID, storyMapID = C_QuestLog.GetZoneStoryInfo(mapID)
@@ -911,7 +934,7 @@ local function QuestFrame_Update()
 	end
 
 	if not headerButton then
-		headerButton = CreateFrame("BUTTON", nil, QuestMapFrame.QuestsFrame.Contents, "QuestLogHeaderTemplate")
+		headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", QuestMapFrame.QuestsFrame.Contents, "QuestLogHeaderTemplate")
 		headerButton:SetScript("OnClick", HeaderButton_OnClick)
 		headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
 		headerButton:SetHitRectInsets(0, -headerButton.ButtonText:GetWidth(), 0, 0)
@@ -930,39 +953,23 @@ local function QuestFrame_Update()
 	headerButton:Show()
 	prevButton = headerButton
 
-	if not headerButton.styled then
-		local hasSkin = NDui or AuroraClassic
-		if hasSkin then
-			hasSkin[1].ReskinCollapse(headerButton, true)
-			headerButton:GetPushedTexture():SetAlpha(0)
-			headerButton:GetHighlightTexture():SetAlpha(0)
-		end
-		headerButton.styled = true
-	end
-
-	local displayedQuestIDs = {}
 	local usedButtons = {}
 	local filtersOwnRow = false
 
 	if questsCollapsed then
 		for i = 1, #filterButtons do filterButtons[i]:Hide() end
 	else
-		local hasFilters = Config:HasFilters()
 		local selectedFilters = Config:GetFilterTable()
-
-		local enabledCount = 0
-		for i=#Mod.FiltersOrder, 1, -1 do
-			if not Config:GetFilterDisabled(Mod.FiltersOrder[i]) then enabledCount = enabledCount + 1 end
-		end
-
 		local prevFilter
 
 		for j=1, #Mod.FiltersOrder, 1 do
 			local i = j
 			if not filtersOwnRow then i = #Mod.FiltersOrder - i + 1 end
-			local filterButton = GetFilterButton(Mod.FiltersOrder[i])
+			local optionKey = Mod.FiltersOrder[i]
+			local filterButton = GetFilterButton(optionKey)
 			filterButton:SetFrameLevel(50 + i)
-			if Config:GetFilterDisabled(Mod.FiltersOrder[i]) then
+			local index, rightMap = IsFilterOnRightMap(optionKey, mapID)
+			if Config:GetFilterDisabled(optionKey) or (index and not rightMap) then
 				filterButton:Hide()
 			else
 				filterButton:Show()
@@ -976,8 +983,8 @@ local function QuestFrame_Update()
 					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
 				end
 
-				if Mod.FiltersOrder[i] ~= "SORT" then
-					if selectedFilters[Mod.FiltersOrder[i]] then
+				if optionKey ~= "SORT" then
+					if selectedFilters[optionKey] then
 						filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
 					else
 						filterButton:SetNormalAtlas("worldquest-tracker-ring")
@@ -1113,7 +1120,7 @@ function Mod:BeforeStartup()
 
 	self:AddFilter("EMISSARY", BOUNTY_BOARD_LOCKED_TITLE, "achievement_reputation_01")
 	self:AddFilter("TIME", CLOSES_IN, "ability_bossmagistrix_timewarp2")
-	self:AddFilter("ZONE", Addon.Locale.CURRENT_ZONE, "inv_misc_map02") -- ZONE
+	--self:AddFilter("ZONE", Addon.Locale.CURRENT_ZONE, "inv_misc_map02") -- ZONE
 	self:AddFilter("TRACKED", TRACKING, "icon_treasuremap")
 	self:AddFilter("FACTION", FACTION, "achievement_reputation_06", true)
 	-- self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
@@ -1121,11 +1128,11 @@ function Mod:BeforeStartup()
 	self:AddFilter("CONDUIT", Addon.Locale.CODUIT_ITEMS, "Spell_Shadow_SoulGem", true)
 	self:AddFilter("ANIMA", ANIMA, "Spell_AnimaBastion_Orb", true)
 
-	-- self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
+	self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
 	-- self:AddCurrencyFilter("WAR_SUPPLIES", CURRENCYID_WAR_SUPPLIES)
 	-- self:AddCurrencyFilter("NETHERSHARD", CURRENCYID_NETHERSHARD)
 	-- self:AddCurrencyFilter("VEILED_ARGUNITE", CURRENCYID_VEILED_ARGUNITE)
-	-- self:AddCurrencyFilter("WAKENING_ESSENCE", CURRENCYID_WAKENING_ESSENCE)
+	self:AddCurrencyFilter("WAKENING_ESSENCE", CURRENCYID_WAKENING_ESSENCE)
 
 	self:AddCurrencyFilter("AZERITE", CURRENCYID_AZERITE)
 	self:AddCurrencyFilter("WAR_RESOURCES", CURRENCYID_WAR_RESOURCES)
