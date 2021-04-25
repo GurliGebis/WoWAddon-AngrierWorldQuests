@@ -1,3 +1,7 @@
+## v0.33.0
+
+* Filters now react to which expansion the shown zone is in, implementation supplied by siweia on github.
+
 ## v0.32.2
 
 * Fix bug when the questlog is empty, bugfix supplied by siweia on github.
