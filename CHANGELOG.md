@@ -1,3 +1,7 @@
+## v0.33.1
+
+* Fix anchor for the first filter button, implementation supplied by siweia on github.
+
 ## v0.33.0
 
 * Filters now react to which expansion the shown zone is in, implementation supplied by siweia on github.
