@@ -3,5 +3,5 @@ package-as: AngrierWorldQuests
 manual-changelog: CHANGELOG.md
 
 ignore:
-	- CHANGELOG.md
-	- README.md
+- CHANGELOG.md
+- README.md
