@@ -1,3 +1,7 @@
+## v0.34.0
+
+* Updated TOC to match WoW 9.1
+
 ## v0.33.1
 
 * Fix anchor for the first filter button, implementation supplied by siweia on github.
