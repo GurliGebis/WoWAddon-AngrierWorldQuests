@@ -939,6 +939,7 @@ local function QuestFrame_Update()
 		headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
 		headerButton:SetHitRectInsets(0, -headerButton.ButtonText:GetWidth(), 0, 0)
 		headerButton:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
+		headerButton.titleFramePool = titleFramePool
 	end
 	headerButton:SetNormalAtlas(questsCollapsed and "Campaign_HeaderIcon_Closed" or "Campaign_HeaderIcon_Open" );
 	headerButton:SetPushedAtlas(questsCollapsed and "Campaign_HeaderIcon_ClosedPressed" or "Campaign_HeaderIcon_OpenPressed");
@@ -1126,7 +1127,7 @@ function Mod:BeforeStartup()
 	-- self:AddFilter("ARTIFACT_POWER", ARTIFACT_POWER, "inv_7xp_inscription_talenttome01", true)
 	self:AddFilter("LOOT", BONUS_ROLL_REWARD_ITEM, "inv_misc_lockboxghostiron", true)
 	self:AddFilter("CONDUIT", Addon.Locale.CODUIT_ITEMS, "Spell_Shadow_SoulGem", true)
-	self:AddFilter("ANIMA", ANIMA, "Spell_AnimaBastion_Orb", true)
+	self:AddFilter("ANIMA", POWER_TYPE_ANIMA, "Spell_AnimaBastion_Orb", true)
 
 	self:AddCurrencyFilter("ORDER_RESOURCES", CURRENCYID_RESOURCES, true)
 	-- self:AddCurrencyFilter("WAR_SUPPLIES", CURRENCYID_WAR_SUPPLIES)
