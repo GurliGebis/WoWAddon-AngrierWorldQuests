@@ -1,3 +1,7 @@
+## v0.34.1
+
+* Fix problem with filtering by anima, since the filter has changed name, implementation supplied by siweia on github.
+
 ## v0.34.0
 
 * Updated TOC to match WoW 9.1
