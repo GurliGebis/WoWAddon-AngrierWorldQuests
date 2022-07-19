@@ -1,3 +1,7 @@
+## v0.35.1
+
+* Updated TOC to match WoW 9.2.5
+
 ## v0.35.0
 
 * Updated TOC to match WoW 9.2
