@@ -1,3 +1,8 @@
+## v0.40.0
+
+* Updated TOC to match WoW 10.0.0
+* This version should work fine with the Dragonflight pre-patch.
+
 ## v0.35.1
 
 * Updated TOC to match WoW 9.2.5
