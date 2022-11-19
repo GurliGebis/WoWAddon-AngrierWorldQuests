@@ -1,4 +1,4 @@
-## Interface: 100000
+## Interface: 100002
 ## Title: Angrier World Quests
 ## Notes: Adds World Quests to the quest list
 ## Author: GurliGebis

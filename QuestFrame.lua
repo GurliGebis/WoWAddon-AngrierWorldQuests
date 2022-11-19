@@ -1048,7 +1048,7 @@ local function WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest(self, info)
 	end
 
 	if self.focusedQuestID then
-		return C_QuestLog.IsQuestCalling(self.focusedQuestID) and self:ShouldHighlightInfo(info.questId);
+		return C_QuestLog.IsQuestCalling(self.focusedQuestID) and self:ShouldSupertrackHighlightInfo(info.questId);
 	end
 
 	local mapID = self:GetMap():GetMapID()

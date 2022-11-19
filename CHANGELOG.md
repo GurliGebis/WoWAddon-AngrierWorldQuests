@@ -1,3 +1,8 @@
+## v0.40.1
+
+* Updated TOC to match WoW 10.0.2
+* Fixed issue with ShouldHighlightInfo being renamed to ShouldSupertrackHighlightInfo
+
 ## v0.40.0
 
 * Updated TOC to match WoW 10.0.0
