@@ -1,3 +1,7 @@
+## v0.40.2
+
+* Added faction filter for Dragonflight, patch provided by Uberlicious on github.
+
 ## v0.40.1
 
 * Updated TOC to match WoW 10.0.2
