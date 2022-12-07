@@ -61,6 +61,7 @@ local FACTION_ORDER_HORDE = { 2157, 2164, 2156, 2158, 2103, 2163 }
 local FACTION_ORDER_ALLIANCE = { 2159, 2164, 2160, 2161, 2162, 2163 }
 local FACTION_ORDER_LEGION = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2165, 2170 }
 local FACTION_ORDER_9_0 = { 2413, 2407, 2410, 2465 }
+local FACTION_ORDER_10_0 = { 2507, 2503, 2511, 2510, 2518, 2517 }
 local FACTION_ORDER
 
 local FILTER_LOOT_ALL = 1
@@ -113,6 +114,18 @@ end
 
 local function IsLegionWorldQuest(info)
 	return IsLegionMap(info.mapID)
+end
+
+-- 10.0 Dragonflight
+local dragonflightMaps = {
+    [1978] = true, -- dragonflight
+    [2022] = true, -- the waking shore
+    [2023] = true, -- ohn'ahran plains
+    [2024] = true, -- azure span
+    [2025] = true, -- thaldrazus
+}
+local function IsInDragonflight(mapID)
+    return dragonflightMaps[mapID]
 end
 
 -- 9.0 ShadowLands
@@ -342,7 +355,10 @@ local function FilterMenu_Initialize(self, level)
 		local value = Config.filterFaction
 
 		local mapID = QuestMapFrame:GetParent():GetMapID()
-		local factions = IsInShadowLands(mapID) and FACTION_ORDER_9_0 or IsLegionMap(mapID) and FACTION_ORDER_LEGION or FACTION_ORDER
+		local factions = IsInShadowLands(mapID) and FACTION_ORDER_9_0 or
+            IsLegionMap(mapID) and FACTION_ORDER_LEGION or
+            IsInDragonflight(mapID) and FACTION_ORDER_10_0 or
+            FACTION_ORDER
 
 		for _, factionID in ipairs(factions) do
 			info.text =  GetFactionInfoByID(factionID)
