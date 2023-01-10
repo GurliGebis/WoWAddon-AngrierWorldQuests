@@ -57,11 +57,11 @@ local SORT_ORDER = { SORT_NAME, SORT_TIME, SORT_ZONE, SORT_FACTION, SORT_REWARDS
 local REWARDS_ORDER = { ARTIFACT_POWER = 1, LOOT = 2, CURRENCY = 3, GOLD = 4, ITEMS = 5 }
 Mod.SortOrder = SORT_ORDER
 
-local FACTION_ORDER_HORDE = { 2157, 2164, 2156, 2158, 2103, 2163 }
-local FACTION_ORDER_ALLIANCE = { 2159, 2164, 2160, 2161, 2162, 2163 }
+local FACTION_ORDER_BFA_HORDE = { 2157, 2164, 2156, 2158, 2103, 2163 }
+local FACTION_ORDER_BFA_ALLIANCE = { 2159, 2164, 2160, 2161, 2162, 2163 }
 local FACTION_ORDER_LEGION = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2165, 2170 }
-local FACTION_ORDER_9_0 = { 2413, 2407, 2410, 2465 }
-local FACTION_ORDER_10_0 = { 2507, 2503, 2511, 2510, 2518, 2517 }
+local FACTION_ORDER_SHADOWLANDS = { 2413, 2407, 2410, 2465 }
+local FACTION_ORDER_DRAGONFLIGHT = { 2507, 2503, 2511, 2510, 2518, 2517 }
 local FACTION_ORDER
 
 local FILTER_LOOT_ALL = 1
@@ -82,6 +82,14 @@ end
 -- ===================
 
 --TODO: MapUtil.GetMapParentInfo(mapID, Enum.UIMapType.Continent, true)
+
+local function DebugLogging(method, message)
+	if Config.enableDebugging then
+		if DLAPI then
+			DLAPI.DebugLog("AngrierWorldQuests", string.format("%s : %s", method, message))
+		end
+	end
+end
 
 local __continentMapID = {}
 local function GetMapContinentMapID(mapID)
@@ -307,6 +315,7 @@ local function FilterMenu_OnClick(self, key)
 end
 
 local function FilterMenu_Initialize(self, level)
+	DebugLogging("FilterMenu_Initialize", string.format("self.filter == %s", self.filter))
 	local info = { func = FilterMenu_OnClick, arg1 = self.filter }
 	if self.filter == "EMISSARY" then
 		local value = Config.filterEmissary
@@ -355,15 +364,16 @@ local function FilterMenu_Initialize(self, level)
 		local value = Config.filterFaction
 
 		local mapID = QuestMapFrame:GetParent():GetMapID()
-		local factions = IsInShadowLands(mapID) and FACTION_ORDER_9_0 or
+		local factions = IsInShadowLands(mapID) and FACTION_ORDER_SHADOWLANDS or
             IsLegionMap(mapID) and FACTION_ORDER_LEGION or
-            IsInDragonflight(mapID) and FACTION_ORDER_10_0 or
+            IsInDragonflight(mapID) and FACTION_ORDER_DRAGONFLIGHT or
             FACTION_ORDER
 
 		for _, factionID in ipairs(factions) do
 			info.text =  GetFactionInfoByID(factionID)
 			info.value = factionID
 			info.checked = info.value == value
+			DebugLogging("FilterMenu_Initialize", string.format("Faction text: %s, value: %s, checked: %s", info.text, info.value, tostring(info.checked)))
 			My_UIDropDownMenu_AddButton(info, level)
 		end
 	elseif self.filter == "TIME" then
@@ -760,6 +770,8 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 	local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(info.questId)
 	C_TaskQuest.RequestPreloadRewardData(info.questId)
 
+	DebugLogging("TaskPOI_IsFiltered", string.format("Quest ID: %s, title: %s", info.questId, title))
+
 	local isFiltered = hasFilters
 
 	if C_QuestLog.IsQuestFlaggedCompleted(51722) then -- BfA World Quest unlocked
@@ -772,13 +784,17 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 	end
 
 	if hasFilters then
+		DebugLogging("TaskPOI_IsFiltered", string.format("It has filters"))
 		local lootFiltered = TaskPOI_IsFilteredReward(selectedFilters, info.questId)
 		if lootFiltered ~= nil then
 			isFiltered = lootFiltered
 		end
+
+		DebugLogging("TaskPOI_IsFiltered", string.format("isFiltered: %s", tostring(isFiltered)))
 		
 		if selectedFilters.FACTION then
 			if (factionID == Config.filterFaction or Addon.Data:QuestHasFaction(info.questId, Config.filterFaction)) then
+				DebugLogging("TaskPOI_IsFiltered", "FACTION isFiltered = false")
 				isFiltered = false
 			end
 		end
@@ -786,42 +802,49 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 		if selectedFilters.TIME then
 			local hours = Config.filterTime ~= 0 and Config.filterTime or Config.timeFilterDuration
 			if timeLeftMinutes and (timeLeftMinutes - WORLD_QUESTS_TIME_CRITICAL_MINUTES) <= (hours * 60) then
+				DebugLogging("TaskPOI_IsFiltered", "TIME isFiltered = false")
 				isFiltered = false
 			end
 		end
 
 		if selectedFilters.PVP then
 			if questTagInfo.worldQuestType == Enum.QuestTagType.PvP then
+				DebugLogging("TaskPOI_IsFiltered", "PVP isFiltered = false")
 				isFiltered = false
 			end
 		end
 
 		if selectedFilters.PETBATTLE then
 			if questTagInfo.worldQuestType == Enum.QuestTagType.PetBattle then
+				DebugLogging("TaskPOI_IsFiltered", "PETBATTLE isFiltered = false")
 				isFiltered = false
 			end
 		end
 
 		if selectedFilters.PROFESSION then
 			if tradeskillLineID and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] then
+				DebugLogging("TaskPOI_IsFiltered", "PROFESSION isFiltered = false")
 				isFiltered = false
 			end
 		end
 
 		if selectedFilters.TRACKED then
 			if C_QuestLog.GetQuestWatchType(info.questId) == Enum.QuestWatchType.Manual or C_SuperTrack.GetSuperTrackedQuestID() == info.questId then
+				DebugLogging("TaskPOI_IsFiltered", "TRACKED isFiltered = false")
 				isFiltered = false
 			end
 		end
 
 		if selectedFilters.RARE then
 			if questTagInfo.quality ~= Enum.WorldQuestQuality.Common then
+				DebugLogging("TaskPOI_IsFiltered", "RARE isFiltered = false")
 				isFiltered = false
 			end
 		end
 
 		if selectedFilters.DUNGEON then
 			if questTagInfo.worldQuestType == Enum.QuestTagType.Dungeon or questTagInfo.worldQuestType == Enum.QuestTagType.Raid then
+				DebugLogging("TaskPOI_IsFiltered", "DUNGEON isFiltered = false")
 				isFiltered = false
 			end
 		end
@@ -832,10 +855,12 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 
 			if filterMapID ~= 0 then
 				if info.mapID and info.mapID == filterMapID then
+					DebugLogging("TaskPOI_IsFiltered", "ZONE isFiltered = false")
 					isFiltered = false
 				end
 			else
 				if info.mapID and info.mapID == currentMapID then
+					DebugLogging("TaskPOI_IsFiltered", "ZONE isFiltered = false")
 					isFiltered = false
 				end
 			end
@@ -850,6 +875,7 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 				if not C_QuestLog.IsOnQuest(bountyFilter) or C_QuestLog.IsComplete(bountyFilter) then bountyFilter = 0 end -- show all bounties
 				for _, bounty in ipairs(bounties) do
 					if bounty and not C_QuestLog.IsComplete(bounty.questID) and C_QuestLog.IsQuestCriteriaForBounty(info.questId, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
+						DebugLogging("TaskPOI_IsFiltered", "EMISSARY isFiltered = false")
 						isFiltered = false
 					end
 				end
@@ -860,6 +886,7 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 		for key in pairs(selectedFilters) do
 			local index, rightMap = IsFilterOnRightMap(key, displayMapID)
 			if index and not rightMap then
+				DebugLogging("TaskPOI_IsFiltered", "Right Map isFiltered = false")
 				isFiltered = false
 			end
 		end
@@ -870,6 +897,7 @@ local function TaskPOI_IsFiltered(info, displayMapID)
 		-- But, if we are on a continent (the quest continent map id matches the currently shown map)
 		-- we should not be changing anything, since quests should be shown here.
 		if (GetMapContinentMapID(info.mapID) ~= displayMapID) then
+			DebugLogging("TaskPOI_IsFiltered", "Continent isFiltered = true")
 			isFiltered = true
 		end
 	end
@@ -1197,9 +1225,9 @@ function Mod:Startup()
 	Config = Addon.Config
 
 	if UnitFactionGroup("player") == "Alliance" then
-		FACTION_ORDER = FACTION_ORDER_ALLIANCE
+		FACTION_ORDER = FACTION_ORDER_BFA_ALLIANCE
 	else
-		FACTION_ORDER = FACTION_ORDER_HORDE
+		FACTION_ORDER = FACTION_ORDER_BFA_HORDE
 	end
 
 	self:RegisterAddOnLoaded("Blizzard_WorldMap")

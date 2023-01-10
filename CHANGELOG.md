@@ -1,3 +1,7 @@
+## v0.40.3
+
+* Started added debugging functionality to make it easier to debug errors.
+
 ## v0.40.2
 
 * Added faction filter for Dragonflight, patch provided by Uberlicious on github.
