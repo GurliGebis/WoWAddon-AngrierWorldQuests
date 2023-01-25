@@ -1,3 +1,7 @@
+## v0.40.4
+
+* Updated TOC to match WoW 10.0.5
+
 ## v0.40.3
 
 * Started added debugging functionality to make it easier to debug errors.
