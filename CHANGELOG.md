@@ -1,3 +1,7 @@
+## v0.40.5
+
+* Fix problem with world map, fix provided by Xaymar on github.
+
 ## v0.40.4
 
 * Updated TOC to match WoW 10.0.5
