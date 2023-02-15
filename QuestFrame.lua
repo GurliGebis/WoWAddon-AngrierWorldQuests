@@ -951,6 +951,10 @@ local function QuestFrame_Update()
 		return
 	end
 
+	if (Config.hideQuestList) then
+		return
+	end
+
 	local questsCollapsed = Config.collapsed
 
 	local firstButton, storyButton, prevButton

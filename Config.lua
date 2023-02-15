@@ -1,7 +1,7 @@
 local ADDON, Addon = ...
 local Config = Addon:NewModule('Config')
 
-local configVersion = 21
+local configVersion = 22
 local configDefaults = {
 	collapsed = false,
 	showAtTop = true,
@@ -19,6 +19,7 @@ local configDefaults = {
 	timeFilterDuration = 6,
 	hideUntrackedPOI = false,
 	hideFilteredPOI = true,
+	hideQuestList = false,
 	showContinentPOI = true,
 	enableDebugging = false,
 	sortMethod = 2,
@@ -381,7 +382,7 @@ Panel_OnRefresh = function(self)
 		dropdowns = {}
 		filterCheckboxes = {}
 
-		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showContinentPOI", "hideFilteredPOI", "hideUntrackedPOI", "showHoveredPOI", "lootFilterUpgrades", "enableDebugging" }
+		local checkboxes_order = { "showAtTop", "onlyCurrentZone", "showContinentPOI", "hideFilteredPOI", "hideUntrackedPOI", "hideQuestList", "showHoveredPOI", "lootFilterUpgrades", "enableDebugging" }
 
 		for i,key in ipairs(checkboxes_order) do
 			checkboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")

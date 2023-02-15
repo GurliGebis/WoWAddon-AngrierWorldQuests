@@ -1,3 +1,7 @@
+## v0.40.6
+
+* Added option to hide world quests in the quest log.
+
 ## v0.40.5
 
 * Fix problem with world map, fix provided by Xaymar on github.
