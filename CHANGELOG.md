@@ -1,3 +1,7 @@
+## v0.40.7
+
+* Updated TOC to match WoW 10.0.7
+
 ## v0.40.6
 
 * Added option to hide world quests in the quest log.
