@@ -595,10 +595,10 @@ local function QuestFrame_AddQuestButton(questInfo)
 	elseif ( questTagInfo.worldQuestType == Enum.QuestTagType.Profession and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
 		button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
 	elseif questTagInfo.isElite then
-		local tagCoords = QUEST_TAG_TCOORDS[Enum.QuestTag.Heroic]
+		local tagCoords = QUEST_TAG_ATLAS[Enum.QuestTag.Heroic]
 		button.TaskIcon:SetSize(16, 16)
 		button.TaskIcon:SetTexture(QUEST_ICONS_FILE)
-		button.TaskIcon:SetTexCoord( unpack(tagCoords) )
+		button.TaskIcon:SetAtlas(tagCoords)
 	elseif ( questTagInfo.worldQuestType == Enum.QuestTagType.Invasion ) then
 		button.TaskIcon:SetAtlas("worldquest-icon-burninglegion", true)
 	else
