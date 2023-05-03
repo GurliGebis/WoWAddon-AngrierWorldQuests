@@ -1,3 +1,9 @@
+## v0.41.0
+
+* Updated TOC to match WoW 10.1.0
+* Added fixes provided sehra on github.
+* Added more debugging info.
+
 ## v0.40.7
 
 * Updated TOC to match WoW 10.0.7

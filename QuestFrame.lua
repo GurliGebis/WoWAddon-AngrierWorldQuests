@@ -937,6 +937,8 @@ local function TaskPOI_Sorter(a, b)
 end
 
 local function QuestFrame_Update()
+	DebugLogging("QuestFrame_Update", "Triggered")
+
 	titleFramePool:ReleaseAll()
 
 	local mapID = QuestMapFrame:GetParent():GetMapID()
@@ -1243,10 +1245,12 @@ function Mod:Startup()
 	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
 
 	Config:RegisterCallback('showAtTop', function()
+		DebugLogging("showAtTop Callback", "Triggered")
 		QuestMapFrame_UpdateAll()
 	end)
 
 	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI', 'onlyCurrentZone', 'sortMethod', 'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'lootUpgradesLevel', 'timeFilterDuration'}, function() 
+		DebugLogging("Full list of callbacks", "Triggered")
 		QuestMapFrame_UpdateAll()
 		dataProvder:RefreshAllData()
 	end)
