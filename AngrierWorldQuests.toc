@@ -1,4 +1,4 @@
-## Interface: 100100
+## Interface: 100105
 ## Title: Angrier World Quests
 ## Notes: Adds World Quests to the quest list
 ## Author: GurliGebis
