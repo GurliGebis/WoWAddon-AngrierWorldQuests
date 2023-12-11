@@ -1,3 +1,7 @@
+## v0.42.1
+
+* Added faction filters for new factions and new zones.
+
 ## v0.42.0
 
 * Updated TOC to match WoW 10.2.0
