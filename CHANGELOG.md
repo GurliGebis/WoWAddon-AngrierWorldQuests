@@ -1,3 +1,7 @@
+## v0.42.3
+
+* Added Azerothian Archives to faction filter, provided by Arrhae on github
+
 ## v0.42.2
 
 * Updated TOC to match WoW 10.2.5
