@@ -1,3 +1,7 @@
+## v0.42.4
+
+* Added Dark Talons to faction filter
+
 ## v0.42.3
 
 * Added Azerothian Archives to faction filter, provided by Arrhae on github
