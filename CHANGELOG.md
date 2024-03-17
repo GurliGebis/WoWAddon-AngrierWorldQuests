@@ -1,6 +1,7 @@
 ## v0.42.4
 
 * Added Dark Talons to faction filter
+* Added The Forbidden Reach to Dragonflight faction filter
 
 ## v0.42.3
 

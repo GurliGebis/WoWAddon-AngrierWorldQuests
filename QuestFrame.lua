@@ -126,12 +126,14 @@ end
 
 -- 10.x Dragonflight
 local dragonflightMaps = {
-    [1978] = true, -- dragonflight
-    [2022] = true, -- the waking shore
-    [2023] = true, -- ohn'ahran plains
-    [2024] = true, -- azure span
-    [2025] = true, -- thaldrazus
+    [1978] = true, -- Dragonflight
+    [2022] = true, -- The Waking Shore
+    [2023] = true, -- Ohn'ahran Plains
+    [2024] = true, -- Azure Span
+    [2025] = true, -- Thaldrazus
+	[2112] = true, -- Valdrakken
 	[2133] = true, -- Zaralek Cavern
+	[2151] = true, -- The Forbidden Reach
 	[2200] = true, -- Emerald Dream
 }
 local function IsInDragonflight(mapID)
