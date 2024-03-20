@@ -1,3 +1,7 @@
+## v0.42.5
+
+* Updated TOC to match WoW 10.2.6
+
 ## v0.42.4
 
 * Added Dark Talons to faction filter
