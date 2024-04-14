@@ -1,3 +1,7 @@
+## v0.42.6
+
+* Fixed bug where "Only show World Quests for the current zone" being disabled caused quests in The Emerald Dream and Zaralek Cavern to be missing.
+
 ## v0.42.5
 
 * Updated TOC to match WoW 10.2.6

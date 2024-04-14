@@ -34,6 +34,16 @@ local MAPID_TIRAGARDE_SOUND = 895
 local MAPID_TOL_DAGOR = 1169
 local MAPID_NAZJATAR = 1355
 local MAPID_MECHAGON_ISLAND = 1462
+-- Dragonflight
+local MAPID_DRAGONFLIGHT = 1978
+local MAPID_THE_WAKING_SHORE = 2022
+local MAPID_OHNAHRAN_PLAINS = 2023
+local MAPID_AZURE_SPAN = 2024
+local MAPID_THALDRAZUS = 2025
+local MAPID_VALDRAKKEN = 2112
+local MAPID_ZARALEK_CAVERN = 2133
+local MAPID_THE_FORBIDDEN_REACH = 2151
+local MAPID_EMERALD_DREAM = 2200
 
 local CURRENCYID_RESOURCES = 1220
 local CURRENCYID_WAR_SUPPLIES = 1342
@@ -63,6 +73,19 @@ local FACTION_ORDER_LEGION = { 1900, 1883, 1828, 1948, 1894, 1859, 1090, 2045, 2
 local FACTION_ORDER_SHADOWLANDS = { 2413, 2407, 2410, 2465 }
 local FACTION_ORDER_DRAGONFLIGHT = { 2507, 2503, 2511, 2510, 2518, 2517, 2523, 2564, 2574, 2615 }
 local FACTION_ORDER
+
+local MAPID_CONTINENT_OVERRIDE = {
+	[MAPID_DRAGONFLIGHT] = {
+		MAPID_THE_WAKING_SHORE,
+		MAPID_OHNAHRAN_PLAINS,
+		MAPID_AZURE_SPAN,
+		MAPID_THALDRAZUS,
+		MAPID_VALDRAKKEN,
+		MAPID_ZARALEK_CAVERN,
+		MAPID_THE_FORBIDDEN_REACH,
+		MAPID_EMERALD_DREAM
+	}
+}
 
 local FILTER_LOOT_ALL = 1
 local FILTER_LOOT_UPGRADES = 2
@@ -470,9 +493,19 @@ local function GetMapIDsForDisplay(mapID)
 	end
 
 	if Config.onlyCurrentZone then
-		return {mapID}
+		if MAPID_CONTINENT_OVERRIDE[mapID] then
+			return MAPID_CONTINENT_OVERRIDE[mapID]
+		else
+			return {mapID}
+		end
 	else
-		return {GetMapContinentMapID(mapID)}
+		local continentMapID = GetMapContinentMapID(mapID)
+
+		if MAPID_CONTINENT_OVERRIDE[continentMapID] then
+			return MAPID_CONTINENT_OVERRIDE[continentMapID]
+		else
+			return {GetMapContinentMapID(mapID)}
+		end
 	end
 end
 
@@ -1049,6 +1082,7 @@ local function QuestFrame_Update()
 			end
 		end
 
+		local addedQuests = {}
 		local displayMapIDs = GetMapIDsForDisplay(mapID)
 		for _, mID in ipairs(displayMapIDs) do
 			local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mID)
@@ -1059,8 +1093,11 @@ local function QuestFrame_Update()
 						if WorldMap_DoesWorldQuestInfoPassFilters(info) then
 							local isFiltered = TaskPOI_IsFiltered(info, mapID)
 							if not isFiltered then
-								local button = QuestFrame_AddQuestButton(info)
-								table.insert(usedButtons, button)
+								if addedQuests[info.questId] == nil then
+									local button = QuestFrame_AddQuestButton(info)
+									table.insert(usedButtons, button)
+									addedQuests[info.questId] = true
+								end
 							end
 						end
 					end
