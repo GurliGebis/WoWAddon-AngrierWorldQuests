@@ -1,3 +1,7 @@
+## v0.42.7
+
+* Fixed bug where the quest list would show rewards for WQ without rewards.
+
 ## v0.42.6
 
 * Fixed bug where "Only show World Quests for the current zone" being disabled caused quests in The Emerald Dream and Zaralek Cavern to be missing.

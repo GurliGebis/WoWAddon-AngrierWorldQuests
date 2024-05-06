@@ -726,6 +726,9 @@ local function QuestFrame_AddQuestButton(questInfo)
 		button.TagText:SetText("")
 		button.TagTexture:Show()
 		button.TagTexture:SetTexture(tagTexture)
+	else
+		button.TagText:Hide()
+		button.TagTexture:Hide()
 	end
 	if tagTexture then
 		if tagTexCoords then
