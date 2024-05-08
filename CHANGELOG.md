@@ -1,3 +1,7 @@
+## v0.42.8
+
+* Updated TOC to match WoW 10.2.7
+
 ## v0.42.7
 
 * Fixed bug where the quest list would show rewards for WQ without rewards.
