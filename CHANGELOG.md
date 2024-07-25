@@ -1,3 +1,7 @@
+## v0.42.9
+
+* Updated TOC to match WoW 11.0.2
+
 ## v0.42.8
 
 * Updated TOC to match WoW 10.2.7
