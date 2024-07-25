@@ -2,6 +2,7 @@
 
 * Updated TOC to match WoW 11.0.2
 * Updated github actions workflow for building the package.
+* Fixes needed so the addon doesn't crash. (Still not compatible with TWW, but it is being worked on)
 
 ## v0.42.8
 
