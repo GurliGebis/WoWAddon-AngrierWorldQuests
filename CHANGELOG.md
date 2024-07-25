@@ -1,6 +1,7 @@
 ## v0.42.9
 
 * Updated TOC to match WoW 11.0.2
+* Updated github actions workflow for building the package.
 
 ## v0.42.8
 
