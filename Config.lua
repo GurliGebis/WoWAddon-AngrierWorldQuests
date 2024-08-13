@@ -458,7 +458,7 @@ function Config:CreatePanel()
 	panel.cancel = Panel_OnCancel
 	panel.default  = Panel_OnDefaults
 	panel.refresh  = Panel_OnRefresh
-	InterfaceOptions_AddCategory(panel)
+	Settings.RegisterCanvasLayoutCategory(panel, panel.name, panel.name)
 
 	return panel
 end
@@ -532,7 +532,6 @@ SLASH_ANGRIERWORLDQUESTS1 = "/awq"
 SLASH_ANGRIERWORLDQUESTS2 = "/angrierworldquests"
 function SlashCmdList.ANGRIERWORLDQUESTS(msg, editbox)
 	if optionPanel then
-		InterfaceOptionsFrame_OpenToCategory(optionPanel)
-		InterfaceOptionsFrame_OpenToCategory(optionPanel)
+		Settings.OpenToCategory(optionPanel.name)
 	end
 end

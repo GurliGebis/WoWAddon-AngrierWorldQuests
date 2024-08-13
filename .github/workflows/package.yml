@@ -9,11 +9,11 @@ jobs:
   package:
     runs-on: ubuntu-latest
     
-    env:
-      GITHUB_OAUTH: ${{ secrets.TOKEN_FOR_UPLOAD }}
-
     steps:
       - name: Clone repository
         uses: actions/checkout@v2
-      - name: Packager
-        uses: BigWigsMods/packager@master
+
+      - name: Create Package
+        uses: BigWigsMods/packager@v2
+        env:
+          CF_API_KEY: ${{ secrets.CURSEFORGE_API_TOKEN }}
