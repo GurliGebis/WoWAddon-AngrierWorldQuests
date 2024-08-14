@@ -1,3 +1,7 @@
+## v0.42.10
+
+* Changes needed due to deprecated API calls.
+
 ## v0.42.9
 
 * Updated TOC to match WoW 11.0.2

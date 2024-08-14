@@ -47,7 +47,7 @@ function Data:QuestHasFaction(questID, factionID)
 end
 
 function Data:RewardIsUpgrade(itemID, questID)
-	local _, _, _, _, _, _, _, _, equipSlot, _, _ = GetItemInfo(itemID)
+	local _, _, _, _, _, _, _, _, equipSlot, _, _ = C_Item.GetItemInfo(itemID)
 	local ilvl = self:RewardItemLevel(itemID, questID)
 
 	if equipSlot and invtype_locations[equipSlot] then
@@ -56,7 +56,7 @@ function Data:RewardIsUpgrade(itemID, questID)
 		for _, slotID in ipairs(invtype_locations[equipSlot]) do
 			local currentItem = GetInventoryItemLink("player", slotID)
 			if currentItem then
-				local currentIlvl = select(4, GetItemInfo(currentItem))
+				local currentIlvl = select(4, C_Item.GetItemInfo(currentItem))
 				if not currentIlvl or ilvl >= (currentIlvl - Addon.Config.lootUpgradesLevel) then
 					isUpgrade = true
 				end
@@ -79,7 +79,7 @@ function Data:RewardItemLevel(itemID, questID)
 
 		-- local itemLink = select(2, fakeTooltip:GetItem())
 		if false and itemLink then
-			local itemName, _, _, itemLevel, _, _, _, _, itemEquipLoc, _, _, itemClassID, itemSubClassID = GetItemInfo(itemLink)
+			local itemName, _, _, itemLevel, _, _, _, _, itemEquipLoc, _, _, itemClassID, itemSubClassID = C_Item.GetItemInfo(itemLink)
 			if itemName then
 				if (itemClassID == 3 and itemSubClassID == 11) or (itemEquipLoc ~= nil and itemEquipLoc ~= "") then
 					cachedItems[key] = itemLevel

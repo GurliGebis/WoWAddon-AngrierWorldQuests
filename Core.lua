@@ -58,7 +58,7 @@ end
 
 function Addon:RegisterAddOnLoaded(name, callback, func)
 	if func == nil then func = 0 end
-	if IsAddOnLoaded(name) then
+	if C_AddOns.IsAddOnLoaded(name) then
 		if func == 0 then
 			callback[name](callback)
 		else
@@ -133,6 +133,6 @@ function Addon:PLAYER_ENTERING_WORLD()
 	self:UnregisterEvent('PLAYER_ENTERING_WORLD', self)
 end
 
-Addon.Name = GetAddOnMetadata(ADDON, "Title")
-Addon.Version = GetAddOnMetadata(ADDON, "X-Packaged-Version")
+Addon.Name = C_AddOns.GetAddOnMetadata(ADDON, "Title")
+Addon.Version = C_AddOns.GetAddOnMetadata(ADDON, "X-Packaged-Version")
 _G[ADDON] = Addon
