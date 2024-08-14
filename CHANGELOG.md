@@ -1,6 +1,7 @@
 ## v0.42.10
 
 * Changes needed due to deprecated API calls.
+* Fixes needed so the addon doesn't crash. (Still not compatible with TWW, but it is being worked on)
 
 ## v0.42.9
 

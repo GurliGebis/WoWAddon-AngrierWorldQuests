@@ -1256,9 +1256,9 @@ function Mod:Blizzard_WorldMap()
 	end
 	for _,of in ipairs(WorldMapFrame.overlayFrames) do
 		if of.OnLoad and of.OnLoad == WorldMapTrackingOptionsButtonMixin.OnLoad then
-			hooksecurefunc(of, "OnSelection", function()
-				QuestMapFrame_UpdateAll()
-			end)
+			--hooksecurefunc(of, "OnSelection", function()
+			--	QuestMapFrame_UpdateAll()
+			--end)
 		end
 	end
 end
