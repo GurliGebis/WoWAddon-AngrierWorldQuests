@@ -234,6 +234,7 @@ local function TitleButton_OnEnter(self)
 			pin:EnableDrawLayer("HIGHLIGHT")
 		end
 	end
+	self.HighlightTexture:SetShown(true);
 	TaskPOI_OnEnter(self)
 end
 
@@ -250,6 +251,7 @@ local function TitleButton_OnLeave(self)
 			pin:DisableDrawLayer("HIGHLIGHT")
 		end
 	end
+	self.HighlightTexture:SetShown(false);
 	TaskPOI_OnLeave(self)
 end
 
@@ -670,6 +672,8 @@ local function QuestFrame_AddQuestButton(questInfo)
 	else
 		button.TimeIcon:Hide()
 	end
+
+	button.HighlightTexture:SetShown(false);
 
 	local tagText, tagTexture, tagTexCoords, tagColor
 	tagColor = {r=1, g=1, b=1}
