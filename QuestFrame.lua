@@ -1259,13 +1259,9 @@ function Mod:Blizzard_WorldMap()
 			dataProvder.ShouldShowQuest = WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest
 		end
 	end
-	for _,of in ipairs(WorldMapFrame.overlayFrames) do
-		if of.OnLoad and of.OnLoad == WorldMapTrackingOptionsButtonMixin.OnLoad then
-			--hooksecurefunc(of, "OnSelection", function()
-			--	QuestMapFrame_UpdateAll()
-			--end)
-		end
-	end
+	Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(ownerRegion, rootDescription, contextData)
+		rootDescription:AddMenuResponseCallback(QuestMapFrame_UpdateAll)
+	end)
 end
 --[[
 local function OverrideLayoutManager()
@@ -1291,7 +1287,7 @@ function Mod:Startup()
 
 	titleFramePool = CreateFramePool("BUTTON", QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
 
-	--hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
+	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
 
 	Config:RegisterCallback('showAtTop', function()
 		DebugLogging("showAtTop Callback", "Triggered")
