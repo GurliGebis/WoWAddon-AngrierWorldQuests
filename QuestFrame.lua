@@ -557,31 +557,37 @@ end
 
 local function TitleButton_Initiliaze(button)
 	if not button.awq then
+		button.OnLegendPinMouseEnter = function() end
+		button.OnLegendPinMouseLeave = function() end
+
 		button:SetScript("OnEnter", TitleButton_OnEnter)
 		button:SetScript("OnLeave", TitleButton_OnLeave)
 		button:SetScript("OnClick", TitleButton_OnClick)
 
-		button.TagTexture:SetSize(24, 24)
-		button.TagTexture:ClearAllPoints()
-		button.TagTexture:SetPoint("TOP", button.Text, "CENTER", 0, 8)
-		button.TagTexture:SetPoint("RIGHT", 0, 0)
+		button.TagTexture:SetSize(16, 16)
+		-- button.TagTexture:ClearAllPoints()
+		-- button.TagTexture:SetPoint("TOP", button.Text, "CENTER", 0, 8)
+		-- button.TagTexture:SetPoint("RIGHT", 0, 0)
 		button.TagTexture:Hide()
+
+		button.StorylineTexture:Hide()
 
 		button.TagText = button:CreateFontString(nil, nil, "GameFontNormalLeft")
 		button.TagText:SetTextColor(1, 1, 1)
+		-- local filename, fontHeight = button.TagText:GetFont()
+		-- button.TagText:ClearAllPoints()
+		button.TagText:SetPoint("RIGHT", button.TagTexture, "LEFT", -2, 0)
+		-- button.TagText:SetFont(filename, fontHeight, "OUTLINE")
 		button.TagText:Hide()
 
-		button.TaskIcon:ClearAllPoints()
-		button.TaskIcon:SetPoint("CENTER", button.Text, "LEFT", -15, 0)
+		button.Text:SetPoint("RIGHT", button.TagText, "LEFT", -4, 0)
+
+		-- button.TaskIcon:ClearAllPoints()
+		button.TaskIcon:SetPoint("RIGHT", button.Text, "LEFT", -4, 0)
 
 		button.TimeIcon = button:CreateTexture(nil, "OVERLAY")
 		button.TimeIcon:SetAtlas("worldquest-icon-clock")
-
-		local filename, fontHeight = button.TagText:GetFont()
-		button.TagTexture:SetSize(16, 16)
-		button.TagText:ClearAllPoints()
-		button.TagText:SetPoint("RIGHT", button.TagTexture , "LEFT", -3, 0)
-		button.TagText:SetFont(filename, fontHeight, "OUTLINE")
+		button.TimeIcon:SetPoint("RIGHT", button.Text, "LEFT", -5, 0)
 
 		button.awq = true
 	end
@@ -619,10 +625,9 @@ local function QuestFrame_AddQuestButton(questInfo)
 	totalHeight = totalHeight + button.Text:GetHeight()
 
 	if ( WorldMap_IsWorldQuestEffectivelyTracked(questID) ) then
-		button.Check:Show()
-		button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0)
+		button.Checkbox.CheckMark:Show()
 	else
-		button.Check:Hide()
+		button.Checkbox.CheckMark:Hide()
 	end
 
 	local hasIcon = true
@@ -1032,13 +1037,14 @@ local function QuestFrame_Update()
 		headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", QuestMapFrame.QuestsFrame.Contents, "QuestLogHeaderTemplate")
 		headerButton:SetScript("OnClick", HeaderButton_OnClick)
 		headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
-		headerButton:SetHitRectInsets(0, -headerButton.ButtonText:GetWidth(), 0, 0)
-		headerButton:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
+		headerButton.topPadding = 6
+		-- headerButton:SetHitRectInsets(0, -headerButton.ButtonText:GetWidth(), 0, 0)
+		-- headerButton:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
 		headerButton.titleFramePool = titleFramePool
 	end
-	headerButton:SetNormalAtlas(questsCollapsed and "Campaign_HeaderIcon_Closed" or "Campaign_HeaderIcon_Open" );
-	headerButton:SetPushedAtlas(questsCollapsed and "Campaign_HeaderIcon_ClosedPressed" or "Campaign_HeaderIcon_OpenPressed");
-	headerButton:ClearAllPoints()
+	-- headerButton:SetNormalAtlas(questsCollapsed and "Campaign_HeaderIcon_Closed" or "Campaign_HeaderIcon_Open" );
+	-- headerButton:SetPushedAtlas(questsCollapsed and "Campaign_HeaderIcon_ClosedPressed" or "Campaign_HeaderIcon_OpenPressed");
+	-- headerButton:ClearAllPoints()
 	if storyButton then
 		headerButton:SetPoint("TOPLEFT", storyButton, "BOTTOMLEFT", 0, 0)
 	else
@@ -1126,7 +1132,12 @@ local function QuestFrame_Update()
 		end
 	end
 
-	if not spacerFrame then
+	headerButton.CollapseButton:UpdateCollapsedState(Config.collapsed)
+	headerButton.CollapseButton.layoutIndex = layoutIndex
+	layoutIndex = layoutIndex + 0.001
+	headerButton.CollapseButton:Show()
+
+	--[[if not spacerFrame then
 		spacerFrame = CreateFrame("FRAME", nil, QuestMapFrame.QuestsFrame.Contents)
 		spacerFrame:SetHeight(6)
 	end
@@ -1136,7 +1147,7 @@ local function QuestFrame_Update()
 		layoutIndex = layoutIndex + 0.001
 	else
 		spacerFrame:Hide()
-	end
+	end]]--
 
 	QuestScrollFrame.Contents:Layout()
 end
