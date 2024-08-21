@@ -1286,7 +1286,7 @@ function Mod:Startup()
 
 	titleFramePool = CreateFramePool("BUTTON", QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
 
-	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
+	--hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
 
 	Config:RegisterCallback('showAtTop', function()
 		DebugLogging("showAtTop Callback", "Triggered")
