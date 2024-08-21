@@ -573,25 +573,30 @@ local function TitleButton_Initiliaze(button)
 		button:SetScript("OnLeave", TitleButton_OnLeave)
 		button:SetScript("OnClick", TitleButton_OnClick)
 
+		-- rearrange default layout of QuestLogTitleTemplate into something better fit for world quests
+		-- default layout
+		-- TaskIcon | Text | StorylineTexture | TagTexture
+
+		-- our custom layout
+		-- TaskIcon + TimeIcon (optional, will overlap) | Text | TagText | TagTexture
+
 		button.TagTexture:SetSize(16, 16)
-		-- button.TagTexture:ClearAllPoints()
-		-- button.TagTexture:SetPoint("TOP", button.Text, "CENTER", 0, 8)
-		-- button.TagTexture:SetPoint("RIGHT", 0, 0)
 		button.TagTexture:Hide()
 
 		button.StorylineTexture:Hide()
 
 		button.TagText = button:CreateFontString(nil, nil, "GameFontNormalLeft")
+		button.TagText:SetJustifyH("RIGHT")
 		button.TagText:SetTextColor(1, 1, 1)
-		-- local filename, fontHeight = button.TagText:GetFont()
-		-- button.TagText:ClearAllPoints()
 		button.TagText:SetPoint("RIGHT", button.TagTexture, "LEFT", -2, 0)
-		-- button.TagText:SetFont(filename, fontHeight, "OUTLINE")
+		button.TagText:SetWidth(28)
 		button.TagText:Hide()
 
-		button.Text:SetPoint("RIGHT", button.TagText, "LEFT", -4, 0)
+		button.Text:ClearAllPoints()
+		button.Text:SetPoint("TOPRIGHT", button.TagText, "TOPLEFT", -4, 0)
+		button.Text:SetWidth(196)
 
-		-- button.TaskIcon:ClearAllPoints()
+		button.TaskIcon:ClearAllPoints()
 		button.TaskIcon:SetPoint("RIGHT", button.Text, "LEFT", -4, 0)
 
 		button.TimeIcon = button:CreateTexture(nil, "OVERLAY")
@@ -647,26 +652,18 @@ local function QuestFrame_AddQuestButton(questInfo)
 	if questInfo.inProgress then
 		button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
 		button.TaskIcon:SetSize(10, 15)
-	elseif questTagInfo.worldQuestType == Enum.QuestTagType.PvP then
-		button.TaskIcon:SetAtlas("worldquest-icon-pvp-ffa", true)
-	elseif questTagInfo.worldQuestType == Enum.QuestTagType.PetBattle then
-		button.TaskIcon:SetAtlas("worldquest-icon-petbattle", true)
-	elseif questTagInfo.worldQuestType == Enum.QuestTagType.Dungeon then
-		button.TaskIcon:SetAtlas("worldquest-icon-dungeon", true)
-	elseif questTagInfo.worldQuestType == Enum.QuestTagType.Raid then
-		button.TaskIcon:SetAtlas("worldquest-icon-raid", true)
-	elseif ( questTagInfo.worldQuestType == Enum.QuestTagType.Profession and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
-		button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
-	elseif questTagInfo.isElite then
-		local tagCoords = QUEST_TAG_ATLAS[Enum.QuestTag.Heroic]
-		button.TaskIcon:SetSize(16, 16)
-		button.TaskIcon:SetTexture(QUEST_ICONS_FILE)
-		button.TaskIcon:SetAtlas(tagCoords)
-	elseif ( questTagInfo.worldQuestType == Enum.QuestTagType.Invasion ) then
-		button.TaskIcon:SetAtlas("worldquest-icon-burninglegion", true)
 	else
-		hasIcon = false
-		button.TaskIcon:Hide()
+		local atlas, width, height = QuestUtil.GetWorldQuestAtlasInfo(questID, questTagInfo, false);
+		if atlas and atlas ~= "Worldquest-icon" then
+			button.TaskIcon:SetAtlas(atlas);
+			button.TaskIcon:SetSize(math.min(width, 16), math.min(height, 16));
+		elseif questTagInfo.isElite then
+			button.TaskIcon:SetAtlas("questlog-questtypeicon-heroic")
+			button.TaskIcon:SetSize(16, 16);
+		else
+			hasIcon = false
+			button.TaskIcon:Hide()
+		end
 	end
 
 	if ( timeLeftMinutes and timeLeftMinutes > 0 and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
@@ -1051,13 +1048,8 @@ local function QuestFrame_Update()
 		headerButton:SetScript("OnClick", HeaderButton_OnClick)
 		headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
 		headerButton.topPadding = 6
-		-- headerButton:SetHitRectInsets(0, -headerButton.ButtonText:GetWidth(), 0, 0)
-		-- headerButton:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
 		headerButton.titleFramePool = titleFramePool
 	end
-	-- headerButton:SetNormalAtlas(questsCollapsed and "Campaign_HeaderIcon_Closed" or "Campaign_HeaderIcon_Open" );
-	-- headerButton:SetPushedAtlas(questsCollapsed and "Campaign_HeaderIcon_ClosedPressed" or "Campaign_HeaderIcon_OpenPressed");
-	-- headerButton:ClearAllPoints()
 	if storyButton then
 		headerButton:SetPoint("TOPLEFT", storyButton, "BOTTOMLEFT", 0, 0)
 	else
@@ -1149,18 +1141,6 @@ local function QuestFrame_Update()
 	headerButton.CollapseButton.layoutIndex = layoutIndex
 	layoutIndex = layoutIndex + 0.001
 	headerButton.CollapseButton:Show()
-
-	--[[if not spacerFrame then
-		spacerFrame = CreateFrame("FRAME", nil, QuestMapFrame.QuestsFrame.Contents)
-		spacerFrame:SetHeight(6)
-	end
-	if #usedButtons > 0 then
-		spacerFrame:Show()
-		spacerFrame.layoutIndex = layoutIndex
-		layoutIndex = layoutIndex + 0.001
-	else
-		spacerFrame:Hide()
-	end]]--
 
 	QuestScrollFrame.Contents:Layout()
 end
