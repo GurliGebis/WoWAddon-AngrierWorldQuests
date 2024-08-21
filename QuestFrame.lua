@@ -680,21 +680,18 @@ local function QuestFrame_AddQuestButton(questInfo)
 		button.rewardValue2 = 0
 	end	
 
-	local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
-	if numQuestCurrencies > 0 then
-		for currencyNum = 1, numQuestCurrencies do 
-			local name, texture, numItems, currencyID = GetQuestLogRewardCurrencyInfo(currencyNum, questID)
-			if currencyID ~= CURRENCYID_WAR_SUPPLIES and currencyID ~= CURRENCYID_NETHERSHARD then
-				tagText = numItems
-				tagTexture = texture
-				tagTexCoords = nil
-				if currencyID == CURRENCYID_AZERITE then
-					tagColor = BAG_ITEM_QUALITY_COLORS[Enum.ItemQuality.Artifact]
-				end
-				button.rewardCategory = "CURRENCY"
-				button.rewardValue = currencyID
-				button.rewardValue2 = numItems
+	for k, currencyInfo in ipairs(C_QuestLog.GetQuestRewardCurrencies(questID)) do
+		local name, texture, numItems, currencyID = currencyInfo.name, currencyInfo.texture, currencyInfo.totalRewardAmount, currencyInfo.currencyID
+		if currencyID ~= CURRENCYID_WAR_SUPPLIES and currencyID ~= CURRENCYID_NETHERSHARD then
+			tagText = numItems
+			tagTexture = texture
+			tagTexCoords = nil
+			if currencyID == CURRENCYID_AZERITE then
+				tagColor = BAG_ITEM_QUALITY_COLORS[Enum.ItemQuality.Artifact]
 			end
+			button.rewardCategory = "CURRENCY"
+			button.rewardValue = currencyID
+			button.rewardValue2 = numItems
 		end
 	end
 
@@ -763,14 +760,12 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 		positiveMatch = true
 	end	
 
-	local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
 	for key,_ in pairs(selectedFilters) do
 		local filter = Mod.Filters[key]
 		if filter.preset == FILTER_CURRENCY then
 			hasCurrencyFilter = true
-			for i = 1, numQuestCurrencies do
-				local name, texture, numItems, currencyID = GetQuestLogRewardCurrencyInfo(i, questID)
-				if filter.currencyID == currencyID then
+			for k, currencyInfo in ipairs(C_QuestLog.GetQuestRewardCurrencies(questID)) do
+				if filter.currencyID == currencyInfo.currencyID then
 					positiveMatch = true
 				end
 			end
