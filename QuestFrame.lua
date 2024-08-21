@@ -231,7 +231,7 @@ local function TitleButton_OnEnter(self)
 	if dataProvder then
 		local pin = dataProvder.activePins[self.questID]
 		if pin then
-			pin:EnableDrawLayer("HIGHLIGHT")
+			POIButtonMixin.OnEnter(pin)
 		end
 	end
 	self.HighlightTexture:SetShown(true);
@@ -248,7 +248,7 @@ local function TitleButton_OnLeave(self)
 	if dataProvder then
 		local pin = dataProvder.activePins[self.questID]
 		if pin then
-			pin:DisableDrawLayer("HIGHLIGHT")
+			POIButtonMixin.OnLeave(pin)
 		end
 	end
 	self.HighlightTexture:SetShown(false);
