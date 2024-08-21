@@ -180,7 +180,7 @@ local ANIMA_ITEM_COLOR = { r=.6, g=.8, b=1 }
 local ANIMA_SPELLID = {[347555] = 3, [345706] = 5, [336327] = 35, [336456] = 250}
 
 local function GetAnimaValue(itemID)
-	local _, spellID = C_Spell.GetItemSpell(itemID)
+	local _, spellID = C_Item.GetItemSpell(itemID)
 	return ANIMA_SPELLID[spellID] or 1
 end
 
