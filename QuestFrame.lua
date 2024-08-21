@@ -256,9 +256,7 @@ local function TitleButton_OnLeave(self)
 end
 
 local function TitleButton_OnClick(self, button)
-	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 	if ( not ChatEdit_TryInsertQuestLinkForQuestID(self.questID) ) then
-		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
 		local watchType = C_QuestLog.GetQuestWatchType(self.questID);
 		local isSuperTracked = C_SuperTrack.GetSuperTrackedQuestID() == self.questID;
 		if ( button == "RightButton" ) then
@@ -287,6 +285,15 @@ local function TitleButton_OnClick(self, button)
 				C_SuperTrack.SetSuperTrackedQuestID(self.questID);
 			end
 		end
+	end
+end
+
+local function TitleButton_ToggleTracking(self)
+	local watchType = C_QuestLog.GetQuestWatchType(self.questID)
+	if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and C_SuperTrack.GetSuperTrackedQuestID() == self.questID) then
+		QuestUtil.UntrackWorldQuest(self.questID)
+	else
+		QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual)
 	end
 end
 
@@ -590,6 +597,8 @@ local function TitleButton_Initiliaze(button)
 		button.TimeIcon = button:CreateTexture(nil, "OVERLAY")
 		button.TimeIcon:SetAtlas("worldquest-icon-clock")
 		button.TimeIcon:SetPoint("RIGHT", button.Text, "LEFT", -5, 0)
+
+		button.ToggleTracking = TitleButton_ToggleTracking
 
 		button.awq = true
 	end
