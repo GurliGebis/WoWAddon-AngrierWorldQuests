@@ -258,21 +258,31 @@ local function TitleButton_OnClick(self, button)
 	if ( not ChatEdit_TryInsertQuestLinkForQuestID(self.questID) ) then
 		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
 		local watchType = C_QuestLog.GetQuestWatchType(self.questID);
+		local isSuperTracked = C_SuperTrack.GetSuperTrackedQuestID() == self.questID;
 		if ( button == "RightButton" ) then
 			if ( self.mapID ) then
 				QuestMapFrame:GetParent():SetMapID(self.mapID)
 			end
 		elseif IsShiftKeyDown() then
-			if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and C_SuperTrack.GetSuperTrackedQuestID() == self.questID) then
-				BonusObjectiveTracker_UntrackWorldQuest(self.questID);
+			if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and isSuperTracked) then
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
+				QuestUtil.UntrackWorldQuest(self.questID);
 			else
-				BonusObjectiveTracker_TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual);
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+				QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual);
 			end
 		else
-			if watchType == Enum.QuestWatchType.Manual then
-				C_SuperTrack.SetSuperTrackedQuestID(self.questID);
+			if isSuperTracked then
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
+				C_SuperTrack.SetSuperTrackedQuestID(0);
 			else
-				BonusObjectiveTracker_TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic);
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+
+				if watchType ~= Enum.QuestWatchType.Manual then
+					QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic);
+				end
+
+				C_SuperTrack.SetSuperTrackedQuestID(self.questID);
 			end
 		end
 	end
