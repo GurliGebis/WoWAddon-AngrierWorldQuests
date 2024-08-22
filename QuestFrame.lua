@@ -309,7 +309,8 @@ local function FilterButton_OnEnter(self)
 		end
 	end
 	if self.filter == "FACTION" and Config.filterFaction ~= 0 then
-		local title = GetFactionInfoByID(Config.filterFaction)
+		local factionData = C_Reputation.GetFactionDataByID(Config.filterFaction)
+		local title = factionData.name
 		if title then text = text..": "..title end
 	end
 	if self.filter == "SORT" then
@@ -416,7 +417,8 @@ local function FilterMenu_Initialize(self, level)
             FACTION_ORDER
 
 		for _, factionID in ipairs(factions) do
-			info.text =  GetFactionInfoByID(factionID)
+			local factionData = C_Reputation.GetFactionDataByID(factionID)
+			info.text = factionData.name
 			info.value = factionID
 			info.checked = info.value == value
 			DebugLogging("FilterMenu_Initialize", string.format("Faction text: %s, value: %s, checked: %s", info.text, info.value, tostring(info.checked)))
