@@ -180,7 +180,7 @@ local ANIMA_ITEM_COLOR = { r=.6, g=.8, b=1 }
 local ANIMA_SPELLID = {[347555] = 3, [345706] = 5, [336327] = 35, [336456] = 250}
 
 local function GetAnimaValue(itemID)
-	local _, spellID = C_Spell.GetItemSpell(itemID)
+	local _, spellID = C_Item.GetItemSpell(itemID)
 	return ANIMA_SPELLID[spellID] or 1
 end
 
@@ -231,9 +231,10 @@ local function TitleButton_OnEnter(self)
 	if dataProvder then
 		local pin = dataProvder.activePins[self.questID]
 		if pin then
-			pin:EnableDrawLayer("HIGHLIGHT")
+			POIButtonMixin.OnEnter(pin)
 		end
 	end
+	self.HighlightTexture:SetShown(true);
 	TaskPOI_OnEnter(self)
 end
 
@@ -247,34 +248,52 @@ local function TitleButton_OnLeave(self)
 	if dataProvder then
 		local pin = dataProvder.activePins[self.questID]
 		if pin then
-			pin:DisableDrawLayer("HIGHLIGHT")
+			POIButtonMixin.OnLeave(pin)
 		end
 	end
+	self.HighlightTexture:SetShown(false);
 	TaskPOI_OnLeave(self)
 end
 
 local function TitleButton_OnClick(self, button)
-	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 	if ( not ChatEdit_TryInsertQuestLinkForQuestID(self.questID) ) then
-		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
 		local watchType = C_QuestLog.GetQuestWatchType(self.questID);
+		local isSuperTracked = C_SuperTrack.GetSuperTrackedQuestID() == self.questID;
 		if ( button == "RightButton" ) then
 			if ( self.mapID ) then
 				QuestMapFrame:GetParent():SetMapID(self.mapID)
 			end
 		elseif IsShiftKeyDown() then
-			if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and C_SuperTrack.GetSuperTrackedQuestID() == self.questID) then
-				BonusObjectiveTracker_UntrackWorldQuest(self.questID);
+			if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and isSuperTracked) then
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
+				QuestUtil.UntrackWorldQuest(self.questID);
 			else
-				BonusObjectiveTracker_TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual);
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+				QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual);
 			end
 		else
-			if watchType == Enum.QuestWatchType.Manual then
-				C_SuperTrack.SetSuperTrackedQuestID(self.questID);
+			if isSuperTracked then
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
+				C_SuperTrack.SetSuperTrackedQuestID(0);
 			else
-				BonusObjectiveTracker_TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic);
+				PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+
+				if watchType ~= Enum.QuestWatchType.Manual then
+					QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic);
+				end
+
+				C_SuperTrack.SetSuperTrackedQuestID(self.questID);
 			end
 		end
+	end
+end
+
+local function TitleButton_ToggleTracking(self)
+	local watchType = C_QuestLog.GetQuestWatchType(self.questID)
+	if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and C_SuperTrack.GetSuperTrackedQuestID() == self.questID) then
+		QuestUtil.UntrackWorldQuest(self.questID)
+	else
+		QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual)
 	end
 end
 
@@ -547,31 +566,44 @@ end
 
 local function TitleButton_Initiliaze(button)
 	if not button.awq then
+		button.OnLegendPinMouseEnter = function() end
+		button.OnLegendPinMouseLeave = function() end
+
 		button:SetScript("OnEnter", TitleButton_OnEnter)
 		button:SetScript("OnLeave", TitleButton_OnLeave)
 		button:SetScript("OnClick", TitleButton_OnClick)
 
-		button.TagTexture:SetSize(24, 24)
-		button.TagTexture:ClearAllPoints()
-		button.TagTexture:SetPoint("TOP", button.Text, "CENTER", 0, 8)
-		button.TagTexture:SetPoint("RIGHT", 0, 0)
+		-- rearrange default layout of QuestLogTitleTemplate into something better fit for world quests
+		-- default layout
+		-- TaskIcon | Text | StorylineTexture | TagTexture
+
+		-- our custom layout
+		-- TaskIcon + TimeIcon (optional, will overlap) | Text | TagText | TagTexture
+
+		button.TagTexture:SetSize(16, 16)
 		button.TagTexture:Hide()
 
+		button.StorylineTexture:Hide()
+
 		button.TagText = button:CreateFontString(nil, nil, "GameFontNormalLeft")
+		button.TagText:SetJustifyH("RIGHT")
 		button.TagText:SetTextColor(1, 1, 1)
+		button.TagText:SetPoint("RIGHT", button.TagTexture, "LEFT", -2, 0)
+		button.TagText:SetWidth(28)
 		button.TagText:Hide()
 
+		button.Text:ClearAllPoints()
+		button.Text:SetPoint("TOPRIGHT", button.TagText, "TOPLEFT", -4, 0)
+		button.Text:SetWidth(196)
+
 		button.TaskIcon:ClearAllPoints()
-		button.TaskIcon:SetPoint("CENTER", button.Text, "LEFT", -15, 0)
+		button.TaskIcon:SetPoint("RIGHT", button.Text, "LEFT", -4, 0)
 
 		button.TimeIcon = button:CreateTexture(nil, "OVERLAY")
 		button.TimeIcon:SetAtlas("worldquest-icon-clock")
+		button.TimeIcon:SetPoint("RIGHT", button.Text, "LEFT", -5, 0)
 
-		local filename, fontHeight = button.TagText:GetFont()
-		button.TagTexture:SetSize(16, 16)
-		button.TagText:ClearAllPoints()
-		button.TagText:SetPoint("RIGHT", button.TagTexture , "LEFT", -3, 0)
-		button.TagText:SetFont(filename, fontHeight, "OUTLINE")
+		button.ToggleTracking = TitleButton_ToggleTracking
 
 		button.awq = true
 	end
@@ -609,10 +641,9 @@ local function QuestFrame_AddQuestButton(questInfo)
 	totalHeight = totalHeight + button.Text:GetHeight()
 
 	if ( WorldMap_IsWorldQuestEffectivelyTracked(questID) ) then
-		button.Check:Show()
-		button.Check:SetPoint("LEFT", button.Text, button.Text:GetWrappedWidth() + 2, 0)
+		button.Checkbox.CheckMark:Show()
 	else
-		button.Check:Hide()
+		button.Checkbox.CheckMark:Hide()
 	end
 
 	local hasIcon = true
@@ -621,26 +652,18 @@ local function QuestFrame_AddQuestButton(questInfo)
 	if questInfo.inProgress then
 		button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
 		button.TaskIcon:SetSize(10, 15)
-	elseif questTagInfo.worldQuestType == Enum.QuestTagType.PvP then
-		button.TaskIcon:SetAtlas("worldquest-icon-pvp-ffa", true)
-	elseif questTagInfo.worldQuestType == Enum.QuestTagType.PetBattle then
-		button.TaskIcon:SetAtlas("worldquest-icon-petbattle", true)
-	elseif questTagInfo.worldQuestType == Enum.QuestTagType.Dungeon then
-		button.TaskIcon:SetAtlas("worldquest-icon-dungeon", true)
-	elseif questTagInfo.worldQuestType == Enum.QuestTagType.Raid then
-		button.TaskIcon:SetAtlas("worldquest-icon-raid", true)
-	elseif ( questTagInfo.worldQuestType == Enum.QuestTagType.Profession and WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID] ) then
-		button.TaskIcon:SetAtlas(WORLD_QUEST_ICONS_BY_PROFESSION[tradeskillLineID], true)
-	elseif questTagInfo.isElite then
-		local tagCoords = QUEST_TAG_ATLAS[Enum.QuestTag.Heroic]
-		button.TaskIcon:SetSize(16, 16)
-		button.TaskIcon:SetTexture(QUEST_ICONS_FILE)
-		button.TaskIcon:SetAtlas(tagCoords)
-	elseif ( questTagInfo.worldQuestType == Enum.QuestTagType.Invasion ) then
-		button.TaskIcon:SetAtlas("worldquest-icon-burninglegion", true)
 	else
-		hasIcon = false
-		button.TaskIcon:Hide()
+		local atlas, width, height = QuestUtil.GetWorldQuestAtlasInfo(questID, questTagInfo, false);
+		if atlas and atlas ~= "Worldquest-icon" then
+			button.TaskIcon:SetAtlas(atlas);
+			button.TaskIcon:SetSize(math.min(width, 16), math.min(height, 16));
+		elseif questTagInfo.isElite then
+			button.TaskIcon:SetAtlas("questlog-questtypeicon-heroic")
+			button.TaskIcon:SetSize(16, 16);
+		else
+			hasIcon = false
+			button.TaskIcon:Hide()
+		end
 	end
 
 	if ( timeLeftMinutes and timeLeftMinutes > 0 and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
@@ -656,6 +679,8 @@ local function QuestFrame_AddQuestButton(questInfo)
 		button.TimeIcon:Hide()
 	end
 
+	button.HighlightTexture:SetShown(false);
+
 	local tagText, tagTexture, tagTexCoords, tagColor
 	tagColor = {r=1, g=1, b=1}
 
@@ -670,21 +695,18 @@ local function QuestFrame_AddQuestButton(questInfo)
 		button.rewardValue2 = 0
 	end	
 
-	local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
-	if numQuestCurrencies > 0 then
-		for currencyNum = 1, numQuestCurrencies do 
-			local name, texture, numItems, currencyID = GetQuestLogRewardCurrencyInfo(currencyNum, questID)
-			if currencyID ~= CURRENCYID_WAR_SUPPLIES and currencyID ~= CURRENCYID_NETHERSHARD then
-				tagText = numItems
-				tagTexture = texture
-				tagTexCoords = nil
-				if currencyID == CURRENCYID_AZERITE then
-					tagColor = BAG_ITEM_QUALITY_COLORS[Enum.ItemQuality.Artifact]
-				end
-				button.rewardCategory = "CURRENCY"
-				button.rewardValue = currencyID
-				button.rewardValue2 = numItems
+	for k, currencyInfo in ipairs(C_QuestLog.GetQuestRewardCurrencies(questID)) do
+		local name, texture, numItems, currencyID = currencyInfo.name, currencyInfo.texture, currencyInfo.totalRewardAmount, currencyInfo.currencyID
+		if currencyID ~= CURRENCYID_WAR_SUPPLIES and currencyID ~= CURRENCYID_NETHERSHARD then
+			tagText = numItems
+			tagTexture = texture
+			tagTexCoords = nil
+			if currencyID == CURRENCYID_AZERITE then
+				tagColor = BAG_ITEM_QUALITY_COLORS[Enum.ItemQuality.Artifact]
 			end
+			button.rewardCategory = "CURRENCY"
+			button.rewardValue = currencyID
+			button.rewardValue2 = numItems
 		end
 	end
 
@@ -753,14 +775,12 @@ local function TaskPOI_IsFilteredReward(selectedFilters, questID)
 		positiveMatch = true
 	end	
 
-	local numQuestCurrencies = GetNumQuestLogRewardCurrencies(questID)
 	for key,_ in pairs(selectedFilters) do
 		local filter = Mod.Filters[key]
 		if filter.preset == FILTER_CURRENCY then
 			hasCurrencyFilter = true
-			for i = 1, numQuestCurrencies do
-				local name, texture, numItems, currencyID = GetQuestLogRewardCurrencyInfo(i, questID)
-				if filter.currencyID == currencyID then
+			for k, currencyInfo in ipairs(C_QuestLog.GetQuestRewardCurrencies(questID)) do
+				if filter.currencyID == currencyInfo.currencyID then
 					positiveMatch = true
 				end
 			end
@@ -1027,13 +1047,9 @@ local function QuestFrame_Update()
 		headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", QuestMapFrame.QuestsFrame.Contents, "QuestLogHeaderTemplate")
 		headerButton:SetScript("OnClick", HeaderButton_OnClick)
 		headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
-		headerButton:SetHitRectInsets(0, -headerButton.ButtonText:GetWidth(), 0, 0)
-		headerButton:SetHighlightTexture("Interface\\Buttons\\UI-PlusButton-Hilight")
+		headerButton.topPadding = 6
 		headerButton.titleFramePool = titleFramePool
 	end
-	headerButton:SetNormalAtlas(questsCollapsed and "Campaign_HeaderIcon_Closed" or "Campaign_HeaderIcon_Open" );
-	headerButton:SetPushedAtlas(questsCollapsed and "Campaign_HeaderIcon_ClosedPressed" or "Campaign_HeaderIcon_OpenPressed");
-	headerButton:ClearAllPoints()
 	if storyButton then
 		headerButton:SetPoint("TOPLEFT", storyButton, "BOTTOMLEFT", 0, 0)
 	else
@@ -1121,17 +1137,10 @@ local function QuestFrame_Update()
 		end
 	end
 
-	if not spacerFrame then
-		spacerFrame = CreateFrame("FRAME", nil, QuestMapFrame.QuestsFrame.Contents)
-		spacerFrame:SetHeight(6)
-	end
-	if #usedButtons > 0 then
-		spacerFrame:Show()
-		spacerFrame.layoutIndex = layoutIndex
-		layoutIndex = layoutIndex + 0.001
-	else
-		spacerFrame:Hide()
-	end
+	headerButton.CollapseButton:UpdateCollapsedState(Config.collapsed)
+	headerButton.CollapseButton.layoutIndex = layoutIndex
+	layoutIndex = layoutIndex + 0.001
+	headerButton.CollapseButton:Show()
 
 	QuestScrollFrame.Contents:Layout()
 end
@@ -1254,13 +1263,9 @@ function Mod:Blizzard_WorldMap()
 			dataProvder.ShouldShowQuest = WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest
 		end
 	end
-	for _,of in ipairs(WorldMapFrame.overlayFrames) do
-		if of.OnLoad and of.OnLoad == WorldMapTrackingOptionsButtonMixin.OnLoad then
-			--hooksecurefunc(of, "OnSelection", function()
-			--	QuestMapFrame_UpdateAll()
-			--end)
-		end
-	end
+	Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(ownerRegion, rootDescription, contextData)
+		rootDescription:AddMenuResponseCallback(QuestMapFrame_UpdateAll)
+	end)
 end
 --[[
 local function OverrideLayoutManager()
@@ -1286,7 +1291,7 @@ function Mod:Startup()
 
 	titleFramePool = CreateFramePool("BUTTON", QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
 
-	--hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
+	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
 
 	Config:RegisterCallback('showAtTop', function()
 		DebugLogging("showAtTop Callback", "Triggered")

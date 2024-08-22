@@ -453,12 +453,13 @@ end
 function Config:CreatePanel()
 	self:InitializeDropdown()
 	local panel = CreateFrame("FRAME")
-	panel.name = Addon.Name
-	panel.okay = Panel_OnSave
-	panel.cancel = Panel_OnCancel
-	panel.default  = Panel_OnDefaults
-	panel.refresh  = Panel_OnRefresh
-	Settings.RegisterCanvasLayoutCategory(panel, panel.name, panel.name)
+	panel.OnCommit = Panel_OnSave
+	panel.OnCancel = Panel_OnCancel
+	panel.OnDefault  = Panel_OnDefaults
+	panel.OnRefresh  = Panel_OnRefresh
+	local category = Settings.RegisterCanvasLayoutCategory(panel, Addon.Name, Addon.Name)
+	category.ID = Addon.Name
+	Settings.RegisterAddOnCategory(category);
 
 	return panel
 end
@@ -531,7 +532,5 @@ end
 SLASH_ANGRIERWORLDQUESTS1 = "/awq"
 SLASH_ANGRIERWORLDQUESTS2 = "/angrierworldquests"
 function SlashCmdList.ANGRIERWORLDQUESTS(msg, editbox)
-	if optionPanel then
-		Settings.OpenToCategory(optionPanel.name)
-	end
+	Settings.OpenToCategory(Addon.Name)
 end
