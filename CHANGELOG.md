@@ -1,3 +1,7 @@
+## v0.43.2
+
+* Optimize filter button position to allow for more filter buttons before clipping into text.
+
 ## v0.43.1
 
 * Bugfixes for various issues, provided by Shauren on github.

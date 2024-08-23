@@ -1086,10 +1086,10 @@ local function QuestFrame_Update()
 				filterButton:ClearAllPoints()
 				if prevFilter then
 					filterButton:SetPoint("RIGHT", prevFilter, "LEFT", 5, 0)
-					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 2)
 				else
-					filterButton:SetPoint("RIGHT", prevButton.ButtonText, -3, 0)
-					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 3)
+					filterButton:SetPoint("RIGHT", prevButton.ButtonText, 22, 0)
+					filterButton:SetPoint("TOP", prevButton, "TOP", 0, 2)
 				end
 
 				if optionKey ~= "SORT" then
