@@ -53,7 +53,7 @@ function Data:RewardIsUpgrade(itemID, questID)
 		local isUpgrade = false
 
 		for _, slotID in ipairs(invtype_locations[equipSlot]) do
-			local currentItem = ItemLocation:CreateFromEquipmentSlot(INVSLOT_HEAD)
+			local currentItem = ItemLocation:CreateFromEquipmentSlot(slotID)
 			if currentItem:IsValid() then
 				local currentIlvl = C_Item.GetCurrentItemLevel(currentItem)
 				if not currentIlvl or ilvl >= (currentIlvl - Addon.Config.lootUpgradesLevel) then
@@ -73,8 +73,9 @@ end
 function Data:RewardItemLevel(itemID, questID)
 	local key = itemID..":"..questID
 	if cachedItems[key] == nil then
+		local invType = C_Item.GetItemInventoryTypeByID(itemID)
 		local _, _, _, itemEquipLoc, _, itemClassID, itemSubClassID = C_Item.GetItemInfoInstant(itemID)
-		if (itemEquipLoc == nil or itemEquipLoc == "") and (itemClassID ~= Enum.ItemClass.Gem or itemSubClassID ~= Enum.ItemGemSubclass.Artifactrelic) then
+		if invType == Enum.InventoryType.IndexNonEquipType and (itemClassID ~= Enum.ItemClass.Gem or itemSubClassID ~= Enum.ItemGemSubclass.Artifactrelic) then
 			cachedItems[key] = false
 			return false
 		end

@@ -594,8 +594,8 @@ local function TitleButton_Initiliaze(button)
 		button.TagText:SetWidth(28)
 		button.TagText:Hide()
 
-		button.Text:ClearAllPoints()
-		button.Text:SetPoint("TOPRIGHT", button.TagText, "TOPLEFT", -4, 0)
+		button.Text:ClearPoint("RIGHT")
+		button.Text:SetPoint("RIGHT", button.TagText, "LEFT", -4, 0)
 		button.Text:SetWidth(196)
 
 		button.TaskIcon:ClearAllPoints()
