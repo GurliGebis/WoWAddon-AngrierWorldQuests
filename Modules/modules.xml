@@ -1,0 +1,7 @@
+<Ui>
+    <Include file="Locale\LocaleModule.xml" />
+    <Include file="DB\DBModule.xml" />
+    <Include file="Config\ConfigModule.xml" />
+    <Include file="Data\DataModule.xml" />
+    <Include file="QuestFrame\QuestFrameModule.xml" />
+</Ui>

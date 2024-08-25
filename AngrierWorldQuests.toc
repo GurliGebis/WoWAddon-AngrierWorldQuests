@@ -8,13 +8,14 @@
 ## X-Curse-Packaged-Version: @project-version@
 ## X-Curse-Project-Name: Battle Pet Completionist
 ## X-Curse-Project-ID: 426990
-## SavedVariables: AngrierWorldQuests_Config
-## SavedVariablesPerCharacter: AngierWorldQuests_CharacterConfig
+## SavedVariables: AngrierWorldQuests_Config, AngrierWorldQuestsDB
 
-Core.lua
+# Libs
+embeds.xml
 
-Config.lua
-Locale.lua
+# Core
+Main.lua
 
-QuestFrame.lua
-Data.lua
+# Modules
+Common\common.xml
+Modules\modules.xml
