@@ -1262,6 +1262,8 @@ function Mod:Blizzard_WorldMap()
 		if dp.AddWorldQuest and dp.AddWorldQuest == WorldMap_WorldQuestDataProviderMixin.AddWorldQuest then
 			dataProvider = dp
 
+			dataProvider.SetPassThroughButtons = function() end
+
 			dataProvider.ShouldShowQuest = WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest
 		end
 	end

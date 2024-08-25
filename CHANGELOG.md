@@ -1,3 +1,7 @@
+## v0.43.3
+
+* Override the SetPassThroughButtons on the data provider, to hopefully stop lua errors.
+
 ## v0.43.2
 
 * Optimize filter button position to allow for more filter buttons before clipping into text.
