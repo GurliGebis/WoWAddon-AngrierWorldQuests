@@ -2,7 +2,7 @@ local ADDON, Addon = ...
 local Mod = Addon:NewModule('QuestFrame')
 local Config
 
-local dataProvder
+local dataProvider
 local hoveredQuestID
 
 local MAPID_AZEROTH = 947
@@ -228,8 +228,8 @@ local function TitleButton_OnEnter(self)
 	
 	hoveredQuestID = self.questID
 
-	if dataProvder then
-		local pin = dataProvder.activePins[self.questID]
+	if dataProvider then
+		local pin = dataProvider.activePins[self.questID]
 		if pin then
 			POIButtonMixin.OnEnter(pin)
 		end
@@ -245,8 +245,8 @@ local function TitleButton_OnLeave(self)
 
 	hoveredQuestID = nil
 
-	if dataProvder then
-		local pin = dataProvder.activePins[self.questID]
+	if dataProvider then
+		local pin = dataProvider.activePins[self.questID]
 		if pin then
 			POIButtonMixin.OnLeave(pin)
 		end
@@ -1260,9 +1260,9 @@ end
 function Mod:Blizzard_WorldMap()
 	for dp,_ in pairs(WorldMapFrame.dataProviders) do
 		if dp.AddWorldQuest and dp.AddWorldQuest == WorldMap_WorldQuestDataProviderMixin.AddWorldQuest then
-			dataProvder = dp
+			dataProvider = dp
 
-			dataProvder.ShouldShowQuest = WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest
+			dataProvider.ShouldShowQuest = WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest
 		end
 	end
 	Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(ownerRegion, rootDescription, contextData)
@@ -1303,6 +1303,6 @@ function Mod:Startup()
 	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI', 'onlyCurrentZone', 'sortMethod', 'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'lootUpgradesLevel', 'timeFilterDuration'}, function() 
 		DebugLogging("Full list of callbacks", "Triggered")
 		QuestMapFrame_UpdateAll()
-		dataProvder:RefreshAllData()
+		dataProvider:RefreshAllData()
 	end)
 end
