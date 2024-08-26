@@ -229,7 +229,7 @@ local function TitleButton_OnEnter(self)
 
 	local pin = self.pin
 	if pin then
-		POIButtonMixin.OnEnter(pin)
+		pin:OnEnter()
 	end
 	self.HighlightTexture:SetShown(true);
 	TaskPOI_OnEnter(self)
@@ -244,7 +244,7 @@ local function TitleButton_OnLeave(self)
 
 	local pin = self.pin
 	if pin then
-		POIButtonMixin.OnLeave(pin)
+		pin:OnLeave()
 	end
 	self.HighlightTexture:SetShown(false);
 	TaskPOI_OnLeave(self)
