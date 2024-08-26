@@ -2,7 +2,6 @@ local ADDON, Addon = ...
 local Mod = Addon:NewModule('QuestFrame')
 local Config
 
-local dataProvider
 local hoveredQuestID
 
 local MAPID_AZEROTH = 947
@@ -228,11 +227,9 @@ local function TitleButton_OnEnter(self)
 	
 	hoveredQuestID = self.questID
 
-	if dataProvider then
-		local pin = dataProvider.activePins[self.questID]
-		if pin then
-			POIButtonMixin.OnEnter(pin)
-		end
+	local pin = self.pin
+	if pin then
+		POIButtonMixin.OnEnter(pin)
 	end
 	self.HighlightTexture:SetShown(true);
 	TaskPOI_OnEnter(self)
@@ -245,11 +242,9 @@ local function TitleButton_OnLeave(self)
 
 	hoveredQuestID = nil
 
-	if dataProvider then
-		local pin = dataProvider.activePins[self.questID]
-		if pin then
-			POIButtonMixin.OnLeave(pin)
-		end
+	local pin = self.pin
+	if pin then
+		POIButtonMixin.OnLeave(pin)
 	end
 	self.HighlightTexture:SetShown(false);
 	TaskPOI_OnLeave(self)
@@ -635,6 +630,7 @@ local function QuestFrame_AddQuestButton(questInfo)
 	button.numObjectives = questInfo.numObjectives
 	button.infoX = questInfo.x
 	button.infoY = questInfo.y
+	button.pin = nil
 	local difficultyColor = GetQuestDifficultyColor( UnitLevel("player") + TitleButton_RarityColorTable[questTagInfo.quality] )
 
 	button.Text:SetText(title)
@@ -1062,6 +1058,7 @@ local function QuestFrame_Update()
 	headerButton:Show()
 	prevButton = headerButton
 
+	local addedQuests = {}
 	local usedButtons = {}
 	local filtersOwnRow = false
 
@@ -1103,7 +1100,6 @@ local function QuestFrame_Update()
 			end
 		end
 
-		local addedQuests = {}
 		local displayMapIDs = GetMapIDsForDisplay(mapID)
 		for _, mID in ipairs(displayMapIDs) do
 			local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mID)
@@ -1117,7 +1113,7 @@ local function QuestFrame_Update()
 								if addedQuests[info.questId] == nil then
 									local button = QuestFrame_AddQuestButton(info)
 									table.insert(usedButtons, button)
-									addedQuests[info.questId] = true
+									addedQuests[info.questId] = button
 								end
 							end
 						end
@@ -1145,6 +1141,7 @@ local function QuestFrame_Update()
 	headerButton.CollapseButton:Show()
 
 	QuestScrollFrame.Contents:Layout()
+	return addedQuests
 end
 
 local function WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest(self, info)
@@ -1179,6 +1176,21 @@ local function WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest(self, info)
 		return mapID == info.mapID or (GetMapContinentMapID(info.mapID) == mapID)
 	else
 		return mapID == info.mapID
+	end
+end
+
+local function WorldMap_WorldQuestsUpdate()
+	local buttonsByQuest = QuestFrame_Update()
+	for pin in WorldMapFrame:EnumeratePinsByTemplate("WorldMap_WorldQuestPinTemplate") do
+		local titleButton = buttonsByQuest[pin.questID]
+		if titleButton then
+			titleButton.pin = pin
+		end
+		if not WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest(pin.dataProvider, pin.info) then
+			pin:Hide()
+		else
+			pin:Show()
+		end
 	end
 end
 
@@ -1258,30 +1270,12 @@ function Mod:BeforeStartup()
 end
 
 function Mod:Blizzard_WorldMap()
-	for dp,_ in pairs(WorldMapFrame.dataProviders) do
-		if dp.AddWorldQuest and dp.AddWorldQuest == WorldMap_WorldQuestDataProviderMixin.AddWorldQuest then
-			dataProvider = dp
-
-			dataProvider.SetPassThroughButtons = function() end
-
-			dataProvider.ShouldShowQuest = WorldMap_WorldQuestDataProviderMixin_ShouldShowQuest
-		end
-	end
+	WorldMapFrame:RegisterCallback("WorldQuestsUpdate", WorldMap_WorldQuestsUpdate)
 	Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(ownerRegion, rootDescription, contextData)
 		rootDescription:AddMenuResponseCallback(QuestMapFrame_UpdateAll)
 	end)
 end
---[[
-local function OverrideLayoutManager()
-	if Config.showAtTop then
-		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1
-		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 1)
-	else
-		QuestMapFrame.layoutIndexManager.startingLayoutIndexes["Other"] = QUEST_LOG_STORY_LAYOUT_INDEX + 1
-		QuestMapFrame.layoutIndexManager:AddManagedLayoutIndex("AWQ", QUEST_LOG_STORY_LAYOUT_INDEX + 500 + 1)
-	end
-end
-]]
+
 function Mod:Startup()
 	Config = Addon.Config
 
@@ -1291,20 +1285,7 @@ function Mod:Startup()
 		FACTION_ORDER = FACTION_ORDER_BFA_HORDE
 	end
 
-	self:RegisterAddOnLoaded("Blizzard_WorldMap")
-
 	titleFramePool = CreateFramePool("BUTTON", QuestMapFrame.QuestsFrame.Contents, "QuestLogTitleTemplate")
 
-	hooksecurefunc("QuestLogQuests_Update", QuestFrame_Update)
-
-	Config:RegisterCallback('showAtTop', function()
-		DebugLogging("showAtTop Callback", "Triggered")
-		QuestMapFrame_UpdateAll()
-	end)
-
-	Config:RegisterCallback({'hideUntrackedPOI', 'hideFilteredPOI', 'showContinentPOI', 'onlyCurrentZone', 'sortMethod', 'selectedFilters', 'disabledFilters', 'filterEmissary', 'filterLoot', 'filterFaction', 'filterZone', 'filterTime', 'lootFilterUpgrades', 'lootUpgradesLevel', 'timeFilterDuration'}, function() 
-		DebugLogging("Full list of callbacks", "Triggered")
-		QuestMapFrame_UpdateAll()
-		dataProvider:RefreshAllData()
-	end)
+	self:RegisterAddOnLoaded("Blizzard_WorldMap")
 end
