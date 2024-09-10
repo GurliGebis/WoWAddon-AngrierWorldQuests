@@ -1,3 +1,8 @@
+## 11.0.2-20240910-1
+
+* Complete refactor and code cleanup.
+* Added The War Within factions to faction filter.
+
 ## v0.43.3
 
 * Override the SetPassThroughButtons on the data provider, to hopefully stop lua errors.
