@@ -53,7 +53,8 @@ _AngrierWorldQuests = {
             LEGION = 7,
             BFA = 8,
             SHADOWLANDS = 9,
-            DRAGONFLIGHTS = 10
+            DRAGONFLIGHTS = 10,
+            THE_WAR_WITHIN = 11
         },
         SortOrder = {
             SORT_NAME = 1,

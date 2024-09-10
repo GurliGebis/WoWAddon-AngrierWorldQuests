@@ -153,6 +153,21 @@ do
     }
     --endregion
 
+    --region The War Within
+    local CONTINENT_THE_WAR_WITHIN = 2274 -- Khaz Algar main map
+    local FACTION_ORDER_THE_WAR_WITHIN = {
+        2570, -- Hallowfall Arathi
+        2590, -- Council of Dornogal
+        2594, -- The Assembly of the Deeps
+    }
+    local MAPS_THE_WAR_WITHIN = {
+        [2214] = true, -- The Ringing Deeps
+        [2215] = true, -- Hallowfall
+        [2248] = true, -- Isle of Dorn
+        [2255] = true, -- Azj-Kahet
+    }
+    --endregion
+
     --endregion
 
     function DataModule:GetExpansionByMapID(mapID)
@@ -164,6 +179,8 @@ do
             return _AngrierWorldQuests.Enums.Expansion.SHADOWLANDS
         elseif MAPS_DRAGONFLIGHT[mapID] or mapID == CONTINENT_DRAGONFLIGHT then
             return _AngrierWorldQuests.Enums.Expansion.DRAGONFLIGHTS
+        elseif MAPS_THE_WAR_WITHIN[mapID] or mapID == CONTINENT_THE_WAR_WITHIN then
+            return _AngrierWorldQuests.Enums.Expansion.THE_WAR_WITHIN
         else
             return nil
         end
@@ -184,6 +201,8 @@ do
             return FACTION_ORDER_SHADOWLANDS
         elseif expansion == _AngrierWorldQuests.Enums.Expansion.DRAGONFLIGHTS then
             return FACTION_ORDER_DRAGONFLIGHT
+        elseif expansion == _AngrierWorldQuests.Enums.Expansion.THE_WAR_WITHIN then
+            return FACTION_ORDER_THE_WAR_WITHIN
         else
             return nil
         end
@@ -213,6 +232,8 @@ do
                 return MAPS_SHADOWLANDS
             elseif expansion == _AngrierWorldQuests.Enums.Expansion.DRAGONFLIGHTS and mapID == CONTINENT_DRAGONFLIGHT then
                 return MAPS_DRAGONFLIGHT
+            elseif expansion == _AngrierWorldQuests.Enums.Expansion.THE_WAR_WITHIN and mapID == CONTINENT_THE_WAR_WITHIN then
+                return MAPS_THE_WAR_WITHIN
             end
         else
             if expansion == _AngrierWorldQuests.Enums.Expansion.LEGION then
@@ -231,6 +252,8 @@ do
                 return MAPS_SHADOWLANDS
             elseif expansion == _AngrierWorldQuests.Enums.Expansion.DRAGONFLIGHTS then
                 return MAPS_DRAGONFLIGHT
+            elseif expansion == _AngrierWorldQuests.Enums.Expansion.THE_WAR_WITHIN then
+                return MAPS_THE_WAR_WITHIN
             end
         end
 
