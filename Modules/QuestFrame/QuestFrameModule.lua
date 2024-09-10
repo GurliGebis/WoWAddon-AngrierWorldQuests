@@ -903,31 +903,31 @@ do
         if self:IsQuestSuppressed(info.questId) then
             return false;
         end
-    
+
         if self.focusedQuestID then
             return C_QuestLog.IsQuestCalling(self.focusedQuestID) and self:ShouldSupertrackHighlightInfo(info.questId);
         end
-    
+
         local mapID = self:GetMap():GetMapID()
-    
+
         if ConfigModule:Get("showHoveredPOI") and hoveredQuestID == info.questId then
             return true
         end
-    
+
         if ConfigModule:Get("hideFilteredPOI") then
             if DataModule:IsQuestFiltered(info, mapID) then
                 return false
             end
         end
-    
+
         if ConfigModule:Get("hideUntrackedPOI") then
             if not (WorldMap_IsWorldQuestEffectivelyTracked(info.questId)) then
                 return false
             end
         end
-    
+
         local mapInfo = C_Map.GetMapInfo(mapID)
-    
+
         if ConfigModule:Get("showContinentPOI") and mapInfo.mapType == Enum.UIMapType.Continent then
             return mapID == info.mapID or (DataModule:GetContentMapIDFromMapID(info.mapID) == mapID)
         else
