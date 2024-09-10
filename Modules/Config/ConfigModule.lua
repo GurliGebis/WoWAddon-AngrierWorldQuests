@@ -375,6 +375,7 @@ do
                  "hideQuestList",
                  "showHoveredPOI",
                  "lootFilterUpgrades",
+                 "enableTaintWorkarounds",
                  "enableDebugging"
             }
 

@@ -53,6 +53,7 @@ local defaultOptions = {
         hideQuestList = false,
         showContinentPOI = true,
         enableDebugging = false,
+        enableTaintWorkarounds = false,
         sortMethod = 2,
         extendedInfo = false,
         saveFilters = false

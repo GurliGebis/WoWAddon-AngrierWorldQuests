@@ -1,3 +1,7 @@
+## 11.0.2-20240910-2
+
+* Added workarounds for World Map taints.
+
 ## 11.0.2-20240910-1
 
 * Complete refactor and code cleanup.
