@@ -1,6 +1,7 @@
 ## 11.0.2-20240911-1
 
 * Change options to store bool values as strings.
+* Update the quest log tooltip to have WQ related info.
 
 ## 11.0.2-20240910-2
 

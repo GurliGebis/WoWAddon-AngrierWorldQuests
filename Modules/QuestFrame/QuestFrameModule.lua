@@ -412,6 +412,7 @@ do
             return
         end
 
+        button.questRewardTooltipStyle = TOOLTIP_QUEST_REWARDS_STYLE_WORLD_QUEST
         button.OnLegendPinMouseEnter = function() end
         button.OnLegendPinMouseLeave = function() end
 
