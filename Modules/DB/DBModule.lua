@@ -33,10 +33,10 @@ local DBModule = AngrierWorldQuests:NewModule("DBModule")
 
 local defaultOptions = {
     profile = {
-        collapsed = false,
-        showAtTop = true,
-        showHoveredPOI = false,
-        onlyCurrentZone = true,
+        collapsed = "false",
+        showAtTop = "true",
+        showHoveredPOI = "false",
+        onlyCurrentZone = "true",
         selectedFilters = 0,
         disabledFilters = 3725425,
         __filters = 24,
@@ -45,18 +45,18 @@ local defaultOptions = {
         filterFaction = 0,
         filterZone = 0,
         filterTime = 0,
-        lootFilterUpgrades = false,
+        lootFilterUpgrades = "false",
         lootUpgradesLevel = -1,
         timeFilterDuration = 6,
-        hideUntrackedPOI = false,
-        hideFilteredPOI = true,
-        hideQuestList = false,
-        showContinentPOI = true,
-        enableDebugging = false,
-        enableTaintWorkarounds = false,
+        hideUntrackedPOI = "false",
+        hideFilteredPOI = "true",
+        hideQuestList = "false",
+        showContinentPOI = "true",
+        enableDebugging = "false",
+        enableTaintWorkarounds = "false",
         sortMethod = 2,
-        extendedInfo = false,
-        saveFilters = false
+        extendedInfo = "false",
+        saveFilters = "false"
     }
 }
 
@@ -113,12 +113,26 @@ do
         return GetDataVersion(profile)
     end
 
+    local function MigrateTrueFalseToStrings(profile)
+        for k, v in pairs(defaultOptions.profile) do
+            if DBModule:GetValue(k) == true then
+                DBModule:SetValue(k, "true")
+            end
+        end
+
+        profile.dataVersion = 2
+        return GetDataVersion(profile)
+    end
+
     function DBModule:MigrateProfile()
         local profile = self:GetProfile()
         local version = GetDataVersion(profile)
 
         if version < 1 then
             version = MigrateOldSettings(profile)
+        end
+        if version < 2 then
+            version = MigrateTrueFalseToStrings(profile)
         end
     end
 end
