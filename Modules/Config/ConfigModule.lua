@@ -83,7 +83,15 @@ do
     local filterTable
 
     function ConfigModule:Get(key)
-        return DBModule:GetValue(key)
+        local value = DBModule:GetValue(key)
+
+        if value == "true" then
+            return true
+        elseif value == "false" then
+            return false
+        else
+            return value
+        end
     end
 
     function ConfigModule:Set(key, newValue, silent)
@@ -254,10 +262,14 @@ do
         local key = self.configKey
 
         if panelOriginalConfig[key] == nil then
-            panelOriginalConfig[key] = ConfigModule.Get(key)
+            panelOriginalConfig[key] = ConfigModule:Get(key)
         end
 
-        ConfigModule:Set(key, self:GetChecked())
+        if self:GetChecked() then
+            ConfigModule:Set(key, "true")
+        else
+            ConfigModule:Set(key, "false")
+        end
     end
 
     local function DropDown_OnClick(self, dropdown)
