@@ -9,10 +9,10 @@ on:
 jobs:
   package:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Clone repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Create Package
         uses: BigWigsMods/packager@v2

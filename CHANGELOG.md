@@ -1,3 +1,8 @@
+## 11.0.2-20240912-2
+
+* Raise the width for TagText, provided by siweia on github.
+* Github actions fixes.
+
 ## 11.0.2-20240912-1
 
 * Added color world quests with warband bonus different color option.
