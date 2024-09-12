@@ -455,7 +455,7 @@ do
         button.TagText:SetJustifyH("RIGHT")
         button.TagText:SetTextColor(1, 1, 1)
         button.TagText:SetPoint("RIGHT", button.TagTexture, "LEFT", -2, 0)
-        button.TagText:SetWidth(28)
+        button.TagText:SetWidth(32)
         button.TagText:Hide()
 
         button.Text:ClearPoint("RIGHT")
