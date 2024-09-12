@@ -52,6 +52,7 @@ local defaultOptions = {
         hideFilteredPOI = "true",
         hideQuestList = "false",
         showContinentPOI = "true",
+        colorWarbandBonus = "false",
         enableDebugging = "false",
         enableTaintWorkarounds = "false",
         sortMethod = 2,

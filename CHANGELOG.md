@@ -1,3 +1,7 @@
+## 11.0.2-20240912-1
+
+* Added color world quests with warband bonus different color option.
+
 ## 11.0.2-20240911-1
 
 * Change options to store bool values as strings.

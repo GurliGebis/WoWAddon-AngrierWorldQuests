@@ -387,6 +387,7 @@ do
                  "hideQuestList",
                  "showHoveredPOI",
                  "lootFilterUpgrades",
+                 "colorWarbandBonus",
                  "enableTaintWorkarounds",
                  "enableDebugging"
             }

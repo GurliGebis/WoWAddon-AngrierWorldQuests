@@ -328,9 +328,27 @@ do
         end
     end
 
+    local function ShouldQuestBeBonusColored(questID)
+        if not ConfigModule:Get("colorWarbandBonus") then
+            return false
+        end
+
+        return C_QuestLog.QuestContainsFirstTimeRepBonusForPlayer(questID)
+    end
+
     local function QuestButton_OnEnter(self)
         local questTagInfo = C_QuestLog.GetQuestTagInfo(self.questID)
-        local _, color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
+
+        local color = {}
+
+        if ShouldQuestBeBonusColored(self.questID) then
+            color.r = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.r + 0.15, 1)
+            color.g = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.g + 0.15, 1)
+            color.b = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.b + 0.15, 1)
+        else
+            _, color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
+        end
+
         self.Text:SetTextColor( color.r, color.g, color.b )
 
         hoveredQuestID = self.questID
@@ -347,7 +365,15 @@ do
 
     local function QuestButton_OnLeave(self)
         local questTagInfo = C_QuestLog.GetQuestTagInfo(self.questID)
-        local color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
+
+        local color
+
+        if ShouldQuestBeBonusColored(self.questID) then
+            color = QUEST_REWARD_CONTEXT_FONT_COLOR
+        else
+            color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
+        end
+
         self.Text:SetTextColor( color.r, color.g, color.b )
 
         hoveredQuestID = nil
@@ -682,10 +708,17 @@ do
         button.numObjectives = questInfo.numObjectives
         button.infoX = questInfo.x
         button.infoY = questInfo.y
-        local difficultyColor = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
-
         button.Text:SetText(title)
-        button.Text:SetTextColor( difficultyColor.r, difficultyColor.g, difficultyColor.b )
+
+        local color
+
+        if ShouldQuestBeBonusColored(button.questID) then
+            color = QUEST_REWARD_CONTEXT_FONT_COLOR
+        else
+            color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
+        end
+
+        button.Text:SetTextColor( color.r, color.g, color.b )
 
         totalHeight = totalHeight + button.Text:GetHeight()
 
