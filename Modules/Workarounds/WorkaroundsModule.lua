@@ -102,9 +102,40 @@ local function WorkaroundMapTaints()
     end
 end
 
+local function WorkaroundQuestTrackingTaints()
+    local lastTrackedQuestID = nil;
+
+    function QuestUtil.TrackWorldQuest(questID, watchType)
+        if C_QuestLog.AddWorldQuestWatch(questID, watchType) then
+            if lastTrackedQuestID and lastTrackedQuestID ~= questID then
+                if C_QuestLog.GetQuestWatchType(lastTrackedQuestID) ~= Enum.QuestWatchType.Manual and watchType == Enum.QuestWatchType.Manual then
+                    C_QuestLog.AddWorldQuestWatch(lastTrackedQuestID, Enum.QuestWatchType.Manual); -- Promote to manual watch
+                end
+            end
+            lastTrackedQuestID = questID;
+        end
+
+        if watchType == Enum.QuestWatchType.Automatic then
+            local forceAllowTasks = true;
+            QuestUtil.CheckAutoSuperTrackQuest(questID, forceAllowTasks);
+        end
+    end
+
+    function QuestUtil.UntrackWorldQuest(questID)
+        if C_QuestLog.RemoveWorldQuestWatch(questID) then
+            if lastTrackedQuestID == questID then
+                lastTrackedQuestID = nil;
+            end
+        end
+
+        --ObjectiveTrackerManager:UpdateAll();
+    end
+end
+
 function WorkaroundsModule:LoadWorkarounds(callback)
     if ConfigModule:Get("enableTaintWorkarounds") then
         WorkaroundMapTaints()
+        WorkaroundQuestTrackingTaints()
     end
 
     if callback then

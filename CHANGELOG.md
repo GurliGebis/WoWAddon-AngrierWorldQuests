@@ -1,3 +1,7 @@
+## 11.0.2-20241003-2
+
+* Added workaround for World Quest untracking causing taints.
+
 ## 11.0.2-20241003-1
 
 * Fixed incorrect call to ConfigModule:Get
