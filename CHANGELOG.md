@@ -1,3 +1,7 @@
+## 11.0.2-20241003-1
+
+* Fixed incorrect call to ConfigModule:Get
+
 ## 11.0.2-20240912-2
 
 * Raise the width for TagText, provided by siweia on github.
