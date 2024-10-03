@@ -201,7 +201,7 @@ do
             end
         end
 
-        local sortMethod = ConfigModule.Get("sortMethod")
+        local sortMethod = ConfigModule:Get("sortMethod")
         if self.filter == "SORT" then
             local title = L["config_sortMethod_"..sortMethod]
             if title then text = text..": "..title end
