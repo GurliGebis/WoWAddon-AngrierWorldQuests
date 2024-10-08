@@ -1,6 +1,7 @@
 ## 11.0.2-20241008-1
 
 * Hide World Quests header if the "hideQuestList" setting is set.
+* Hide the quest log background text if world quests are shown.
 
 ## 11.0.2-20241003-2
 

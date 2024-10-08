@@ -667,6 +667,15 @@ do
                 end
             end
 
+            if #usedButtons > 0 then
+                -- In the situation where the normal quest log is empty, but we have world quests.
+                -- We shouldn't show the empty quest log text.
+                QuestScrollFrame.EmptyText:Hide()
+            else
+                QuestFrameModule:HideWorldQuestsHeader()
+                return
+            end
+
             table.sort(usedButtons, QuestSorter)
 
             for _, button in ipairs(usedButtons) do
