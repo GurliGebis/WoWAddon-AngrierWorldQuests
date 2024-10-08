@@ -513,6 +513,18 @@ do
         return a.Text:GetText() < b.Text:GetText()
     end
 
+    function QuestFrameModule:HideWorldQuestsHeader()
+        for i = 1, #filterButtons do
+            filterButtons[i]:Hide()
+        end
+
+        if headerButton then
+            headerButton:Hide()
+        end
+
+        QuestScrollFrame.Contents:Layout()
+    end
+
     function QuestFrameModule:QuestLog_Update()
         titleFramePool:ReleaseAll()
 
@@ -522,20 +534,12 @@ do
 
         local tasksOnMap = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
         if (ConfigModule:Get("onlyCurrentZone")) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) and (mapID ~= MAPID_ARGUS) then
-            for i = 1, #filterButtons do
-                filterButtons[i]:Hide()
-            end
-
-            if headerButton then
-                headerButton:Hide()
-            end
-
-            QuestScrollFrame.Contents:Layout()
-
+            self:HideWorldQuestsHeader()
             return
         end
 
         if (ConfigModule:Get("hideQuestList")) then
+            self:HideWorldQuestsHeader()
             return
         end
 

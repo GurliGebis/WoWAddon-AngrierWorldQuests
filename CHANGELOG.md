@@ -1,3 +1,7 @@
+## 11.0.2-20241008-1
+
+* Hide World Quests header if the "hideQuestList" setting is set.
+
 ## 11.0.2-20241003-2
 
 * Added workaround for World Quest untracking causing taints.
