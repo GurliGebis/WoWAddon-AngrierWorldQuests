@@ -513,6 +513,18 @@ do
         return a.Text:GetText() < b.Text:GetText()
     end
 
+    function QuestFrameModule:HideWorldQuestsHeader()
+        for i = 1, #filterButtons do
+            filterButtons[i]:Hide()
+        end
+
+        if headerButton then
+            headerButton:Hide()
+        end
+
+        QuestScrollFrame.Contents:Layout()
+    end
+
     function QuestFrameModule:QuestLog_Update()
         titleFramePool:ReleaseAll()
 
@@ -522,20 +534,12 @@ do
 
         local tasksOnMap = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
         if (ConfigModule:Get("onlyCurrentZone")) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) and (mapID ~= MAPID_ARGUS) then
-            for i = 1, #filterButtons do
-                filterButtons[i]:Hide()
-            end
-
-            if headerButton then
-                headerButton:Hide()
-            end
-
-            QuestScrollFrame.Contents:Layout()
-
+            self:HideWorldQuestsHeader()
             return
         end
 
         if (ConfigModule:Get("hideQuestList")) then
+            self:HideWorldQuestsHeader()
             return
         end
 
@@ -639,6 +643,8 @@ do
             local addedQuests = {}
             local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
 
+            local searchBoxText = QuestScrollFrame.SearchBox:GetText():lower()
+
             for mID in pairs(displayMapIDs) do
                 local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mID)
 
@@ -649,7 +655,7 @@ do
                                 local isFiltered = DataModule:IsQuestFiltered(info, mapID)
                                 if not isFiltered then
                                     if addedQuests[info.questId] == nil then
-                                        local button = QuestFrameModule:QuestLog_AddQuestButton(info)
+                                        local button = QuestFrameModule:QuestLog_AddQuestButton(info, searchBoxText)
 
                                         if button ~= nil then
                                             table.insert(usedButtons, button)
@@ -661,6 +667,18 @@ do
                         end
                     end
                 end
+            end
+
+            if #usedButtons > 0 then
+                -- In the situation where the normal quest log is empty, but we have world quests.
+                -- We shouldn't show the empty quest log text.
+                QuestScrollFrame.EmptyText:Hide()
+
+                -- We need to also make sure the "No search results" text is hidden.
+                QuestScrollFrame.NoSearchResultsText:Hide()
+            else
+                QuestFrameModule:HideWorldQuestsHeader()
+                return
             end
 
             table.sort(usedButtons, QuestSorter)
@@ -685,7 +703,7 @@ do
         QuestScrollFrame.Contents:Layout()
     end
 
-    function QuestFrameModule:QuestLog_AddQuestButton(questInfo)
+    function QuestFrameModule:QuestLog_AddQuestButton(questInfo, searchBoxText)
         local questID = questInfo.questId
         local title, factionID, _ = C_TaskQuest.GetQuestInfoByQuestID(questID)
         local questTagInfo = C_QuestLog.GetQuestTagInfo(questID)
@@ -693,6 +711,10 @@ do
         C_TaskQuest.RequestPreloadRewardData(questID)
 
         if (questTagInfo == nil) then
+            return nil
+        end
+
+        if searchBoxText ~= "" and not title:lower():find(searchBoxText, 1, true) then
             return nil
         end
 

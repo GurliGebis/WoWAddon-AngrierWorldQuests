@@ -1,3 +1,9 @@
+## 11.0.2-20241008-1
+
+* Hide World Quests header if the "hideQuestList" setting is set.
+* Hide the quest log background text if world quests are shown.
+* When searching the quest log, also search the World Quest list.
+
 ## 11.0.2-20241003-2
 
 * Added workaround for World Quest untracking causing taints.
