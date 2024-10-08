@@ -534,12 +534,12 @@ do
 
         local tasksOnMap = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
         if (ConfigModule:Get("onlyCurrentZone")) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) and (mapID ~= MAPID_ARGUS) then
-            self:HideWorldQuestsHeader()
+            QuestFrameModule:HideWorldQuestsHeader()
             return
         end
 
         if (ConfigModule:Get("hideQuestList")) then
-            self:HideWorldQuestsHeader()
+            QuestFrameModule:HideWorldQuestsHeader()
             return
         end
 
