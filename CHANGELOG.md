@@ -1,3 +1,7 @@
+## 11.0.2-20241015-1
+
+* Added installation of missing github runner packages.
+
 ## 11.0.2-20241008-2
 
 * Fix problem with call to HideWorldQuestsHeader.
