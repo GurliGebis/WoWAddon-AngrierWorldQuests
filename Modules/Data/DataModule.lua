@@ -159,6 +159,7 @@ do
         2570, -- Hallowfall Arathi
         2590, -- Council of Dornogal
         2594, -- The Assembly of the Deeps
+        2600, -- The Severed Threads
     }
     local MAPS_THE_WAR_WITHIN = {
         [2214] = true, -- The Ringing Deeps
