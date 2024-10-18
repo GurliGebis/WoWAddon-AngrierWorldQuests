@@ -132,10 +132,67 @@ local function WorkaroundQuestTrackingTaints()
     end
 end
 
+local function WorkaroundSplashFrameTaints()
+    local splashFrameTextureRegions = {
+        ["LeftTexture"] = "splash-%s-topleft",
+        ["RightTexture"] = "splash-%s-right",
+        ["BottomTexture"] = "splash-%s-botleft",
+    };
+
+    function SplashFrameMixin:OnHide()
+        local fromGameMenu = self.screenInfo and self.screenInfo.gameMenuRequest;
+        self.screenInfo = nil;
+        C_TalkingHead.SetConversationsDeferred(false);
+        AlertFrame:SetAlertsEnabled(true, "splashFrame");
+        --ObjectiveTrackerFrame:Update();
+
+        if not self.showingQuestDialog and fromGameMenu then
+            ShowUIPanel(GameMenuFrame);
+        end
+
+        self.showingQuestDialog = nil;
+    end
+
+    function SplashFrameMixin:SetupFrame(screenInfo)
+        if(not screenInfo) then
+            AlertFrame:SetAlertsEnabled(true, "splashFrame");
+            return;
+        end
+
+        if(screenInfo.soundKitID > 0) then 
+            PlaySound(screenInfo.soundKitID);
+        end
+
+        SetupTextureKitOnRegions(screenInfo.textureKit, self, splashFrameTextureRegions, TextureKitConstants.SetVisibility, TextureKitConstants.UseAtlasSize);
+        self.BottomTexture:SetSize(371, 137);
+
+        if (screenInfo.screenType == Enum.SplashScreenType.WhatsNew) then
+            self.Header:SetText(SPLASH_BASE_HEADER);
+        elseif(screenInfo.screenType == Enum.SplashScreenType.SeasonRollOver) then
+            self.Header:SetText(SPLASH_NEW_HEADER_SEASON);
+        end
+
+        self.Label:SetText(screenInfo.header);
+        self.TopLeftFeature:Setup(screenInfo.topLeftFeatureTitle, screenInfo.topLeftFeatureDesc);
+        self.BottomLeftFeature:Setup(screenInfo.bottomLeftFeatureTitle, screenInfo.bottomLeftFeatureDesc);
+        self.RightFeature:Setup(screenInfo);
+        self:Show();
+
+        --ObjectiveTrackerFrame:Update();
+        if( QuestFrame:IsShown() )then
+            HideUIPanel(QuestFrame);
+        end
+
+        self.screenInfo = screenInfo;
+        self:RegisterEvent("QUEST_LOG_UPDATE");
+    end
+end
+
 function WorkaroundsModule:LoadWorkarounds(callback)
     if ConfigModule:Get("enableTaintWorkarounds") then
         WorkaroundMapTaints()
         WorkaroundQuestTrackingTaints()
+        WorkaroundSplashFrameTaints()
     end
 
     if callback then
