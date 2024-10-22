@@ -352,21 +352,23 @@ do
         local hasFilters = ConfigModule:HasFilters()
         local selectedFilters = ConfigModule:GetFilterTable()
 
-        local _, factionID = C_TaskQuest.GetQuestInfoByQuestID(info.questId)
-        local questTagInfo = C_QuestLog.GetQuestTagInfo(info.questId)
+        local tempQuestID = info.questID or info.questId
+
+        local _, factionID = C_TaskQuest.GetQuestInfoByQuestID(tempQuestID)
+        local questTagInfo = C_QuestLog.GetQuestTagInfo(tempQuestID)
 
         if not questTagInfo then
             return -- fix for nil tag
         end
 
         local tradeskillLineID = questTagInfo.tradeskillLineID
-        local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(info.questId)
-        C_TaskQuest.RequestPreloadRewardData(info.questId)
+        local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(tempQuestID)
+        C_TaskQuest.RequestPreloadRewardData(tempQuestID)
 
         local isQuestFiltered = hasFilters
 
         if hasFilters then
-            local lootFiltered = self:IsQuestRewardFiltered(selectedFilters, info.questId)
+            local lootFiltered = self:IsQuestRewardFiltered(selectedFilters, tempQuestID)
             if lootFiltered ~= nil then
                 isQuestFiltered = lootFiltered
             end
@@ -408,7 +410,7 @@ do
             end
 
             if selectedFilters.TRACKED then
-                if C_QuestLog.GetQuestWatchType(info.questId) == Enum.QuestWatchType.Manual or C_SuperTrack.GetSuperTrackedQuestID() == info.questId then
+                if C_QuestLog.GetQuestWatchType(tempQuestID) == Enum.QuestWatchType.Manual or C_SuperTrack.GetSuperTrackedQuestID() == tempQuestID then
                     isQuestFiltered = false
                 end
             end
@@ -456,7 +458,7 @@ do
                     end
 
                     for _, bounty in ipairs(bounties) do
-                        if bounty and not C_QuestLog.IsComplete(bounty.questID) and C_QuestLog.IsQuestCriteriaForBounty(info.questId, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
+                        if bounty and not C_QuestLog.IsComplete(bounty.questID) and C_QuestLog.IsQuestCriteriaForBounty(tempQuestID, bounty.questID) and (bountyFilter == 0 or bountyFilter == bounty.questID) then
                             isQuestFiltered = false
                         end
                     end
