@@ -532,7 +532,7 @@ do
 
         local displayLocation, lockedQuestID = C_QuestLog.GetBountySetInfoForMapID(mapID);
 
-        local tasksOnMap = C_TaskQuest.GetQuestsForPlayerByMapID(mapID)
+        local tasksOnMap = C_TaskQuest.GetQuestsOnMap(mapID)
         if (ConfigModule:Get("onlyCurrentZone")) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) and (mapID ~= MAPID_ARGUS) then
             QuestFrameModule:HideWorldQuestsHeader()
             return
@@ -646,21 +646,20 @@ do
             local searchBoxText = QuestScrollFrame.SearchBox:GetText():lower()
 
             for mID in pairs(displayMapIDs) do
-                local taskInfo = C_TaskQuest.GetQuestsForPlayerByMapID(mID)
+                local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
 
                 if taskInfo then
                     for _, info in ipairs(taskInfo) do
-                        local tempQuestID = info.questID or info.questId
-                        if HaveQuestData(tempQuestID) and QuestUtils_IsQuestWorldQuest(tempQuestID) then
+                        if HaveQuestData(info.questID) and QuestUtils_IsQuestWorldQuest(info.questID) then
                             if WorldMap_DoesWorldQuestInfoPassFilters(info) then
                                 local isFiltered = DataModule:IsQuestFiltered(info, mapID)
                                 if not isFiltered then
-                                    if addedQuests[tempQuestID] == nil then
+                                    if addedQuests[info.questID] == nil then
                                         local button = QuestFrameModule:QuestLog_AddQuestButton(info, searchBoxText)
 
                                         if button ~= nil then
                                             table.insert(usedButtons, button)
-                                            addedQuests[tempQuestID] = true
+                                            addedQuests[info.questID] = true
                                         end
                                     end
                                 end
@@ -705,7 +704,7 @@ do
     end
 
     function QuestFrameModule:QuestLog_AddQuestButton(questInfo, searchBoxText)
-        local questID = questInfo.questID or questInfo.questId
+        local questID = questInfo.questID
         local title, factionID, _ = C_TaskQuest.GetQuestInfoByQuestID(questID)
         local questTagInfo = C_QuestLog.GetQuestTagInfo(questID)
         local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
