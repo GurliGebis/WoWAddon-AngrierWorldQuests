@@ -1,3 +1,6 @@
+## 11.0.2-20241022-1
+* Changes needed to be compatible with both 11.0.2 and 11.0.5 .
+
 ## 11.0.2-20241018-1
 * Added The Severed Threads faction, patch provided by Roaming6424 on github.
 

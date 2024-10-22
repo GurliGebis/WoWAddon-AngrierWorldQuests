@@ -650,16 +650,17 @@ do
 
                 if taskInfo then
                     for _, info in ipairs(taskInfo) do
-                        if HaveQuestData(info.questId) and QuestUtils_IsQuestWorldQuest(info.questId) then
+                        local tempQuestID = info.questID or info.questId
+                        if HaveQuestData(tempQuestID) and QuestUtils_IsQuestWorldQuest(tempQuestID) then
                             if WorldMap_DoesWorldQuestInfoPassFilters(info) then
                                 local isFiltered = DataModule:IsQuestFiltered(info, mapID)
                                 if not isFiltered then
-                                    if addedQuests[info.questId] == nil then
+                                    if addedQuests[tempQuestID] == nil then
                                         local button = QuestFrameModule:QuestLog_AddQuestButton(info, searchBoxText)
 
                                         if button ~= nil then
                                             table.insert(usedButtons, button)
-                                            addedQuests[info.questId] = true
+                                            addedQuests[tempQuestID] = true
                                         end
                                     end
                                 end
@@ -704,7 +705,7 @@ do
     end
 
     function QuestFrameModule:QuestLog_AddQuestButton(questInfo, searchBoxText)
-        local questID = questInfo.questId
+        local questID = questInfo.questID or questInfo.questId
         local title, factionID, _ = C_TaskQuest.GetQuestInfoByQuestID(questID)
         local questTagInfo = C_QuestLog.GetQuestTagInfo(questID)
         local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
@@ -956,17 +957,17 @@ do
     end
 
     local function ShouldShowQuest(self, info)
-        if self:IsQuestSuppressed(info.questId) then
+        if self:IsQuestSuppressed(info.questID) then
             return false;
         end
 
         if self.focusedQuestID then
-            return C_QuestLog.IsQuestCalling(self.focusedQuestID) and self:ShouldSupertrackHighlightInfo(info.questId);
+            return C_QuestLog.IsQuestCalling(self.focusedQuestID) and self:ShouldSupertrackHighlightInfo(info.questID);
         end
 
         local mapID = self:GetMap():GetMapID()
 
-        if ConfigModule:Get("showHoveredPOI") and hoveredQuestID == info.questId then
+        if ConfigModule:Get("showHoveredPOI") and hoveredQuestID == info.questID then
             return true
         end
 
@@ -977,7 +978,7 @@ do
         end
 
         if ConfigModule:Get("hideUntrackedPOI") then
-            if not (WorldMap_IsWorldQuestEffectivelyTracked(info.questId)) then
+            if not (WorldMap_IsWorldQuestEffectivelyTracked(info.questID)) then
                 return false
             end
         end
