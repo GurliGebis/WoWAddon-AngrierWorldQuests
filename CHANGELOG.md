@@ -1,3 +1,7 @@
+## 11.0.5-20241023-1
+* C_TaskQuest.GetQuestsForPlayerByMapID has been changed to C_TaskQuest.GetQuestsOnMap.
+* Updated TOC to match WoW 11.0.5
+
 ## 11.0.2-20241022-1
 * Changes needed to be compatible with both 11.0.2 and 11.0.5 .
 

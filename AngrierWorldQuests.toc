@@ -1,10 +1,10 @@
-## Interface: 110002
+## Interface: 110005
 ## Title: Angrier World Quests
 ## Version: @project-version@
 ## Notes: Adds World Quests to the quest list
 ## Author: GurliGebis
 ## X-Category: Quests & Leveling
-## X-Compatible-With: 110002
+## X-Compatible-With: 110005
 ## X-Curse-Packaged-Version: @project-version@
 ## X-Curse-Project-Name: Battle Pet Completionist
 ## X-Curse-Project-ID: 426990
