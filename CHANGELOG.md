@@ -1,3 +1,6 @@
+## 11.0.5-20241030-1
+* Don't hide the World Quests header if filters are active.
+
 ## 11.0.5-20241023-1
 * C_TaskQuest.GetQuestsForPlayerByMapID has been changed to C_TaskQuest.GetQuestsOnMap.
 * Updated TOC to match WoW 11.0.5

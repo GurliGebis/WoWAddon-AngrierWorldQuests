@@ -676,7 +676,8 @@ do
 
                 -- We need to also make sure the "No search results" text is hidden.
                 QuestScrollFrame.NoSearchResultsText:Hide()
-            else
+            elseif ConfigModule:HasFilters() == false then
+                -- We should only hide the header, if no filters are active.
                 QuestFrameModule:HideWorldQuestsHeader()
                 return
             end
