@@ -1,3 +1,6 @@
+## 11.0.7-20241218-1
+* Updated TOC to match WoW 11.0.7
+
 ## 11.0.5-20241030-1
 * Don't hide the World Quests header if filters are active.
 
