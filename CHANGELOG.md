@@ -1,3 +1,6 @@
+## 11.0.7-20241220-1
+* Updated workarounds to match code from 11.0.7, provided by Shauren on github.
+
 ## 11.0.7-20241218-1
 * Updated TOC to match WoW 11.0.7
 
