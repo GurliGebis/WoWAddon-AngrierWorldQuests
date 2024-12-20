@@ -50,7 +50,7 @@ local function WorkaroundMapTaints()
 
     function WorldMapFrame:AcquirePin(pinTemplate, ...)
         if not self.pinPools[pinTemplate] then
-            local pinTemplateType = self.pinTemplateTypes[pinTemplate] or "FRAME";
+            local pinTemplateType = self:GetPinTemplateType(pinTemplate);
             self.pinPools[pinTemplate] = CreateFramePool(pinTemplateType, self:GetCanvas(), pinTemplate, OnPinReleased);
         end
 
