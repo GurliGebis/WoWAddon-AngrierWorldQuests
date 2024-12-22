@@ -992,12 +992,21 @@ do
         end
     end
 
+    local function ShouldMapShowQuest(self, mapID, questInfo)
+        local mapInfo = C_Map.GetMapInfo(mapID);
+        if questInfo.questID == C_SuperTrack.GetSuperTrackedQuestID() and mapInfo.mapType == Enum.UIMapType.Continent then
+            return true;
+        end
+        return false;
+    end
+
     function QuestFrameModule:OverrideShouldShowQuest()
         local dp = GetDataProvider()
 
         if dp ~= nil then
             dataProvider = dp
             dataProvider.ShouldShowQuest = ShouldShowQuest
+            dataProvider.ShouldMapShowQuest = ShouldMapShowQuest
         end
 
         Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(_, rootDescription, _)
