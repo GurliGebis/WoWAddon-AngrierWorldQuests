@@ -1,3 +1,6 @@
+## 11.0.7-20250128-1
+* Added category to TOC file.
+
 ## 11.0.7-20241222-1
 * Changes needed for filtering to work with the changes made in 11.0.7, due to API changes.
 
