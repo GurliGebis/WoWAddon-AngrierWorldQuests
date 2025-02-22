@@ -1,3 +1,6 @@
+## 11.0.7-20250222-1
+* Changes needed to be compatible with both 11.0.7 and 11.1.0, patch provided by CruelDrool on github.
+
 ## 11.0.7-20250128-1
 * Added category to TOC file.
 
