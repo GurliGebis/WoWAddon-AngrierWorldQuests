@@ -1,3 +1,6 @@
+## 11.1.0-20250225-1
+* Updated TOC to match WoW 11.1.0
+
 ## 11.0.7-20250222-1
 * Changes needed to be compatible with both 11.0.7 and 11.1.0, patch provided by CruelDrool on github.
 
