@@ -1,3 +1,6 @@
+## 11.1.0-20250305-1
+* Updated factions and zones for patch 11.0.7 and 11.1.0.
+
 ## 11.1.0-20250225-1
 * Updated TOC to match WoW 11.1.0
 

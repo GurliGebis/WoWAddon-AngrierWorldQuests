@@ -160,12 +160,15 @@ do
         2590, -- Council of Dornogal
         2594, -- The Assembly of the Deeps
         2600, -- The Severed Threads
+        2653, -- The Cartels of Undermine
     }
     local MAPS_THE_WAR_WITHIN = {
         [2214] = true, -- The Ringing Deeps
         [2215] = true, -- Hallowfall
         [2248] = true, -- Isle of Dorn
         [2255] = true, -- Azj-Kahet
+        [2346] = true, -- Undermine
+        [2369] = true, -- Siren Isle
     }
     --endregion
 
