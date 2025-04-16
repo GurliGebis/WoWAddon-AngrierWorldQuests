@@ -98,6 +98,8 @@ local function WorkaroundMapTaints()
         pin:Show();
         pin:OnAcquired(...);
 
+		self:RegisterPin(pin);
+
         return pin;
     end
 end
