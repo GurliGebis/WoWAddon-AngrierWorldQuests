@@ -1,3 +1,6 @@
+## 11.1.0-20250420-1
+* Added missing code from workaround update.
+
 ## 11.1.0-20250416-1
 * Updated workaround code to match Blizzard changes in 11.1.0.
 

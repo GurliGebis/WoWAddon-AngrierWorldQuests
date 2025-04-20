@@ -35,6 +35,11 @@ local ConfigModule = AngrierWorldQuests:GetModule("ConfigModule")
 local function WorkaroundMapTaints()
     -- Code copied from hack from Kalies Tracker, which is based on the original Blizzard_MapCanvas.lua code.
     local function OnPinReleased(pinPool, pin)
+		local map = pin:GetMap();
+		if map then
+			map:UnregisterPin(pin);
+		end
+
         Pool_HideAndClearAnchors(pinPool, pin);
         pin:OnReleased();
         pin.pinTemplate = nil;
