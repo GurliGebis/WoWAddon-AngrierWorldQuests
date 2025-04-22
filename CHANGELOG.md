@@ -1,3 +1,6 @@
+## 11.1.5-20250422-1
+* Updated TOC to match WoW 11.1.5
+
 ## 11.1.0-20250420-1
 * Added missing code from workaround update.
 
