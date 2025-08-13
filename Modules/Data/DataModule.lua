@@ -169,6 +169,7 @@ do
         [2255] = true, -- Azj-Kahet
         [2346] = true, -- Undermine
         [2369] = true, -- Siren Isle
+        [15336] = true, -- K'aresh
     }
     --endregion
 
