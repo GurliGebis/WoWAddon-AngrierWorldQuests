@@ -63,6 +63,12 @@ do
     local ANIMA_ITEM_COLOR = { r=.6, g=.8, b=1 }
     local ANIMA_SPELLID = {[347555] = 3, [345706] = 5, [336327] = 35, [336456] = 250}
 
+    local QUEST_BONUS_COLOR = {
+        r = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.r + 0.15, 1),
+        g = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.g + 0.15, 1),
+        b = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.b + 0.15, 1)
+    }
+
     local function FilterMenu_OnClick(self, key)
         if key == "EMISSARY" then
             ConfigModule:Set("filterEmissary", self.value, true)
@@ -339,12 +345,10 @@ do
     local function QuestButton_OnEnter(self)
         local questTagInfo = C_QuestLog.GetQuestTagInfo(self.questID)
 
-        local color = {}
+        local color
 
         if ShouldQuestBeBonusColored(self.questID) then
-            color.r = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.r + 0.15, 1)
-            color.g = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.g + 0.15, 1)
-            color.b = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.b + 0.15, 1)
+            color = QUEST_BONUS_COLOR
         else
             _, color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
         end
