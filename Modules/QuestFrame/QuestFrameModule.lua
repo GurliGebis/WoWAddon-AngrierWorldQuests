@@ -807,7 +807,7 @@ do
         end
 
         for _, currencyInfo in ipairs(C_QuestLog.GetQuestRewardCurrencies(questID)) do
-            local _, texture, numItems, currencyID = currencyInfo.name, currencyInfo.texture, currencyInfo.totalRewardAmount, currencyInfo.currencyID
+            local texture, numItems, currencyID = currencyInfo.texture, currencyInfo.totalRewardAmount, currencyInfo.currencyID
 
             if currencyID ~= _AngrierWorldQuests.Constants.CURRENCY_IDS.WAR_SUPPLIES and currencyID ~= _AngrierWorldQuests.Constants.CURRENCY_IDS.NETHERSHARD then
                 tagText = numItems
