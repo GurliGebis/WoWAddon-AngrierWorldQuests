@@ -1,3 +1,9 @@
+# 11.2.0-20250820-1
+* Fix spelling error
+* Reuse color table between hovers
+* Remove unused variable
+* Cleanup changelog
+
 # 11.2.0-20250813-1
 * Added K'aresh zone id.
 
