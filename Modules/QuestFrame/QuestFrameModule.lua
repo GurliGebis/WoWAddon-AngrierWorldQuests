@@ -433,7 +433,7 @@ do
         end
     end
 
-    local function QuestButton_Initiliaze(button)
+    local function QuestButton_Initialize(button)
         if button.awq then
             return
         end
@@ -720,7 +720,7 @@ do
         end
 
         local button = titleFramePool:Acquire()
-        QuestButton_Initiliaze(button)
+        QuestButton_Initialize(button)
 
         local totalHeight = 8
         button.worldQuest = true
