@@ -1,3 +1,6 @@
+# 11.2.0-20250909-1
+* Cache calls to C_QuestLog.GetQuestTagInfo
+
 # 11.2.0-20250829-1
 * Correct K'aresh zone id.
 

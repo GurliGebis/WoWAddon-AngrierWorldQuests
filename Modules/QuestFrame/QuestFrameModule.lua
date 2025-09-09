@@ -32,6 +32,7 @@ local AngrierWorldQuests = LibStub("AceAddon-3.0"):GetAddon(addonName)
 local QuestFrameModule = AngrierWorldQuests:NewModule("QuestFrameModule")
 local ConfigModule = AngrierWorldQuests:GetModule("ConfigModule")
 local DataModule = AngrierWorldQuests:GetModule("DataModule")
+local AceHook = LibStub("AceHook-3.0")
 
 local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 
@@ -342,8 +343,17 @@ do
         return C_QuestLog.QuestContainsFirstTimeRepBonusForPlayer(questID)
     end
 
+    local questTagInfoCache = {}
+    local function GetCachedQuestTagInfo(questID)
+        if not questTagInfoCache[questID] then
+            questTagInfoCache[questID] = C_QuestLog.GetQuestTagInfo(questID)
+        end
+
+        return questTagInfoCache[questID]
+    end
+
     local function QuestButton_OnEnter(self)
-        local questTagInfo = C_QuestLog.GetQuestTagInfo(self.questID)
+        local questTagInfo = GetCachedQuestTagInfo(self.questID)
 
         local color
 
@@ -368,7 +378,7 @@ do
     end
 
     local function QuestButton_OnLeave(self)
-        local questTagInfo = C_QuestLog.GetQuestTagInfo(self.questID)
+        local questTagInfo = GetCachedQuestTagInfo(self.questID)
 
         local color
 
@@ -515,6 +525,10 @@ do
         end
 
         return a.Text:GetText() < b.Text:GetText()
+    end
+
+    function QuestFrameModule:QuestLogClosed()
+        wipe(questTagInfoCache)
     end
 
     function QuestFrameModule:HideWorldQuestsHeader()
@@ -711,7 +725,7 @@ do
     function QuestFrameModule:QuestLog_AddQuestButton(questInfo, searchBoxText)
         local questID = questInfo.questID
         local title, factionID, _ = C_TaskQuest.GetQuestInfoByQuestID(questID)
-        local questTagInfo = C_QuestLog.GetQuestTagInfo(questID)
+        local questTagInfo = GetCachedQuestTagInfo(questID)
         local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
         C_TaskQuest.RequestPreloadRewardData(questID)
 
@@ -1039,6 +1053,7 @@ do
 
         titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
         hooksecurefunc("QuestLogQuests_Update", self.QuestLog_Update)
+        AceHook:HookScript(QuestMapFrame, "OnHide", self.QuestLogClosed)
 
         self:RegisterCallbacks()
     end
