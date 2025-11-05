@@ -1,0 +1,60 @@
+name: Feature Request
+description: Suggest an idea or enhancement for Angrier World Quests
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees: ["gurligebis"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature for Angrier World Quests! Please fill out the details below to help us understand your idea.
+
+  - type: dropdown
+    id: game-variant
+    attributes:
+      label: Game Variant
+      description: Which version of World of Warcraft would this feature be for?
+      options:
+        - Retail
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: "Describe the feature or enhancement you'd like to see added."
+      placeholder: "A clear and detailed description of what you want to happen"
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: "Describe the problem or limitation you're trying to solve with this feature"
+      placeholder: |
+        Example:
+        I'm always frustrated when [...] because [...]
+        This feature would help me to [...]
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: "Have you considered any alternative solutions or workarounds?"
+      placeholder: "Describe any alternative solutions or features you've considered"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: "Add any other context, screenshots, or examples about the feature request"
+      placeholder: "Add any additional context, mockups, or examples here"
+    validations:
+      required: false
