@@ -1,4 +1,4 @@
-## Interface: 110205
+## Interface: 110207
 ## Title: Angrier World Quests
 ## Version: @project-version@
 ## Notes: Adds World Quests to the quest list

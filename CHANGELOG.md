@@ -1,3 +1,6 @@
+# 11.2.7-20251202-1
+* Updated TOC to match WoW 11.2.7
+
 # 11.2.5-20251006-1
 * Updated TOC to match WoW 11.2.5
 
