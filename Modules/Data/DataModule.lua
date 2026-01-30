@@ -209,7 +209,7 @@ do
         elseif expansion == _AngrierWorldQuests.Enums.Expansion.THE_WAR_WITHIN then
             return FACTION_ORDER_THE_WAR_WITHIN
         else
-            return nil
+            return {}
         end
     end
 

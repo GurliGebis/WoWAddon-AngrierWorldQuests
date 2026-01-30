@@ -1,3 +1,6 @@
+# 12.0.0-20260130-1
+* Fix bug with filters in the pre-patch zone.
+
 # 12.0.0-20260121-1
 * Updated TOC to Midnight Pre-Patch.
 
