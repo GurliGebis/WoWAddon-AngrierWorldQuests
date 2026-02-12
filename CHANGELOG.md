@@ -1,5 +1,6 @@
 # 12.0.1-20260303-1
 * Remove workarounds, not relevant for Midnight.
+* Clear props before AWQ repopulates the button, patch provided by emmorts on github.
 
 # 12.0.1-20260211-1
 * Updated TOC to Midnight Pre-Patch.
