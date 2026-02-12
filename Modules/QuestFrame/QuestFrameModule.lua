@@ -32,7 +32,6 @@ local AngrierWorldQuests = LibStub("AceAddon-3.0"):GetAddon(addonName)
 local QuestFrameModule = AngrierWorldQuests:NewModule("QuestFrameModule")
 local ConfigModule = AngrierWorldQuests:GetModule("ConfigModule")
 local DataModule = AngrierWorldQuests:GetModule("DataModule")
-local AceHook = LibStub("AceHook-3.0")
 
 local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 
@@ -44,6 +43,92 @@ local titleFramePool
 local rewardPreloadRequested = {}
 local listRefreshPending = false
 local fullRefreshPending = false
+local awqTooltip
+local awqHeaderFontFile
+local awqHeaderFontSize
+local awqHeaderFontFlags
+
+local function WrapTextWithColor(color, text)
+    if not color or text == nil then
+        return text
+    end
+
+    local r = math.floor((color.r or 1) * 255 + 0.5)
+    local g = math.floor((color.g or 1) * 255 + 0.5)
+    local b = math.floor((color.b or 1) * 255 + 0.5)
+
+    return string.format("|cff%02x%02x%02x%s|r", r, g, b, text)
+end
+
+local function ShowAWQTooltip(anchor, lines)
+    if not awqHeaderFontFile then
+        awqHeaderFontFile, awqHeaderFontSize, awqHeaderFontFlags = GameFontNormal:GetFont()
+    end
+
+    if not awqTooltip then
+        awqTooltip = CreateFrame("Frame", "AWQTooltip", UIParent, "BackdropTemplate")
+        awqTooltip:SetBackdrop({
+            bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+            edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+            edgeSize = 12,
+            insets = { left = 3, right = 3, top = 3, bottom = 3 }
+        })
+        awqTooltip:SetBackdropColor(0, 0, 0, 0.9)
+        awqTooltip:SetFrameStrata("TOOLTIP")
+        awqTooltip.lines = {}
+    end
+
+    for i, line in ipairs(lines) do
+        local fs = awqTooltip.lines[i]
+        if not fs then
+            fs = awqTooltip:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+            awqTooltip.lines[i] = fs
+        end
+        if line.fontObject then
+            fs:SetFontObject(line.fontObject)
+        elseif i == 1 and awqHeaderFontFile and awqHeaderFontSize then
+            fs:SetFont(awqHeaderFontFile, awqHeaderFontSize + 2, awqHeaderFontFlags)
+        else
+            fs:SetFontObject(GameFontNormal)
+        end
+        fs:SetText(line.text or "")
+        local color = line.color or NORMAL_FONT_COLOR
+        fs:SetTextColor(color.r, color.g, color.b)
+        fs:Show()
+        if i == 1 then
+            fs:SetPoint("TOPLEFT", awqTooltip, "TOPLEFT", 8, -8)
+        else
+            fs:SetPoint("TOPLEFT", awqTooltip.lines[i-1], "BOTTOMLEFT", 0, -2)
+        end
+    end
+
+    for i = #lines + 1, #awqTooltip.lines do
+        awqTooltip.lines[i]:Hide()
+    end
+
+    local maxWidth = 0
+    local totalHeight = 0
+    for i = 1, #lines do
+        local fs = awqTooltip.lines[i]
+        local w = fs:GetStringWidth()
+        if w > maxWidth then
+            maxWidth = w
+        end
+        totalHeight = totalHeight + fs:GetStringHeight() + 2
+    end
+
+    awqTooltip:SetWidth(math.max(140, maxWidth + 16))
+    awqTooltip:SetHeight(totalHeight + 16)
+    awqTooltip:ClearAllPoints()
+    awqTooltip:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, 0)
+    awqTooltip:Show()
+end
+
+local function HideAWQTooltip()
+    if awqTooltip then
+        awqTooltip:Hide()
+    end
+end
 
 --endregion
 
@@ -231,13 +316,11 @@ do
             text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, hours))
         end
 
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(text)
-        GameTooltip:Show()
+        ShowAWQTooltip(self, { { text = text, color = HIGHLIGHT_FONT_COLOR } })
     end
 
     local function FilterButton_OnLeave(self)
-        GameTooltip:Hide()
+        HideAWQTooltip()
     end
 
     local function FilterButton_ShowMenu(self)
@@ -355,6 +438,114 @@ do
         return questTagInfoCache[questID]
     end
 
+    local function QuestButton_AddTooltipRewards(lines, questID)
+        local addedLine = false
+
+        local baseXp = GetQuestLogRewardXP(questID)
+        if baseXp and baseXp > 0 then
+            table.insert(lines, { text = BONUS_OBJECTIVE_EXPERIENCE_FORMAT:format(baseXp), color = HIGHLIGHT_FONT_COLOR })
+            addedLine = true
+        end
+
+        local artifactXP = GetQuestLogRewardArtifactXP(questID)
+        if artifactXP and artifactXP > 0 then
+            table.insert(lines, { text = BONUS_OBJECTIVE_ARTIFACT_XP_FORMAT:format(artifactXP), color = HIGHLIGHT_FONT_COLOR })
+            addedLine = true
+        end
+
+        local money = GetQuestLogRewardMoney(questID)
+        if money and money > 0 then
+            local gold = floor(money / COPPER_PER_GOLD)
+            if gold > 0 then
+                table.insert(lines, { text = BONUS_OBJECTIVE_REWARD_WITH_COUNT_FORMAT:format("Interface\\MoneyFrame\\UI-GoldIcon", BreakUpLargeNumbers(gold), GOLD_AMOUNT_SYMBOL), color = HIGHLIGHT_FONT_COLOR })
+                addedLine = true
+            end
+        end
+
+        local currencies = C_QuestLog.GetQuestRewardCurrencies(questID)
+        if currencies then
+            for _, currencyInfo in ipairs(currencies) do
+                if currencyInfo and currencyInfo.texture and currencyInfo.totalRewardAmount and currencyInfo.name then
+                    local text = BONUS_OBJECTIVE_REWARD_WITH_COUNT_FORMAT:format(currencyInfo.texture, currencyInfo.totalRewardAmount, currencyInfo.name)
+                    table.insert(lines, { text = text, color = HIGHLIGHT_FONT_COLOR })
+                    addedLine = true
+                end
+            end
+        end
+
+        local numQuestRewards = GetNumQuestLogRewards(questID)
+        if numQuestRewards and numQuestRewards > 0 then
+            local itemName, itemTexture, quantity, quality = GetQuestLogRewardInfo(1, questID)
+            if itemName and itemTexture then
+                local text
+                if quantity and quantity > 1 then
+                    text = BONUS_OBJECTIVE_REWARD_WITH_COUNT_FORMAT:format(itemTexture, quantity, itemName)
+                else
+                    text = BONUS_OBJECTIVE_REWARD_FORMAT:format(itemTexture, itemName)
+                end
+
+                local colorData = quality and ColorManager.GetColorDataForItemQuality(quality) or nil
+                local color = (colorData and colorData.color) or HIGHLIGHT_FONT_COLOR
+                table.insert(lines, { text = text, color = color })
+                addedLine = true
+            end
+        end
+
+        return addedLine
+    end
+
+    local function QuestButton_BuildSafeTooltip(self)
+        local questID = self.questID
+        if not questID then
+            return
+        end
+
+        local lines = {}
+        local title = self.Text and self.Text:GetText() or C_TaskQuest.GetQuestInfoByQuestID(questID) or ""
+
+        local tagInfo = GetCachedQuestTagInfo(questID)
+        if tagInfo and tagInfo.quality then
+            local colorData = ColorManager.GetColorDataForWorldQuestQuality(tagInfo.quality)
+            if colorData then
+                table.insert(lines, { text = title, color = colorData.color })
+            else
+                table.insert(lines, { text = title, color = HIGHLIGHT_FONT_COLOR })
+            end
+        else
+            table.insert(lines, { text = title, color = HIGHLIGHT_FONT_COLOR })
+        end
+
+        if C_QuestLog.IsAccountQuest(questID) then
+            table.insert(lines, { text = ACCOUNT_QUEST_LABEL, color = ACCOUNT_WIDE_FONT_COLOR })
+        end
+
+        local questTypeText = QuestUtils_GetQuestTypeIconMarkupString(questID, 20, 20)
+        if questTypeText then
+            table.insert(lines, { text = questTypeText, color = NORMAL_FONT_COLOR })
+        end
+
+        local factionID = self.factionID or select(2, C_TaskQuest.GetQuestInfoByQuestID(questID))
+        if factionID then
+            local factionData = C_Reputation.GetFactionDataByID(factionID)
+            if factionData and factionData.name then
+                table.insert(lines, { text = factionData.name, color = NORMAL_FONT_COLOR })
+            end
+        end
+
+        local formattedTime, timeColor = WorldMap_GetQuestTimeForTooltip(questID)
+        if formattedTime and timeColor then
+            table.insert(lines, {
+                text = MAP_TOOLTIP_TIME_LEFT:format(WrapTextWithColor(timeColor, formattedTime)),
+                color = HIGHLIGHT_FONT_COLOR
+            })
+        end
+
+        table.insert(lines, { text = " ", color = NORMAL_FONT_COLOR })
+        QuestButton_AddTooltipRewards(lines, questID)
+
+        ShowAWQTooltip(self, lines)
+    end
+
     local function QuestButton_OnEnter(self)
         local questTagInfo = GetCachedQuestTagInfo(self.questID)
 
@@ -370,14 +561,9 @@ do
 
         hoveredQuestID = self.questID
 
-        if dataProvider then
-            local pin = dataProvider.activePins[self.questID]
-            if pin then
-                POIButtonMixin.OnEnter(pin)
-            end
-        end
         self.HighlightTexture:SetShown(true);
-        TaskPOI_OnEnter(self)
+        QuestButton_BuildSafeTooltip(self)
+
     end
 
     local function QuestButton_OnLeave(self)
@@ -395,15 +581,10 @@ do
 
         hoveredQuestID = nil
 
-        if dataProvider then
-            local pin = dataProvider.activePins[self.questID]
-            if pin then
-                POIButtonMixin.OnLeave(pin)
-            end
-        end
-
         self.HighlightTexture:SetShown(false);
-        TaskPOI_OnLeave(self)
+
+        HideAWQTooltip()
+
     end
 
     local function QuestButton_OnClick(self, button)
@@ -1067,16 +1248,11 @@ do
         hooksecurefunc("QuestLogQuests_Update", function()
             self:RequestQuestLogUpdate()
         end)
-        AceHook:HookScript(QuestMapFrame, "OnHide", self.QuestLogClosed)
 
         self:RegisterCallbacks()
     end
 end
 --endregion
-
-function QuestFrameModule:GetWorldMap()
-    return WorldMapFrame
-end
 
 function QuestFrameModule:RequestRewardPreload(questID)
     if not questID then
@@ -1120,27 +1296,13 @@ function QuestFrameModule:RequestFullRefresh()
         if dataProvider then
             dataProvider:RefreshAllData()
         end
-
-        QuestFrameModule:MarkPinSuppressionDirty()
     end)
 end
 
-function QuestFrameModule:EnsureSuppressorPin()
-    if suppressorPin then
-        return
-    end
-
-    local map = self:GetWorldMap()
-    if not map or not map.AcquirePin then
-        return
-    end
-
-    suppressorPin = map:AcquirePin("AWQ_WorldQuestSuppressorPinTemplate")
+function QuestFrameModule:ShowAWQTooltip(anchor, lines)
+    ShowAWQTooltip(anchor, lines)
 end
 
-function QuestFrameModule:MarkPinSuppressionDirty()
-    local map = self:GetWorldMap()
-    if map and map.SetPinSuppressionDirty then
-        map:SetPinSuppressionDirty()
-    end
+function QuestFrameModule:HideAWQTooltip()
+    HideAWQTooltip()
 end
