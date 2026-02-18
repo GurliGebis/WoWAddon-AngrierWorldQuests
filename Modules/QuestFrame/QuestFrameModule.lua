@@ -43,6 +43,39 @@ local titleFramePool
 local rewardPreloadRequested = {}
 local listRefreshPending = false
 local fullRefreshPending = false
+local fullRefreshDirty = false
+local fullRefreshRetryCount = 0
+local fullRefreshReason
+
+local function DebugLog(message)
+    if not ConfigModule:Get("enableDebugging") then
+        return
+    end
+
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("|cffff7f00AWQ|r %s", message))
+    end
+end
+
+local function SafeCall(func, ...)
+    if securecallfunction then
+        securecallfunction(func, ...)
+    else
+        func(...)
+    end
+end
+
+local function CanApplyFullRefresh()
+    if not QuestMapFrame or not QuestMapFrame:IsShown() then
+        return false
+    end
+
+    if InCombatLockdown and InCombatLockdown() then
+        return false
+    end
+
+    return true
+end
 
 --endregion
 
@@ -1026,7 +1059,7 @@ do
 
         Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(_, rootDescription, _)
             rootDescription:AddMenuResponseCallback(function()
-                QuestFrameModule:RequestFullRefresh()
+                QuestFrameModule:RequestFullRefresh("MENU_WORLD_MAP_TRACKING")
             end)
         end)
     end
@@ -1036,8 +1069,8 @@ do
             QuestFrameModule:RequestQuestLogUpdate()
         end)
 
-        ConfigModule:RegisterCallback({ "hideUntrackedPOI", "hideFilteredPOI", "showContinentPOI", "onlyCurrentZone", "sortMethod", "selectedFilters","disabledFilters", "filterEmissary", "filterLoot", "filterFaction", "filterZone", "filterTime", "lootFilterUpgrades", "lootUpgradesLevel", "timeFilterDuration" }, function()
-            self:RequestFullRefresh()
+        ConfigModule:RegisterCallback({ "hideUntrackedPOI", "hideFilteredPOI", "showContinentPOI", "onlyCurrentZone", "sortMethod", "selectedFilters","disabledFilters", "filterEmissary", "filterLoot", "filterFaction", "filterZone", "filterTime", "lootFilterUpgrades", "lootUpgradesLevel", "timeFilterDuration" }, function(key)
+            self:RequestFullRefresh(key)
         end)
     end
 
@@ -1085,7 +1118,10 @@ function QuestFrameModule:RequestQuestLogUpdate()
     end)
 end
 
-function QuestFrameModule:RequestFullRefresh()
+function QuestFrameModule:RequestFullRefresh(reason)
+    fullRefreshDirty = true
+    fullRefreshReason = reason or fullRefreshReason or "unknown"
+
     if fullRefreshPending then
         return
     end
@@ -1093,12 +1129,32 @@ function QuestFrameModule:RequestFullRefresh()
     fullRefreshPending = true
     C_Timer.After(0.1, function()
         fullRefreshPending = false
-        if QuestMapFrame and QuestMapFrame:IsShown() then
-            QuestMapFrame_UpdateAll()
+
+        if not fullRefreshDirty then
+            return
         end
 
-        if dataProvider then
-            dataProvider:RefreshAllData()
+        if not CanApplyFullRefresh() then
+            fullRefreshRetryCount = fullRefreshRetryCount + 1
+
+            if fullRefreshRetryCount <= 20 then
+                QuestFrameModule:RequestFullRefresh(fullRefreshReason or "retry")
+            else
+                DebugLog(string.format("Skipped map refresh after %d retries (%s)", fullRefreshRetryCount, fullRefreshReason or "unknown"))
+                fullRefreshDirty = false
+                fullRefreshRetryCount = 0
+                fullRefreshReason = nil
+            end
+
+            return
         end
+
+        local reasonText = fullRefreshReason or "unknown"
+        fullRefreshDirty = false
+        fullRefreshRetryCount = 0
+        fullRefreshReason = nil
+
+        DebugLog(string.format("Applying full refresh (%s)", reasonText))
+        SafeCall(QuestLogQuests_Update)
     end)
 end

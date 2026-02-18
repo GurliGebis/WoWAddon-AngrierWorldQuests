@@ -112,14 +112,14 @@ do
         if type(key) == "table" then
             for _, key2 in ipairs(key) do
                 if callbacks[key2] then
-                    table.insert(callbacks, func)
+                    table.insert(callbacks[key2], func)
                 else
                     callbacks[key2] = { func }
                 end
             end
         else
             if callbacks[key] then
-                table.insert(callbacks, func)
+                table.insert(callbacks[key], func)
             else
                 callbacks[key] = { func }
             end
