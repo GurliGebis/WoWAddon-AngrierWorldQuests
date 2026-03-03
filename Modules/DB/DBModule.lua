@@ -54,7 +54,6 @@ local defaultOptions = {
         showContinentPOI = "true",
         colorWarbandBonus = "false",
         enableDebugging = "false",
-        enableTaintWorkarounds = "false",
         sortMethod = 2,
         extendedInfo = "false",
         saveFilters = "false"

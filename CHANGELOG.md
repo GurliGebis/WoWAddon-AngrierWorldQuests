@@ -1,3 +1,6 @@
+# 12.0.1-20260303-1
+* Remove workarounds, not relevant for Midnight.
+
 # 12.0.1-20260211-1
 * Updated TOC to Midnight Pre-Patch.
 
