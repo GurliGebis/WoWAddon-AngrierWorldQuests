@@ -32,7 +32,6 @@ local AngrierWorldQuests = LibStub("AceAddon-3.0"):GetAddon(addonName)
 local QuestFrameModule = AngrierWorldQuests:NewModule("QuestFrameModule")
 local ConfigModule = AngrierWorldQuests:GetModule("ConfigModule")
 local DataModule = AngrierWorldQuests:GetModule("DataModule")
-local AceHook = LibStub("AceHook-3.0")
 
 local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 
@@ -41,6 +40,42 @@ local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 local dataProvider
 local hoveredQuestID
 local titleFramePool
+local rewardPreloadRequested = {}
+local listRefreshPending = false
+local fullRefreshPending = false
+local fullRefreshDirty = false
+local fullRefreshRetryCount = 0
+local fullRefreshReason
+
+local function DebugLog(message)
+    if not ConfigModule:Get("enableDebugging") then
+        return
+    end
+
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("|cffff7f00AWQ|r %s", message))
+    end
+end
+
+local function SafeCall(func, ...)
+    if securecallfunction then
+        securecallfunction(func, ...)
+    else
+        func(...)
+    end
+end
+
+local function CanApplyFullRefresh()
+    if not QuestMapFrame or not QuestMapFrame:IsShown() then
+        return false
+    end
+
+    if InCombatLockdown and InCombatLockdown() then
+        return false
+    end
+
+    return true
+end
 
 --endregion
 
@@ -228,13 +263,11 @@ do
             text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, hours))
         end
 
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(text)
-        GameTooltip:Show()
+        QuestFrameModule.Tooltip_Show(self, { { text = text, color = HIGHLIGHT_FONT_COLOR } })
     end
 
     local function FilterButton_OnLeave(self)
-        GameTooltip:Hide()
+        QuestFrameModule.Tooltip_Hide(self)
     end
 
     local function FilterButton_ShowMenu(self)
@@ -331,7 +364,7 @@ do
         if ( button == "LeftButton" ) then
             questsCollapsed = not questsCollapsed
             ConfigModule:Set("collapsed", questsCollapsed)
-            QuestMapFrame_UpdateAll()
+            QuestFrameModule:RequestQuestLogUpdate()
         end
     end
 
@@ -344,7 +377,7 @@ do
     end
 
     local questTagInfoCache = {}
-    local function GetCachedQuestTagInfo(questID)
+    function QuestFrameModule.GetCachedQuestTagInfo(questID)
         if not questTagInfoCache[questID] then
             questTagInfoCache[questID] = C_QuestLog.GetQuestTagInfo(questID)
         end
@@ -353,7 +386,7 @@ do
     end
 
     local function QuestButton_OnEnter(self)
-        local questTagInfo = GetCachedQuestTagInfo(self.questID)
+        local questTagInfo = QuestFrameModule.GetCachedQuestTagInfo(self.questID)
 
         local color
 
@@ -367,18 +400,12 @@ do
 
         hoveredQuestID = self.questID
 
-        if dataProvider then
-            local pin = dataProvider.activePins[self.questID]
-            if pin then
-                POIButtonMixin.OnEnter(pin)
-            end
-        end
         self.HighlightTexture:SetShown(true);
-        TaskPOI_OnEnter(self)
+        QuestFrameModule.Tooltip_BuildSafe(self)
     end
 
     local function QuestButton_OnLeave(self)
-        local questTagInfo = GetCachedQuestTagInfo(self.questID)
+        local questTagInfo = QuestFrameModule.GetCachedQuestTagInfo(self.questID)
 
         local color
 
@@ -392,15 +419,9 @@ do
 
         hoveredQuestID = nil
 
-        if dataProvider then
-            local pin = dataProvider.activePins[self.questID]
-            if pin then
-                POIButtonMixin.OnLeave(pin)
-            end
-        end
-
         self.HighlightTexture:SetShown(false);
-        TaskPOI_OnLeave(self)
+
+        QuestFrameModule.Tooltip_Hide(self)
     end
 
     local function QuestButton_OnClick(self, button)
@@ -544,6 +565,10 @@ do
     end
 
     function QuestFrameModule:QuestLog_Update()
+        if not QuestMapFrame or not QuestMapFrame:IsShown() then
+            return
+        end
+
         titleFramePool:ReleaseAll()
 
         local mapID = QuestMapFrame:GetParent():GetMapID()
@@ -725,9 +750,9 @@ do
     function QuestFrameModule:QuestLog_AddQuestButton(questInfo, searchBoxText)
         local questID = questInfo.questID
         local title, factionID, _ = C_TaskQuest.GetQuestInfoByQuestID(questID)
-        local questTagInfo = GetCachedQuestTagInfo(questID)
+        local questTagInfo = QuestFrameModule.GetCachedQuestTagInfo(questID)
         local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
-        C_TaskQuest.RequestPreloadRewardData(questID)
+        QuestFrameModule:RequestRewardPreload(questID)
 
         if (questTagInfo == nil) then
             return nil
@@ -742,6 +767,11 @@ do
 
         local totalHeight = 8
         button.worldQuest = true
+        button.questLogIndex = nil
+        button.info = nil
+        button.isHeader = nil
+        button.isCollapsed = nil
+        button.isInternalOnly = nil
         button.questID = questID
         button.mapID = questInfo.mapID
         button.factionID = factionID
@@ -1028,19 +1058,19 @@ do
         end
 
         Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(_, rootDescription, _)
-            rootDescription:AddMenuResponseCallback(QuestMapFrame_UpdateAll)
+            rootDescription:AddMenuResponseCallback(function()
+                QuestFrameModule:RequestFullRefresh("MENU_WORLD_MAP_TRACKING")
+            end)
         end)
     end
 
     function QuestFrameModule:RegisterCallbacks()
         ConfigModule:RegisterCallback("showAtTop", function()
-            QuestMapFrame_UpdateAll()
+            QuestFrameModule:RequestQuestLogUpdate()
         end)
 
-        ConfigModule:RegisterCallback({ "hideUntrackedPOI", "hideFilteredPOI", "showContinentPOI", "onlyCurrentZone", "sortMethod", "selectedFilters","disabledFilters", "filterEmissary", "filterLoot", "filterFaction", "filterZone", "filterTime", "lootFilterUpgrades", "lootUpgradesLevel", "timeFilterDuration" }, function()
-            QuestMapFrame_UpdateAll()
-
-            dataProvider:RefreshAllData()
+        ConfigModule:RegisterCallback({ "hideUntrackedPOI", "hideFilteredPOI", "showContinentPOI", "onlyCurrentZone", "sortMethod", "selectedFilters","disabledFilters", "filterEmissary", "filterLoot", "filterFaction", "filterZone", "filterTime", "lootFilterUpgrades", "lootUpgradesLevel", "timeFilterDuration" }, function(key)
+            self:RequestFullRefresh(key)
         end)
     end
 
@@ -1052,10 +1082,79 @@ do
         self:OverrideShouldShowQuest()
 
         titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
-        hooksecurefunc("QuestLogQuests_Update", self.QuestLog_Update)
-        AceHook:HookScript(QuestMapFrame, "OnHide", self.QuestLogClosed)
+        hooksecurefunc("QuestLogQuests_Update", function()
+            self:RequestQuestLogUpdate()
+        end)
 
         self:RegisterCallbacks()
     end
 end
 --endregion
+
+function QuestFrameModule:RequestRewardPreload(questID)
+    if not questID then
+        return
+    end
+
+    if rewardPreloadRequested[questID] then
+        return
+    end
+
+    rewardPreloadRequested[questID] = true
+    C_TaskQuest.RequestPreloadRewardData(questID)
+end
+
+function QuestFrameModule:RequestQuestLogUpdate()
+    if listRefreshPending then
+        return
+    end
+
+    listRefreshPending = true
+    C_Timer.After(0.05, function()
+        listRefreshPending = false
+        if QuestMapFrame and QuestMapFrame:IsShown() then
+            QuestFrameModule:QuestLog_Update()
+        end
+    end)
+end
+
+function QuestFrameModule:RequestFullRefresh(reason)
+    fullRefreshDirty = true
+    fullRefreshReason = reason or fullRefreshReason or "unknown"
+
+    if fullRefreshPending then
+        return
+    end
+
+    fullRefreshPending = true
+    C_Timer.After(0.1, function()
+        fullRefreshPending = false
+
+        if not fullRefreshDirty then
+            return
+        end
+
+        if not CanApplyFullRefresh() then
+            fullRefreshRetryCount = fullRefreshRetryCount + 1
+
+            if fullRefreshRetryCount <= 20 then
+                QuestFrameModule:RequestFullRefresh(fullRefreshReason or "retry")
+            else
+                DebugLog(string.format("Skipped map refresh after %d retries (%s)", fullRefreshRetryCount, fullRefreshReason or "unknown"))
+                fullRefreshDirty = false
+                fullRefreshRetryCount = 0
+                fullRefreshReason = nil
+            end
+
+            return
+        end
+
+        local reasonText = fullRefreshReason or "unknown"
+        fullRefreshDirty = false
+        fullRefreshRetryCount = 0
+        fullRefreshReason = nil
+
+        DebugLog(string.format("Applying full refresh (%s)", reasonText))
+        SafeCall(QuestLogQuests_Update)
+    end)
+end

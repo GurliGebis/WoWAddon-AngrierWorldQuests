@@ -1,3 +1,11 @@
+# 12.0.1-20260303-1
+* Remove workarounds, not relevant for Midnight.
+* Clear props before AWQ repopulates the button, patch provided by emmorts on github.
+* Debounce quest list refresh and cache reward preload, patch provided by emmorts on github.
+* Custom Tooltip implementation, patches provided by emmorts on github.
+* Tooltip improvements and refactoring.
+* Fix for full refresh.
+
 # 12.0.1-20260211-1
 * Updated TOC to Midnight Pre-Patch.
 

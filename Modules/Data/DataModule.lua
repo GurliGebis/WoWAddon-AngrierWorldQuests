@@ -33,6 +33,7 @@ local DataModule = AngrierWorldQuests:NewModule("DataModule", "AceEvent-3.0")
 local ConfigModule = AngrierWorldQuests:GetModule("ConfigModule")
 
 local cachedItems = {}
+local rewardPreloadRequested = {}
 
 do
     --region Maps and data
@@ -365,7 +366,10 @@ do
 
         local tradeskillLineID = questTagInfo.tradeskillLineID
         local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(info.questID)
-        C_TaskQuest.RequestPreloadRewardData(info.questID)
+        if not rewardPreloadRequested[info.questID] then
+            rewardPreloadRequested[info.questID] = true
+            C_TaskQuest.RequestPreloadRewardData(info.questID)
+        end
 
         local isQuestFiltered = hasFilters
 
@@ -565,11 +569,13 @@ do
     function DataModule:QuestLogChanged(arg1)
         if arg1 == "player" then
             wipe(cachedItems)
+            wipe(rewardPreloadRequested)
         end
     end
 
     function DataModule:EnteringWorld()
         wipe(cachedItems)
+        wipe(rewardPreloadRequested)
     end
 
     function DataModule:RegisterEventHandlers()
