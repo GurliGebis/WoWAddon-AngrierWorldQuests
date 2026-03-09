@@ -46,6 +46,11 @@ _AngrierWorldQuests = {
             BROKENISLES = 619,
             DALARAN = 627,
             AZEROTH = 947
+        },
+        MONEY = {
+            COPPER_PER_SILVER = 100,
+            SILVER_PER_GOLD = 100,
+            COPPER_PER_GOLD = 10000
         }
     },
     Enums = {

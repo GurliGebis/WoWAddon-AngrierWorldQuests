@@ -1,3 +1,6 @@
+# 12.0.1-20260309-2
+* Fix for X_PER_Y money being securet variables.
+
 # 12.0.1-20260309-1
 * Re-add workarounds, since they are needed, enable by default.
 

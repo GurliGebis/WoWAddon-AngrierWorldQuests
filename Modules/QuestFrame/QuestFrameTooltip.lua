@@ -137,9 +137,9 @@ do
 
         local money = GetQuestLogRewardMoney(questID)
         if money and money > 0 then
-            local gold = floor(money / (COPPER_PER_SILVER * SILVER_PER_GOLD));
-            local silver = floor((money - (gold * COPPER_PER_SILVER * SILVER_PER_GOLD)) / COPPER_PER_SILVER);
-            local copper = mod(money, COPPER_PER_SILVER);
+            local gold = floor(money / (_AngrierWorldQuests.Constants.MONEY.COPPER_PER_SILVER * _AngrierWorldQuests.Constants.MONEY.SILVER_PER_GOLD));
+            local silver = floor((money - (gold * _AngrierWorldQuests.Constants.MONEY.COPPER_PER_SILVER * _AngrierWorldQuests.Constants.MONEY.SILVER_PER_GOLD)) / _AngrierWorldQuests.Constants.MONEY.COPPER_PER_SILVER);
+            local copper = mod(money, _AngrierWorldQuests.Constants.MONEY.COPPER_PER_SILVER);
 
             local format = "%1$s |T%2$s:16:16:0:0:64:64:5:59:5:59|t %3$s |T%4$s:16:16:0:0:64:64:5:59:5:59|t %5$s |T%6$s:16:16:0:0:64:64:5:59:5:59|t"
 

@@ -841,7 +841,7 @@ do
         local money = GetQuestLogRewardMoney(questID)
 
         if ( money > 0 ) then
-            local gold = floor(money / (COPPER_PER_GOLD))
+            local gold = floor(money / (_AngrierWorldQuests.Constants.MONEY.COPPER_PER_GOLD))
             tagTexture = "Interface\\MoneyFrame\\UI-MoneyIcons"
             tagTexCoords = { 0, 0.25, 0, 1 }
             tagText = BreakUpLargeNumbers(gold)
