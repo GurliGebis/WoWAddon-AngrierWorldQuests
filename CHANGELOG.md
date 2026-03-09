@@ -1,3 +1,6 @@
+# 12.0.1-20260309-1
+* Re-add workarounds, since they are needed, enable by default.
+
 # 12.0.1-20260303-1
 * Remove workarounds, not relevant for Midnight.
 * Clear props before AWQ repopulates the button, patch provided by emmorts on github.
