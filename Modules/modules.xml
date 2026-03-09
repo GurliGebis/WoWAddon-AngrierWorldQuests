@@ -3,5 +3,6 @@
     <Include file="DB\DBModule.xml" />
     <Include file="Config\ConfigModule.xml" />
     <Include file="Data\DataModule.xml" />
+    <Include file="Workarounds\WorkaroundsModule.xml" />
     <Include file="QuestFrame\QuestFrameModule.xml" />
 </Ui>

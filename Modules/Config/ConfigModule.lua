@@ -388,6 +388,7 @@ do
                  "showHoveredPOI",
                  "lootFilterUpgrades",
                  "colorWarbandBonus",
+                 "disableTaintWorkarounds",
                  "enableDebugging"
             }
 
