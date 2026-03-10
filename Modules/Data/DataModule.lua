@@ -174,6 +174,23 @@ do
     }
     --endregion
 
+    --region Midnight
+    local CONTINENT_MIDNIGHT = 2537 -- Midnight main map
+    local FACTION_ORDER_MIDNIGHT = {
+        [2696] = true, -- Amani Tribe
+        [2699] = true, -- The Singularity
+        [2704] = true, -- Hara'ti
+        [2710] = true, -- Silvermoon Court
+    }
+    local MAPS_MIDNIGHT = {
+        [2395] = true, -- Eversong Woods
+        [2405] = true, -- Voidstorm
+        [2413] = true, -- Harandar
+        [2424] = true, -- Isle of Quel'Danas
+        [2437] = true, -- Zul'Aman
+    }
+    --endregion
+
     --endregion
 
     function DataModule:GetExpansionByMapID(mapID)
@@ -187,6 +204,8 @@ do
             return _AngrierWorldQuests.Enums.Expansion.DRAGONFLIGHTS
         elseif MAPS_THE_WAR_WITHIN[mapID] or mapID == CONTINENT_THE_WAR_WITHIN then
             return _AngrierWorldQuests.Enums.Expansion.THE_WAR_WITHIN
+        elseif MAPS_MIDNIGHT[mapID] or mapID == CONTINENT_MIDNIGHT then
+            return _AngrierWorldQuests.Enums.Expansion.MIDNIGHT
         else
             return nil
         end
@@ -209,6 +228,8 @@ do
             return FACTION_ORDER_DRAGONFLIGHT
         elseif expansion == _AngrierWorldQuests.Enums.Expansion.THE_WAR_WITHIN then
             return FACTION_ORDER_THE_WAR_WITHIN
+        elseif expansion == _AngrierWorldQuests.Enums.Expansion.MIDNIGHT then
+            return FACTION_ORDER_MIDNIGHT
         else
             return {}
         end
@@ -240,6 +261,8 @@ do
                 return MAPS_DRAGONFLIGHT
             elseif expansion == _AngrierWorldQuests.Enums.Expansion.THE_WAR_WITHIN and mapID == CONTINENT_THE_WAR_WITHIN then
                 return MAPS_THE_WAR_WITHIN
+            elseif expansion == _AngrierWorldQuests.Enums.Expansion.MIDNIGHT and mapID == CONTINENT_MIDNIGHT then
+                return MAPS_MIDNIGHT
             end
         else
             if expansion == _AngrierWorldQuests.Enums.Expansion.LEGION then
@@ -260,6 +283,8 @@ do
                 return MAPS_DRAGONFLIGHT
             elseif expansion == _AngrierWorldQuests.Enums.Expansion.THE_WAR_WITHIN then
                 return MAPS_THE_WAR_WITHIN
+            elseif expansion == _AngrierWorldQuests.Enums.Expansion.MIDNIGHT then
+                return MAPS_MIDNIGHT
             end
         end
 

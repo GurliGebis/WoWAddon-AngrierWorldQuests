@@ -1,3 +1,6 @@
+# 12.0.1-20260310-1
+* Added Midnight map ids and faction ids.
+
 # 12.0.1-20260309-2
 * Fix for X_PER_Y money being securet variables.
 
