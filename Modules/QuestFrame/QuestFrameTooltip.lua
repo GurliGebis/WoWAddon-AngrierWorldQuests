@@ -33,9 +33,7 @@ local QuestFrameModule = AngrierWorldQuests:GetModule("QuestFrameModule")
 
 do
     local awqTooltip
-    local awqHeaderFontFile
-    local awqHeaderFontSize
-    local awqHeaderFontFlags
+    local awqHeaderFont
 
     local function WrapTextWithColor(color, text)
         if not color or text == nil then
@@ -50,8 +48,10 @@ do
     end
 
     function QuestFrameModule.Tooltip_Show(anchor, lines)
-        if not awqHeaderFontFile then
-            awqHeaderFontFile, awqHeaderFontSize, awqHeaderFontFlags = GameFontNormal:GetFont()
+        if not awqHeaderFont then
+            local fontFile, fontSize, fontFlags = GameFontNormal:GetFont()
+            awqHeaderFont = CreateFont("AWQHeaderFont")
+            awqHeaderFont:SetFont(fontFile, fontSize + 2, fontFlags)
         end
 
         if not awqTooltip then
@@ -75,8 +75,8 @@ do
             end
             if line.fontObject then
                 fs:SetFontObject(line.fontObject)
-            elseif i == 1 and awqHeaderFontFile and awqHeaderFontSize then
-                fs:SetFont(awqHeaderFontFile, awqHeaderFontSize + 2, awqHeaderFontFlags)
+            elseif i == 1 then
+                fs:SetFontObject(awqHeaderFont)
             else
                 fs:SetFontObject(GameFontNormal)
             end
