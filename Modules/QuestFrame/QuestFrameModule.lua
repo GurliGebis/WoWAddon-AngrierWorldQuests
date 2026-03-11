@@ -263,7 +263,7 @@ do
             text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, hours))
         end
 
-        QuestFrameModule.Tooltip_Show(self, { { text = text, color = HIGHLIGHT_FONT_COLOR } })
+        QuestFrameModule.Tooltip_ShowSimple(self, text, HIGHLIGHT_FONT_COLOR)
     end
 
     local function FilterButton_OnLeave(self)
