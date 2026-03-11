@@ -69,8 +69,8 @@ local function WorkaroundMapTaints()
             local isMouseMotionEnabled = pin:IsMouseMotionEnabled();
 
             if isMouseClickEnabled then
-                pin:SetScript("OnMouseUp", OnPinMouseUp);
-                pin:SetScript("OnMouseDown", pin.OnMouseDown);
+                pin:SetScript("OnMouseUp", function(self, ...) securecallfunction(OnPinMouseUp, self, ...) end);
+                pin:SetScript("OnMouseDown", function(self, ...) securecallfunction(self.OnMouseDown, self, ...) end);
 
                 -- Prevent OnClick handlers from being run twice, once a frame is in the mapCanvas ecosystem it needs
                 -- to process mouse events only via the map system.
@@ -85,8 +85,8 @@ local function WorkaroundMapTaints()
                     assert(pin:GetScript("OnEnter") == nil);
                     assert(pin:GetScript("OnLeave") == nil);
                 end
-                pin:SetScript("OnEnter", pin.OnMouseEnter);
-                pin:SetScript("OnLeave", pin.OnMouseLeave);
+                pin:SetScript("OnEnter", function(self, ...) securecallfunction(self.OnMouseEnter, self, ...) end);
+                pin:SetScript("OnLeave", function(self, ...) securecallfunction(self.OnMouseLeave, self, ...) end);
             end
 
             pin:SetMouseClickEnabled(isMouseClickEnabled);

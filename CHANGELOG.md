@@ -1,3 +1,6 @@
+# 12.0.1-20260311-1
+* Changes to workarounds to avoid taint.
+
 # 12.0.1-20260310-1
 * Added Midnight map ids and faction ids.
 * Refactor font in tooltip to avoid taint.
