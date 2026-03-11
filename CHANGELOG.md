@@ -1,5 +1,6 @@
 # 12.0.1-20260311-2
 * Rework tooltip to use custom tooltip that inherits GameTooltip.
+* Added item reward tooltip on hover.
 
 # 12.0.1-20260311-1
 * Changes to workarounds to avoid taint.

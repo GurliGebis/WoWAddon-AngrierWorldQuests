@@ -56,10 +56,20 @@ end
 
 --region Tooltip Show/Hide
 
-function QuestFrameModule.Tooltip_Show(anchor)
+function QuestFrameModule.Tooltip_Show(anchor, itemLink)
     AWQTooltip:ClearAllPoints()
     AWQTooltip:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, 0)
     AWQTooltip:Show()
+
+    if itemLink then
+        AWQItemTooltip:SetOwner(AWQTooltip, "ANCHOR_NONE")
+        AWQItemTooltip:ClearAllPoints()
+        AWQItemTooltip:SetPoint("TOPLEFT", AWQTooltip, "BOTTOMLEFT", 0, -4)
+        AWQItemTooltip:SetHyperlink(itemLink)
+        AWQItemTooltip:Show()
+    else
+        AWQItemTooltip:Hide()
+    end
 end
 
 function QuestFrameModule.Tooltip_ShowSimple(anchor, text, color)
@@ -71,6 +81,7 @@ end
 
 function QuestFrameModule:Tooltip_Hide()
     AWQTooltip:Hide()
+    AWQItemTooltip:Hide()
 end
 
 --endregion
@@ -78,6 +89,8 @@ end
 --region Tooltip Content
 
 function QuestFrameModule.Tooltip_AddRewards(questID)
+    local rewardItemLink = nil
+
     local baseXp = GetQuestLogRewardXP(questID)
     if baseXp and baseXp > 0 then
         AddLine(BONUS_OBJECTIVE_EXPERIENCE_FORMAT:format(baseXp), HIGHLIGHT_FONT_COLOR)
@@ -116,6 +129,8 @@ function QuestFrameModule.Tooltip_AddRewards(questID)
     if numQuestRewards and numQuestRewards > 0 then
         local itemName, itemTexture, quantity, quality = GetQuestLogRewardInfo(1, questID)
         if itemName and itemTexture then
+            rewardItemLink = GetQuestLogItemLink("reward", 1, questID)
+
             local text
             if quantity and quantity > 1 then
                 text = BONUS_OBJECTIVE_REWARD_WITH_COUNT_FORMAT:format(itemTexture, quantity, itemName)
@@ -133,6 +148,8 @@ function QuestFrameModule.Tooltip_AddRewards(questID)
         AddLine(" ")
         AddLine(QUEST_REWARDS_CONTAINS_ONE_TIME_REP_BONUS, QUEST_REWARD_CONTEXT_FONT_COLOR)
     end
+
+    return rewardItemLink
 end
 
 function QuestFrameModule.Tooltip_BuildSafe(self)
@@ -191,8 +208,8 @@ function QuestFrameModule.Tooltip_BuildSafe(self)
     AddLine(" ")
     AddLine(QUEST_REWARDS)
 
-    QuestFrameModule.Tooltip_AddRewards(questID)
-    QuestFrameModule.Tooltip_Show(self)
+    local rewardItemLink = QuestFrameModule.Tooltip_AddRewards(questID)
+    QuestFrameModule.Tooltip_Show(self, rewardItemLink)
 end
 
 --endregion
