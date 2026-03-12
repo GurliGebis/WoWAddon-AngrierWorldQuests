@@ -34,6 +34,8 @@ local ConfigModule = AngrierWorldQuests:GetModule("ConfigModule")
 
 local function WorkaroundMapTaints()
     -- Code copied from hack from Kalies Tracker, which is based on the original Blizzard_MapCanvas.lua code.
+    -- The entire pin acquisition runs inside securecallfunction to prevent addon taint from propagating
+    -- into Blizzard tooltip/widget code when script handlers fire on the acquired pins.
     local function OnPinReleased(pinPool, pin)
 		local map = pin:GetMap();
 		if map then
@@ -53,7 +55,7 @@ local function WorkaroundMapTaints()
         end
     end
 
-    function WorldMapFrame:AcquirePin(pinTemplate, ...)
+    local function AcquirePinSecure(self, pinTemplate, ...)
         if not self.pinPools[pinTemplate] then
             local pinTemplateType = self:GetPinTemplateType(pinTemplate);
             self.pinPools[pinTemplate] = CreateFramePool(pinTemplateType, self:GetCanvas(), pinTemplate, OnPinReleased);
@@ -69,8 +71,8 @@ local function WorkaroundMapTaints()
             local isMouseMotionEnabled = pin:IsMouseMotionEnabled();
 
             if isMouseClickEnabled then
-                pin:SetScript("OnMouseUp", function(self, ...) securecallfunction(OnPinMouseUp, self, ...) end);
-                pin:SetScript("OnMouseDown", function(self, ...) securecallfunction(self.OnMouseDown, self, ...) end);
+                pin:SetScript("OnMouseUp", OnPinMouseUp);
+                pin:SetScript("OnMouseDown", pin.OnMouseDown);
 
                 -- Prevent OnClick handlers from being run twice, once a frame is in the mapCanvas ecosystem it needs
                 -- to process mouse events only via the map system.
@@ -85,8 +87,8 @@ local function WorkaroundMapTaints()
                     assert(pin:GetScript("OnEnter") == nil);
                     assert(pin:GetScript("OnLeave") == nil);
                 end
-                pin:SetScript("OnEnter", function(self, ...) securecallfunction(self.OnMouseEnter, self, ...) end);
-                pin:SetScript("OnLeave", function(self, ...) securecallfunction(self.OnMouseLeave, self, ...) end);
+                pin:SetScript("OnEnter", pin.OnMouseEnter);
+                pin:SetScript("OnLeave", pin.OnMouseLeave);
             end
 
             pin:SetMouseClickEnabled(isMouseClickEnabled);
@@ -106,6 +108,10 @@ local function WorkaroundMapTaints()
 		self:RegisterPin(pin);
 
         return pin;
+    end
+
+    function WorldMapFrame:AcquirePin(pinTemplate, ...)
+        return securecallfunction(AcquirePinSecure, self, pinTemplate, ...)
     end
 end
 
