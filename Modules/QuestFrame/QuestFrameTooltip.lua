@@ -57,6 +57,10 @@ end
 --region Tooltip Show/Hide
 
 function QuestFrameModule.Tooltip_Show(anchor, itemLink)
+    if InCombatLockdown() then
+        return
+    end
+
     AWQTooltip:ClearAllPoints()
     AWQTooltip:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, 0)
     AWQTooltip:Show()
@@ -73,6 +77,10 @@ function QuestFrameModule.Tooltip_Show(anchor, itemLink)
 end
 
 function QuestFrameModule.Tooltip_ShowSimple(anchor, text, color)
+    if InCombatLockdown() then
+        return
+    end
+
     AWQTooltip:SetOwner(UIParent, "ANCHOR_NONE")
     AWQTooltip:ClearLines()
     AddLine(text, color)
@@ -153,6 +161,10 @@ function QuestFrameModule.Tooltip_AddRewards(questID)
 end
 
 function QuestFrameModule.Tooltip_BuildSafe(self)
+    if InCombatLockdown() then
+        return
+    end
+
     local questID = self.questID
     if not questID then
         return

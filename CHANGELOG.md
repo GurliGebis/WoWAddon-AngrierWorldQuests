@@ -1,5 +1,6 @@
 # 12.0.1-20260312-1
 * Wrap entire workaround inside securecallfunction.
+* Disable tooltips when in combat.
 
 # 12.0.1-20260311-2
 * Rework tooltip to use custom tooltip that inherits GameTooltip.
