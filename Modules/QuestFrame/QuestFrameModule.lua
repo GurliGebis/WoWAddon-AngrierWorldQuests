@@ -1064,6 +1064,42 @@ do
         end)
     end
 
+    function QuestFrameModule:ApplyWorkarounds()
+        -- Override QuestUtil.TrackWorldQuest/UntrackWorldQuest to remove the
+        -- ObjectiveTrackerManager:UpdateAll() call that Blizzard's code calls.
+        -- When called from addon code the taint propagates into the objective tracker,
+        -- blocking protected actions like UseQuestLogSpecialItem(). See issue #67.
+        do
+            local lastTrackedQuestID = nil
+
+            function QuestUtil.TrackWorldQuest(questID, watchType)
+                if C_QuestLog.AddWorldQuestWatch(questID, watchType) then
+                    if lastTrackedQuestID and lastTrackedQuestID ~= questID then
+                        if C_QuestLog.GetQuestWatchType(lastTrackedQuestID) ~= Enum.QuestWatchType.Manual and watchType == Enum.QuestWatchType.Manual then
+                            C_QuestLog.AddWorldQuestWatch(lastTrackedQuestID, Enum.QuestWatchType.Manual); -- Promote to manual watch
+                        end
+                    end
+                    lastTrackedQuestID = questID;
+                end
+
+                if watchType == Enum.QuestWatchType.Automatic then
+                    local forceAllowTasks = true;
+                    QuestUtil.CheckAutoSuperTrackQuest(questID, forceAllowTasks);
+                end
+            end
+
+            function QuestUtil.UntrackWorldQuest(questID)
+                if C_QuestLog.RemoveWorldQuestWatch(questID) then
+                    if lastTrackedQuestID == questID then
+                        lastTrackedQuestID = nil;
+                    end
+                end
+                -- Don't call ObjectiveTrackerManager:UpdateAll() here, see issue #67.
+                --ObjectiveTrackerManager:UpdateAll();
+            end
+        end
+    end
+
     function QuestFrameModule:RegisterCallbacks()
         ConfigModule:RegisterCallback("showAtTop", function()
             QuestFrameModule:RequestQuestLogUpdate()
@@ -1080,6 +1116,7 @@ do
 
     function QuestFrameModule:OnEnable()
         self:OverrideShouldShowQuest()
+        self:ApplyWorkarounds()
 
         titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
         hooksecurefunc("QuestLogQuests_Update", function()

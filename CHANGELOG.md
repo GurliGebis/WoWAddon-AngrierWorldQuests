@@ -1,3 +1,6 @@
+# 12.0.1-20260314-1
+* Remove broken workaround and relocate QuestUtil.TrackWorldQuest workaround.
+
 # 12.0.1-20260312-1
 * Wrap entire workaround inside securecallfunction.
 * Disable tooltips when in combat.
