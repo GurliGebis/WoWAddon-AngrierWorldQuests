@@ -1,6 +1,7 @@
 # 12.0.1-20260314-1
 * Remove broken workaround and relocate QuestUtil.TrackWorldQuest workaround.
 * Add to Blizzard filter menu.
+* Rework pin filtering.
 
 # 12.0.1-20260312-1
 * Wrap entire workaround inside securecallfunction.

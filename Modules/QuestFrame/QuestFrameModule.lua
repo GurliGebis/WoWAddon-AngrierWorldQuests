@@ -46,6 +46,7 @@ local fullRefreshPending = false
 local fullRefreshDirty = false
 local fullRefreshRetryCount = 0
 local fullRefreshReason
+local addonAddedPins = {}
 
 local function DebugLog(message)
     if not ConfigModule:Get("enableDebugging") then
@@ -1004,57 +1005,177 @@ do
         return nil
     end
 
-    local function ShouldShowQuest(self, info)
-        if self:IsQuestSuppressed(info.questID) then
-            return false;
+    local function PostProcessWorldQuestPins(dp)
+        local map = dp:GetMap()
+
+        if not map then
+            return
         end
 
-        if self.focusedQuestID then
-            return C_QuestLog.IsQuestCalling(self.focusedQuestID) and self:ShouldSupertrackHighlightInfo(info.questID);
-        end
+        local mapID = map:GetMapID()
 
-        local mapID = self:GetMap():GetMapID()
+        -- Cache configuration values
+        local hideFilteredPOI = ConfigModule:Get("hideFilteredPOI")
+        local hideUntrackedPOI = ConfigModule:Get("hideUntrackedPOI")
+        local showHoveredPOI = ConfigModule:Get("showHoveredPOI")
+        local showContinentPOI = ConfigModule:Get("showContinentPOI")
 
-        if ConfigModule:Get("showHoveredPOI") and hoveredQuestID == info.questID then
-            return true
-        end
-
-        if ConfigModule:Get("hideFilteredPOI") then
-            if DataModule:IsQuestFiltered(info, mapID) then
-                return false
+        -- Returns true if a quest should be hidden based on the current filter and
+        -- tracking settings. This is shared between hiding existing pins (Phase 1)
+        -- and deciding whether to add new child-zone pins (Phase 2).
+        local function ShouldFilterQuest(info)
+            if hideFilteredPOI then
+                if DataModule:IsQuestFiltered(info, mapID) then
+                    return true
+                end
             end
+
+            if hideUntrackedPOI then
+                if not WorldMap_IsWorldQuestEffectivelyTracked(info.questID) then
+                    return true
+                end
+            end
+
+            return false
         end
 
-        if ConfigModule:Get("hideUntrackedPOI") then
-            if not (WorldMap_IsWorldQuestEffectivelyTracked(info.questID)) then
-                return false
+        -- Adds a world quest pin via the data provider and records it so it can be
+        -- cleaned up on the next refresh (Phase 0).
+        local function AddTrackedWorldQuestPin(info)
+            local pin = dp:AddWorldQuest(info)
+
+            if pin then
+                -- Translate pin position from child zone to continent coordinates
+                local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
+                local continentID, worldPosition = C_Map.GetWorldPosFromMapPos(info.mapID, { x = x, y = y })
+                local translatedPos = select(2, C_Map.GetMapPosFromWorldPos(continentID, worldPosition, mapID))
+
+                if translatedPos then
+                    pin:SetPosition(translatedPos:GetXY())
+                end
+
+                table.insert(addonAddedPins, pin)
             end
+
+            return pin
+        end
+
+        -- Collects quest info tables from all child zones of the given continent
+        -- map, excluding the continent map itself.  Returns a flat list.
+        local function GetChildMapQuests()
+            local quests = {}
+            local childMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
+
+            for mID in pairs(childMapIDs) do
+                if mID ~= mapID then
+                    local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
+                    if taskInfo then
+                        for _, info in ipairs(taskInfo) do
+                            table.insert(quests, info)
+                        end
+                    end
+                end
+            end
+
+            return quests
         end
 
         local mapInfo = C_Map.GetMapInfo(mapID)
+        local pinTemplate = dp.GetPinTemplate and dp:GetPinTemplate() or dp.pinTemplate
 
-        if ConfigModule:Get("showContinentPOI") and mapInfo.mapType == Enum.UIMapType.Continent then
-            return mapID == info.mapID or (DataModule:GetContentMapIDFromMapID(info.mapID) == mapID)
-        else
-            return mapID == info.mapID
+        if not pinTemplate or not map.pinPools or not map.pinPools[pinTemplate] then
+            return
+        end
+
+        -- Phase 0: Remove any pins we previously added (from Phase 2 of a prior
+        -- refresh or a different map). This ensures stale addon-added pins don't
+        -- persist across map changes.
+        for _, pin in ipairs(addonAddedPins) do
+            map:RemovePin(pin)
+        end
+        wipe(addonAddedPins)
+
+        -- Phase 1: Hide pins that our filter settings reject
+        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+            if pin.questID and C_QuestLog.IsWorldQuest(pin.questID) then
+                local shouldHide = ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID })
+
+                -- Always show the hovered quest even if it would be filtered
+                if showHoveredPOI and hoveredQuestID == pin.questID then
+                    shouldHide = false
+                end
+
+                if shouldHide then
+                    pin:Hide()
+                else
+                    pin:Show()
+                end
+            end
+        end
+
+        -- Phase 2: Add world quest pins from child zones on continent maps
+        if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent then
+            local childQuests = GetChildMapQuests()
+
+            if showContinentPOI then
+                -- Collect already-shown questIDs to avoid duplicates
+                local shownQuests = {}
+                for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                    if pin.questID then
+                        shownQuests[pin.questID] = true
+                    end
+                end
+
+                for _, info in ipairs(childQuests) do
+                    if not shownQuests[info.questID]
+                        and HaveQuestData(info.questID)
+                        and QuestUtils_IsQuestWorldQuest(info.questID)
+                        and WorldMap_DoesWorldQuestInfoPassFilters(info)
+                        and DataModule:GetContentMapIDFromMapID(info.mapID) == mapID
+                        and not ShouldFilterQuest(info) then
+
+                        AddTrackedWorldQuestPin(info)
+                        shownQuests[info.questID] = true
+                    end
+                end
+            end
+
+            -- Ensure the supertracked quest is visible on continent maps
+            -- even when showContinentPOI is disabled (matches original ShouldMapShowQuest behavior)
+            local superTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID()
+            if superTrackedQuestID and superTrackedQuestID > 0 then
+                local hasPin = false
+                for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                    if pin.questID == superTrackedQuestID then
+                        hasPin = true
+                        break
+                    end
+                end
+
+                if not hasPin and QuestUtils_IsQuestWorldQuest(superTrackedQuestID) then
+                    for _, info in ipairs(childQuests) do
+                        if info.questID == superTrackedQuestID then
+                            AddTrackedWorldQuestPin(info)
+                            break
+                        end
+                    end
+                end
+            end
         end
     end
 
-    local function ShouldMapShowQuest(self, mapID, questInfo)
-        local mapInfo = C_Map.GetMapInfo(mapID);
-        if questInfo.questID == C_SuperTrack.GetSuperTrackedQuestID() and mapInfo.mapType == Enum.UIMapType.Continent then
-            return true;
-        end
-        return false;
-    end
-
-    function QuestFrameModule:OverrideShouldShowQuest()
+    function QuestFrameModule:InitializeProvider()
         local dp = GetDataProvider()
 
         if dp ~= nil then
             dataProvider = dp
-            dataProvider.ShouldShowQuest = ShouldShowQuest
-            dataProvider.ShouldMapShowQuest = ShouldMapShowQuest
+
+            -- Use hooksecurefunc to post-process pins after Blizzard's untainted RefreshAllData completes.
+            -- This keeps the data provider instance clean so taint doesn't propagate to other data providers
+            -- (AreaPOI, etc.) via secureexecuterange in RefreshAllDataProviders.
+            hooksecurefunc(dataProvider, "RefreshAllData", function(self)
+                PostProcessWorldQuestPins(self)
+            end)
         end
     end
 
@@ -1202,12 +1323,19 @@ do
     end
 
     function QuestFrameModule:OnEnable()
-        self:OverrideShouldShowQuest()
+        self:InitializeProvider()
         self:ApplyWorkarounds()
         self:ExtendMapMenu()
 
         titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
         hooksecurefunc("QuestLogQuests_Update", function()
+            self:RequestQuestLogUpdate()
+        end)
+
+        -- Refresh the quest list when the user navigates between maps
+        -- (e.g. right-clicking to zoom into a zone) so stale entries from
+        -- the previous map are removed and the correct quests are shown.
+        hooksecurefunc(WorldMapFrame, "OnMapChanged", function()
             self:RequestQuestLogUpdate()
         end)
 
@@ -1281,5 +1409,11 @@ function QuestFrameModule:RequestFullRefresh(reason)
 
         DebugLog(string.format("Applying full refresh (%s)", reasonText))
         SafeCall(QuestLogQuests_Update)
+
+        -- Also refresh the world quest data provider so our post-process hook
+        -- re-applies pin filtering/visibility with the updated settings.
+        if dataProvider and dataProvider.RefreshAllData then
+            dataProvider:RefreshAllData()
+        end
     end)
 end
