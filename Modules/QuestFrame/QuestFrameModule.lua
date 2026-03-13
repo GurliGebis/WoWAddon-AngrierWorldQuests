@@ -1056,12 +1056,6 @@ do
             dataProvider.ShouldShowQuest = ShouldShowQuest
             dataProvider.ShouldMapShowQuest = ShouldMapShowQuest
         end
-
-        Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(_, rootDescription, _)
-            rootDescription:AddMenuResponseCallback(function()
-                QuestFrameModule:RequestFullRefresh("MENU_WORLD_MAP_TRACKING")
-            end)
-        end)
     end
 
     function QuestFrameModule:ApplyWorkarounds()
@@ -1100,6 +1094,99 @@ do
         end
     end
 
+    function QuestFrameModule:ExtendMapMenu()
+        Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(_, rootDescription, _)
+            rootDescription:AddMenuResponseCallback(function()
+                QuestFrameModule:RequestFullRefresh("MENU_WORLD_MAP_TRACKING")
+            end)
+
+            -- Add our filters as a submenu below Blizzard's tracking options
+            rootDescription:CreateDivider()
+            local awqMenu = rootDescription:CreateButton(AngrierWorldQuests.Name)
+
+            local mapID = QuestMapFrame and QuestMapFrame:GetParent():GetMapID()
+
+            -- Reward/type filters
+            awqMenu:CreateTitle(TRACKER_FILTER_QUESTS or FILTERS)
+
+            for _, optionKey in ipairs(ConfigModule.FiltersOrder) do
+                if optionKey ~= "SORT" then
+                    local filter = ConfigModule.Filters[optionKey]
+
+                    -- Skip filters not relevant to the current map
+                    if not ConfigModule:GetFilterDisabled(optionKey) and (not mapID or DataModule:IsFilterOnCorrectMap(optionKey, mapID)) then
+                        local filterButton = awqMenu:CreateCheckbox(
+                            filter.name,
+                            function() return ConfigModule:GetFilter(optionKey) end,
+                            function()
+                                if IsShiftKeyDown() then
+                                    ConfigModule:ToggleFilter(optionKey)
+                                else
+                                    if ConfigModule:IsOnlyFilter(optionKey) then
+                                        ConfigModule:SetNoFilter()
+                                    else
+                                        ConfigModule:SetOnlyFilter(optionKey)
+                                    end
+                                end
+                            end
+                        )
+
+                        if filter.icon then
+                            filterButton:AddInitializer(function(button)
+                                local tex = button:AttachTexture()
+                                tex:SetTexture(filter.icon)
+                                tex:SetSize(16, 16)
+                                tex:SetPoint("RIGHT")
+                            end)
+                        end
+                    end
+                end
+            end
+
+            -- Sort options
+            awqMenu:CreateDivider()
+            awqMenu:CreateTitle(RAID_FRAME_SORT_LABEL)
+
+            for _, sortIndex in ipairs(ConfigModule.SortOrder) do
+                awqMenu:CreateRadio(
+                    L["config_sortMethod_" .. sortIndex],
+                    function() return ConfigModule:Get("sortMethod") == sortIndex end,
+                    function()
+                        ConfigModule:Set("sortMethod", sortIndex)
+                    end
+                )
+            end
+
+            -- Display options
+            awqMenu:CreateDivider()
+            awqMenu:CreateTitle(DISPLAY_OPTIONS or OPTIONS)
+
+            awqMenu:CreateCheckbox(
+                L["config_hideFilteredPOI"] or "Hide Filtered POI",
+                function() return ConfigModule:Get("hideFilteredPOI") end,
+                function() ConfigModule:Set("hideFilteredPOI", tostring(not ConfigModule:Get("hideFilteredPOI"))) end
+            )
+
+            awqMenu:CreateCheckbox(
+                L["config_hideUntrackedPOI"] or "Hide Untracked POI",
+                function() return ConfigModule:Get("hideUntrackedPOI") end,
+                function() ConfigModule:Set("hideUntrackedPOI", tostring(not ConfigModule:Get("hideUntrackedPOI"))) end
+            )
+
+            awqMenu:CreateCheckbox(
+                L["config_showContinentPOI"] or "Show Continent POI",
+                function() return ConfigModule:Get("showContinentPOI") end,
+                function() ConfigModule:Set("showContinentPOI", tostring(not ConfigModule:Get("showContinentPOI"))) end
+            )
+
+            awqMenu:CreateCheckbox(
+                L["config_onlyCurrentZone"] or "Only Current Zone",
+                function() return ConfigModule:Get("onlyCurrentZone") end,
+                function() ConfigModule:Set("onlyCurrentZone", tostring(not ConfigModule:Get("onlyCurrentZone"))) end
+            )
+        end)
+    end
+
     function QuestFrameModule:RegisterCallbacks()
         ConfigModule:RegisterCallback("showAtTop", function()
             QuestFrameModule:RequestQuestLogUpdate()
@@ -1117,6 +1204,7 @@ do
     function QuestFrameModule:OnEnable()
         self:OverrideShouldShowQuest()
         self:ApplyWorkarounds()
+        self:ExtendMapMenu()
 
         titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
         hooksecurefunc("QuestLogQuests_Update", function()
