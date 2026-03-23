@@ -1,3 +1,7 @@
+# 12.0.1-20260323-1
+* Revert tooltip back to custom tooltip instead of inheriting GameTooltip.
+* Removed item reward tooltip on hover, since it causes taints.
+
 # 12.0.1-20260314-1
 * Remove broken workaround and relocate QuestUtil.TrackWorldQuest workaround.
 * Add to Blizzard filter menu.
