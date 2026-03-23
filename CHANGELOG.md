@@ -1,3 +1,6 @@
+# 12.0.1-20260323-2
+* Wrap quest tracking/untracking in C_Timer calls to avoid taints.
+
 # 12.0.1-20260323-1
 * Revert tooltip back to custom tooltip instead of inheriting GameTooltip.
 * Removed item reward tooltip on hover, since it causes taints.

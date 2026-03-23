@@ -437,23 +437,24 @@ do
             elseif IsShiftKeyDown() then
                 if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and isSuperTracked) then
                     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
-                    QuestUtil.UntrackWorldQuest(self.questID);
+                    C_Timer.After(0, function() QuestUtil.UntrackWorldQuest(self.questID) end)
                 else
                     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
-                    QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual);
+                    C_Timer.After(0, function() QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual) end)
                 end
             else
                 if isSuperTracked then
                     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
-                    C_SuperTrack.SetSuperTrackedQuestID(0);
+                    C_Timer.After(0, function() C_SuperTrack.SetSuperTrackedQuestID(0) end)
                 else
                     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+                    C_Timer.After(0, function()
+                        if watchType ~= Enum.QuestWatchType.Manual then
+                            QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic);
+                        end
 
-                    if watchType ~= Enum.QuestWatchType.Manual then
-                        QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic);
-                    end
-
-                    C_SuperTrack.SetSuperTrackedQuestID(self.questID);
+                        C_SuperTrack.SetSuperTrackedQuestID(self.questID);
+                    end)
                 end
             end
         end
@@ -463,9 +464,9 @@ do
         local watchType = C_QuestLog.GetQuestWatchType(self.questID)
 
         if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and C_SuperTrack.GetSuperTrackedQuestID() == self.questID) then
-            QuestUtil.UntrackWorldQuest(self.questID)
+            C_Timer.After(0, function() QuestUtil.UntrackWorldQuest(self.questID) end)
         else
-            QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual)
+            C_Timer.After(0, function() QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual) end)
         end
     end
 
