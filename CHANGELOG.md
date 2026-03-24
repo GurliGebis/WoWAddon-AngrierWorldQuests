@@ -1,3 +1,6 @@
+# 12.0.1-20260324-1
+* Disable map pin point refreshing when player is in combat.
+
 # 12.0.1-20260323-2
 * Wrap quest tracking/untracking in C_Timer calls to avoid taints.
 

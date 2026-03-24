@@ -29,7 +29,7 @@
 
 local addonName, _ = ...
 local AngrierWorldQuests = LibStub("AceAddon-3.0"):GetAddon(addonName)
-local QuestFrameModule = AngrierWorldQuests:NewModule("QuestFrameModule")
+local QuestFrameModule = AngrierWorldQuests:NewModule("QuestFrameModule", "AceConsole-3.0")
 local ConfigModule = AngrierWorldQuests:GetModule("ConfigModule")
 local DataModule = AngrierWorldQuests:GetModule("DataModule")
 
@@ -1006,11 +1006,24 @@ do
         return nil
     end
 
+    local printedLockdownMessage = false
+
     local function PostProcessWorldQuestPins(dp)
         local map = dp:GetMap()
 
         if not map then
             return
+        end
+
+        if InCombatLockdown and InCombatLockdown() then
+            if not printedLockdownMessage then
+                QuestFrameModule:Print(L["Skipping world quest pin update because player is in combat."])
+                printedLockdownMessage = true
+            end
+
+            return
+        else
+            printedLockdownMessage = false
         end
 
         local mapID = map:GetMapID()
