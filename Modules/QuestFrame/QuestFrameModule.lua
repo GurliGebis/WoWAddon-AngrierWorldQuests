@@ -90,6 +90,7 @@ do
         ITEMS = 5
     }
 
+    local awqContainer
     local headerButton
     local filterMenu
     local filterButtons = {}
@@ -326,7 +327,7 @@ do
     local function GetFilterButton(key)
         local index = ConfigModule.Filters[key].index
         if ( not filterButtons[index] ) then
-            local button = CreateFrame("Button", nil, QuestScrollFrame.Contents)
+            local button = CreateFrame("Button", nil, awqContainer)
             button.filter = key
 
             button:SetScript("OnEnter", FilterButton_OnEnter)
@@ -475,6 +476,8 @@ do
             return
         end
 
+        button:SetParent(awqContainer)
+
         button.questRewardTooltipStyle = TOOLTIP_QUEST_REWARDS_STYLE_WORLD_QUEST
         button.OnLegendPinMouseEnter = function() end
         button.OnLegendPinMouseLeave = function() end
@@ -559,8 +562,8 @@ do
             filterButtons[i]:Hide()
         end
 
-        if headerButton then
-            headerButton:Hide()
+        if awqContainer then
+            awqContainer:Hide()
         end
 
         QuestScrollFrame.Contents:Layout()
@@ -591,50 +594,15 @@ do
         local questsCollapsed = ConfigModule:Get("collapsed")
         local showAtTop = ConfigModule:Get("showAtTop")
 
-        local firstButton, storyButton, prevButton
-        local layoutIndex = showAtTop and 0 or 10000
-
-        local storyAchievementID = C_QuestLog.GetZoneStoryInfo(mapID)
-        if storyAchievementID then
-            storyButton = QuestScrollFrame.Contents.StoryHeader
-
-            if layoutIndex == 0 then
-                layoutIndex = storyButton.layoutIndex + 0.001;
-            end
+        if not showAtTop then
+            awqContainer.layoutIndex = 9999.5
         end
+        awqContainer:Show()
 
-        if showAtTop then
-            for header in QuestScrollFrame.headerFramePool:EnumerateActive() do
-                if header and (firstButton == nil or header.layoutIndex < firstButton.layoutIndex) then
-                    firstButton = header
-                    layoutIndex = firstButton.layoutIndex - 1 + 0.001
-                end
-            end
+        local needsReposition = showAtTop and not awqContainer.layoutIndex
 
-            -- if no storyheader and no quests, stay on bottom
-            if layoutIndex == 0 then
-                layoutIndex = 10000
-            end
-        end
-
-        if not headerButton then
-            headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", QuestScrollFrame.Contents, "QuestLogHeaderTemplate")
-            headerButton:SetScript("OnClick", HeaderButton_OnClick)
-            headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
-            headerButton.topPadding = 6
-            headerButton.titleFramePool = titleFramePool
-        end
-
-        if storyButton then
-            headerButton:SetPoint("TOPLEFT", storyButton, "BOTTOMLEFT", 0, 0)
-        else
-            headerButton:SetPoint("TOPLEFT", 1, -6)
-        end
-
-        headerButton.layoutIndex = layoutIndex
-        layoutIndex = layoutIndex + 0.001
         headerButton:Show()
-        prevButton = headerButton
+        local prevButton = headerButton
 
         local usedButtons = {}
         local filtersOwnRow = false
@@ -670,7 +638,7 @@ do
                         filterButton:SetPoint("RIGHT", prevFilter, "LEFT", 5, 0)
                         filterButton:SetPoint("TOP", prevButton, "TOP", 0, 2)
                     else
-                        filterButton:SetPoint("RIGHT", prevButton.ButtonText, 22, 0)
+                        filterButton:SetPoint("LEFT", prevButton.CollapseButton, "LEFT", -22, 0)
                         filterButton:SetPoint("TOP", prevButton, "TOP", 0, 2)
                     end
 
@@ -729,11 +697,14 @@ do
 
             table.sort(usedButtons, QuestSorter)
 
-            for _, button in ipairs(usedButtons) do
-                button.layoutIndex = layoutIndex
-                layoutIndex = layoutIndex + 0.001
+            for i, button in ipairs(usedButtons) do
+                -- layoutIndex starts at 2 (headerButton is 1); all addon-owned integers.
+                button.layoutIndex = i + 1
+
+                -- Add bottom padding only on the last button so there is a small
+                -- gap between the world quests section and whatever follows it.
+                button.bottomPadding = (i == #usedButtons) and 6 or nil
                 button:Show()
-                prevButton = button
 
                 if hoveredQuestID == button.questID then
                     QuestButton_OnEnter(button)
@@ -742,11 +713,23 @@ do
         end
 
         headerButton.CollapseButton:UpdateCollapsedState(ConfigModule:Get("collapsed"))
-        headerButton.CollapseButton.layoutIndex = layoutIndex
-        layoutIndex = layoutIndex + 0.001
         headerButton.CollapseButton:Show()
 
-        QuestScrollFrame.Contents:Layout()
+        if needsReposition then
+            -- awqContainer wasn't shown when QuestLogQuests_Update ran, so the hook
+            -- couldn't assign a real layoutIndex. Clear it, re-run QuestLogQuests_Update
+            -- so the hook fires with awqContainer shown and assigns the correct
+            -- separator + 1 index. If the hook still doesn't fire (no campaign quests /
+            -- no separator), fall back to 0.5 so the container sorts to the very top.
+            awqContainer.layoutIndex = nil
+            SafeCall(QuestLogQuests_Update)
+
+            if not awqContainer.layoutIndex then
+                awqContainer.layoutIndex = 0.5
+            end
+        else
+            QuestScrollFrame.Contents:Layout()
+        end
     end
 
     function QuestFrameModule:QuestLog_AddQuestButton(questInfo, searchBoxText)
@@ -928,6 +911,27 @@ do
         button:Show()
 
         return button
+    end
+
+    function QuestFrameModule:InitQuestLogFrames()
+        awqContainer = CreateFrame("Frame", "AngrierWorldQuestsContainer", QuestScrollFrame.Contents, "VerticalLayoutFrame")
+        awqContainer.fixedWidth = QuestScrollFrame.Contents:GetWidth()
+        awqContainer:Hide()
+
+        headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", awqContainer, "QuestLogHeaderTemplate")
+        headerButton:SetScript("OnClick", HeaderButton_OnClick)
+        headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
+        headerButton.topPadding = 6
+        headerButton.titleFramePool = titleFramePool
+        headerButton.layoutIndex = 1
+
+        hooksecurefunc(QuestMapFrame, "SetFrameLayoutIndex", function(mapFrame, frame)
+            if awqContainer:IsShown()
+                    and ConfigModule:Get("showAtTop")
+                    and frame == QuestScrollFrame.Contents.Separator then
+                mapFrame:SetFrameLayoutIndex(awqContainer)
+            end
+        end)
     end
 end
 --endregion
@@ -1342,6 +1346,13 @@ do
         self:ExtendMapMenu()
 
         titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
+
+        -- Create awqContainer and headerButton inside the QuestLog upvalue scope,
+        -- and register the SetFrameLayoutIndex hook there too (the hook closure must
+        -- capture awqContainer from that scope). Must happen after titleFramePool is
+        -- created (headerButton references it).
+        self:InitQuestLogFrames()
+
         hooksecurefunc("QuestLogQuests_Update", function()
             self:RequestQuestLogUpdate()
         end)

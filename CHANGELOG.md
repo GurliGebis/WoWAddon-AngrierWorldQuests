@@ -1,3 +1,6 @@
+# 12.0.1-20260326-1
+* Rewrite Quest Log list to use separate container frame.
+
 # 12.0.1-20260324-1
 * Disable map pin point refreshing when player is in combat.
 
