@@ -916,6 +916,7 @@ do
     function QuestFrameModule:InitQuestLogFrames()
         awqContainer = CreateFrame("Frame", "AngrierWorldQuestsContainer", QuestScrollFrame.Contents, "VerticalLayoutFrame")
         awqContainer.fixedWidth = QuestScrollFrame.Contents:GetWidth()
+        awqContainer.bottomPadding = 2
         awqContainer:Hide()
 
         headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", awqContainer, "QuestLogHeaderTemplate")
