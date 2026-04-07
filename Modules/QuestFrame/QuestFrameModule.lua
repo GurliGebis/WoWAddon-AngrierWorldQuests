@@ -609,7 +609,9 @@ do
 
         -- Always gather available world quests, even when collapsed, so we can
         -- hide the header entirely if there are no quests in the current zone.
+        -- When collapsed, just count quests without acquiring pool buttons.
         local addedQuests = {}
+        local questCount = 0
         local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
         local searchBoxText = QuestScrollFrame.SearchBox:GetText():lower()
 
@@ -623,11 +625,13 @@ do
                             local isFiltered = DataModule:IsQuestFiltered(info, mapID)
                             if not isFiltered then
                                 if addedQuests[info.questID] == nil then
-                                    local button = QuestFrameModule:QuestLog_AddQuestButton(info, searchBoxText)
-
-                                    if button ~= nil then
-                                        table.insert(usedButtons, button)
-                                        addedQuests[info.questID] = true
+                                    addedQuests[info.questID] = true
+                                    questCount = questCount + 1
+                                    if not questsCollapsed then
+                                        local button = QuestFrameModule:QuestLog_AddQuestButton(info, searchBoxText)
+                                        if button ~= nil then
+                                            table.insert(usedButtons, button)
+                                        end
                                     end
                                 end
                             end
@@ -637,7 +641,7 @@ do
             end
         end
 
-        if #usedButtons == 0 and ConfigModule:HasFilters() == false then
+        if questCount == 0 and ConfigModule:HasFilters() == false then
             -- No quests available and no active filters — hide the header entirely.
             QuestFrameModule:HideWorldQuestsHeader()
             return

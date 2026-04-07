@@ -1,3 +1,6 @@
+# 12.0.1-20260407-2
+* Fix problem with world quests shown when quest log is collapsed.
+
 # 12.0.1-20260407-1
 * Added icon to the addon list.
 * Fix padding below World Quest container in quest log.
