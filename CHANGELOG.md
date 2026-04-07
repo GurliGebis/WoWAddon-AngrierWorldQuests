@@ -1,6 +1,7 @@
 # 12.0.1-20260407-1
 * Added icon to the addon list.
 * Fix padding below World Quest container in quest log.
+* Fix hiding of header when no world quests is available.
 
 # 12.0.1-20260326-1
 * Rewrite Quest Log list to use separate container frame.

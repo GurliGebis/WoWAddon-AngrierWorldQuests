@@ -607,7 +607,44 @@ do
         local usedButtons = {}
         local filtersOwnRow = false
 
+        -- Always gather available world quests, even when collapsed, so we can
+        -- hide the header entirely if there are no quests in the current zone.
+        local addedQuests = {}
+        local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
+        local searchBoxText = QuestScrollFrame.SearchBox:GetText():lower()
+
+        for mID in pairs(displayMapIDs) do
+            local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
+
+            if taskInfo then
+                for _, info in ipairs(taskInfo) do
+                    if HaveQuestData(info.questID) and QuestUtils_IsQuestWorldQuest(info.questID) then
+                        if WorldMap_DoesWorldQuestInfoPassFilters(info) then
+                            local isFiltered = DataModule:IsQuestFiltered(info, mapID)
+                            if not isFiltered then
+                                if addedQuests[info.questID] == nil then
+                                    local button = QuestFrameModule:QuestLog_AddQuestButton(info, searchBoxText)
+
+                                    if button ~= nil then
+                                        table.insert(usedButtons, button)
+                                        addedQuests[info.questID] = true
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        if #usedButtons == 0 and ConfigModule:HasFilters() == false then
+            -- No quests available and no active filters — hide the header entirely.
+            QuestFrameModule:HideWorldQuestsHeader()
+            return
+        end
+
         if questsCollapsed then
+            -- Hide quest buttons (already released via titleFramePool:ReleaseAll) and filters.
             for i = 1, #filterButtons do
                 filterButtons[i]:Hide()
             end
@@ -653,35 +690,6 @@ do
                 end
             end
 
-            local addedQuests = {}
-            local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
-
-            local searchBoxText = QuestScrollFrame.SearchBox:GetText():lower()
-
-            for mID in pairs(displayMapIDs) do
-                local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
-
-                if taskInfo then
-                    for _, info in ipairs(taskInfo) do
-                        if HaveQuestData(info.questID) and QuestUtils_IsQuestWorldQuest(info.questID) then
-                            if WorldMap_DoesWorldQuestInfoPassFilters(info) then
-                                local isFiltered = DataModule:IsQuestFiltered(info, mapID)
-                                if not isFiltered then
-                                    if addedQuests[info.questID] == nil then
-                                        local button = QuestFrameModule:QuestLog_AddQuestButton(info, searchBoxText)
-
-                                        if button ~= nil then
-                                            table.insert(usedButtons, button)
-                                            addedQuests[info.questID] = true
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-
             if #usedButtons > 0 then
                 -- In the situation where the normal quest log is empty, but we have world quests.
                 -- We shouldn't show the empty quest log text.
@@ -689,10 +697,6 @@ do
 
                 -- We need to also make sure the "No search results" text is hidden.
                 QuestScrollFrame.NoSearchResultsText:Hide()
-            elseif ConfigModule:HasFilters() == false then
-                -- We should only hide the header, if no filters are active.
-                QuestFrameModule:HideWorldQuestsHeader()
-                return
             end
 
             table.sort(usedButtons, QuestSorter)
@@ -700,10 +704,6 @@ do
             for i, button in ipairs(usedButtons) do
                 -- layoutIndex starts at 2 (headerButton is 1); all addon-owned integers.
                 button.layoutIndex = i + 1
-
-                -- Add bottom padding only on the last button so there is a small
-                -- gap between the world quests section and whatever follows it.
-                button.bottomPadding = (i == #usedButtons) and 6 or nil
                 button:Show()
 
                 if hoveredQuestID == button.questID then
