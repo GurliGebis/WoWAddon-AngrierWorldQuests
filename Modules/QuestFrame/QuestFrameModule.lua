@@ -934,7 +934,13 @@ do
             if awqContainer:IsShown()
                     and ConfigModule:Get("showAtTop")
                     and frame == QuestScrollFrame.Contents.Separator then
-                mapFrame:SetFrameLayoutIndex(awqContainer)
+                -- Assign directly instead of calling mapFrame:SetFrameLayoutIndex(awqContainer),
+                -- which would write back to mapFrame.layoutIndex (a Blizzard-owned value) from
+                -- addon code, tainting it and cascading taints into LayoutFrame, UIWidgets,
+                -- GameTooltip, and QuestMapFrame layout calculations.
+                -- The post-hook fires after Blizzard has already set frame.layoutIndex, so
+                -- reading it here is safe. We place awqContainer just after the separator.
+                awqContainer.layoutIndex = frame.layoutIndex + 0.5
             end
         end)
     end
