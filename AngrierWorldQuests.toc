@@ -2,6 +2,7 @@
 ## Title: Angrier World Quests
 ## Version: @project-version@
 ## Notes: Adds World Quests to the quest list
+## IconTexture: Interface\Icons\Achievement_Quests_Completed_06
 ## Author: GurliGebis
 ## X-Category: Quests & Leveling
 ## X-Curse-Packaged-Version: @project-version@
