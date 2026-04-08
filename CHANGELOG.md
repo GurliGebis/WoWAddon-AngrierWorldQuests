@@ -1,5 +1,6 @@
 # 12.0.1-20260409-1
 * Rework dropdowns to use the builtin menu logic.
+* Relocate quest tag info cache and reward preload cache from QuestFrameModule to DataModule.
 
 # 12.0.1-20260408-2
 * Fix FACTION_ORDER_MIDNIGHT using hash table instead of array, causing Midnight faction filter to be empty.

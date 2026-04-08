@@ -40,7 +40,6 @@ local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 local dataProvider
 local hoveredQuestID
 local titleFramePool
-local rewardPreloadRequested = {}
 local listRefreshPending = false
 local fullRefreshPending = false
 local fullRefreshDirty = false
@@ -363,17 +362,8 @@ do
         return C_QuestLog.QuestContainsFirstTimeRepBonusForPlayer(questID)
     end
 
-    local questTagInfoCache = {}
-    function QuestFrameModule.GetCachedQuestTagInfo(questID)
-        if not questTagInfoCache[questID] then
-            questTagInfoCache[questID] = C_QuestLog.GetQuestTagInfo(questID)
-        end
-
-        return questTagInfoCache[questID]
-    end
-
     local function QuestButton_OnEnter(self)
-        local questTagInfo = QuestFrameModule.GetCachedQuestTagInfo(self.questID)
+        local questTagInfo = DataModule.GetCachedQuestTagInfo(self.questID)
 
         local color
 
@@ -392,7 +382,7 @@ do
     end
 
     local function QuestButton_OnLeave(self)
-        local questTagInfo = QuestFrameModule.GetCachedQuestTagInfo(self.questID)
+        local questTagInfo = DataModule.GetCachedQuestTagInfo(self.questID)
 
         local color
 
@@ -539,7 +529,7 @@ do
     end
 
     function QuestFrameModule:QuestLogClosed()
-        wipe(questTagInfoCache)
+        DataModule:ClearQuestTagInfoCache()
     end
 
     function QuestFrameModule:HideWorldQuestsHeader()
@@ -724,9 +714,9 @@ do
     function QuestFrameModule:QuestLog_AddQuestButton(questInfo, searchBoxText)
         local questID = questInfo.questID
         local title, factionID, _ = C_TaskQuest.GetQuestInfoByQuestID(questID)
-        local questTagInfo = QuestFrameModule.GetCachedQuestTagInfo(questID)
+        local questTagInfo = DataModule.GetCachedQuestTagInfo(questID)
         local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(questID)
-        QuestFrameModule:RequestRewardPreload(questID)
+        DataModule:RequestRewardPreload(questID)
 
         if (questTagInfo == nil) then
             return nil
@@ -1364,19 +1354,6 @@ do
     end
 end
 --endregion
-
-function QuestFrameModule:RequestRewardPreload(questID)
-    if not questID then
-        return
-    end
-
-    if rewardPreloadRequested[questID] then
-        return
-    end
-
-    rewardPreloadRequested[questID] = true
-    C_TaskQuest.RequestPreloadRewardData(questID)
-end
 
 function QuestFrameModule:RequestQuestLogUpdate()
     if listRefreshPending then

@@ -33,6 +33,7 @@ local DataModule = AngrierWorldQuests:NewModule("DataModule", "AceEvent-3.0")
 local ConfigModule = AngrierWorldQuests:GetModule("ConfigModule")
 
 local cachedItems = {}
+local questTagInfoCache = {}
 local rewardPreloadRequested = {}
 
 do
@@ -387,7 +388,7 @@ do
         local selectedFilters = ConfigModule:GetFilterTable()
 
         local _, factionID = C_TaskQuest.GetQuestInfoByQuestID(info.questID)
-        local questTagInfo = C_QuestLog.GetQuestTagInfo(info.questID)
+        local questTagInfo = DataModule.GetCachedQuestTagInfo(info.questID)
 
         if not questTagInfo then
             return -- fix for nil tag
@@ -395,10 +396,7 @@ do
 
         local tradeskillLineID = questTagInfo.tradeskillLineID
         local timeLeftMinutes = C_TaskQuest.GetQuestTimeLeftMinutes(info.questID)
-        if not rewardPreloadRequested[info.questID] then
-            rewardPreloadRequested[info.questID] = true
-            C_TaskQuest.RequestPreloadRewardData(info.questID)
-        end
+        DataModule:RequestRewardPreload(info.questID)
 
         local isQuestFiltered = hasFilters
 
@@ -592,17 +590,44 @@ do
     end
 end
 
+function DataModule.GetCachedQuestTagInfo(questID)
+    if not questTagInfoCache[questID] then
+        questTagInfoCache[questID] = C_QuestLog.GetQuestTagInfo(questID)
+    end
+
+    return questTagInfoCache[questID]
+end
+
+function DataModule:ClearQuestTagInfoCache()
+    wipe(questTagInfoCache)
+end
+
+function DataModule:RequestRewardPreload(questID)
+    if not questID then
+        return
+    end
+
+    if rewardPreloadRequested[questID] then
+        return
+    end
+
+    rewardPreloadRequested[questID] = true
+    C_TaskQuest.RequestPreloadRewardData(questID)
+end
+
 --region Initialization
 do
     function DataModule:QuestLogChanged(arg1)
         if arg1 == "player" then
             wipe(cachedItems)
+            wipe(questTagInfoCache)
             wipe(rewardPreloadRequested)
         end
     end
 
     function DataModule:EnteringWorld()
         wipe(cachedItems)
+        wipe(questTagInfoCache)
         wipe(rewardPreloadRequested)
     end
 
