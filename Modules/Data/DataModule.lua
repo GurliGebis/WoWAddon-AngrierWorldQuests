@@ -308,6 +308,8 @@ do
     function DataModule:IsFilterOnCorrectMap(filter, mapID)
         local expansion = DataModule:GetExpansionByMapID(mapID)
 
+        local has_value = _AngrierWorldQuests.has_value
+
         if expansion == _AngrierWorldQuests.Enums.Expansion.LEGION and has_value(FILTERS_LEGION, filter) then
             return true
         elseif expansion == _AngrierWorldQuests.Enums.Expansion.BFA and has_value(FILTERS_BFA, filter) then
