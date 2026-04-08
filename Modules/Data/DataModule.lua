@@ -463,7 +463,6 @@ do
             end
 
             if selectedFilters.ZONE then
-                local currentMapID = QuestMapFrame:GetParent():GetMapID()
                 local filterMapID = ConfigModule:Get("filterZone")
 
                 if filterMapID ~= 0 then
@@ -471,14 +470,14 @@ do
                         isQuestFiltered = false
                     end
                 else
-                    if info.mapID and info.mapID == currentMapID then
+                    if info.mapID and info.mapID == displayMapID then
                         isQuestFiltered = false
                     end
                 end
             end
 
             if selectedFilters.EMISSARY then
-                local mapID = QuestMapFrame:GetParent():GetMapID()
+                local mapID = displayMapID
 
                 if mapID == _AngrierWorldQuests.Constants.MAP_IDS.BROKENISLES then
                     mapID = _AngrierWorldQuests.Constants.MAP_IDS.DALARAN -- fix no emissary on broken isles continent map
