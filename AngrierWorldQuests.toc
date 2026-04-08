@@ -6,7 +6,7 @@
 ## Author: GurliGebis
 ## X-Category: Quests & Leveling
 ## X-Curse-Packaged-Version: @project-version@
-## X-Curse-Project-Name: Battle Pet Completionist
+## X-Curse-Project-Name: Angrier World Quests
 ## X-Curse-Project-ID: 426990
 ## Category-enUS: Quests
 ## Category-deDE: Quests
