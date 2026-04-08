@@ -333,11 +333,13 @@ do
             positiveMatch = true
         end
 
+        local rewardCurrencies = C_QuestLog.GetQuestRewardCurrencies(questID)
+
         for key, _ in pairs(selectedFilters) do
             local filter = ConfigModule.Filters[key]
             if filter.preset == _AngrierWorldQuests.Constants.FILTERS.CURRENCY then
                 hasCurrencyFilter = true
-                for k, currencyInfo in ipairs(C_QuestLog.GetQuestRewardCurrencies(questID)) do
+                for k, currencyInfo in ipairs(rewardCurrencies) do
                     if filter.currencyID == currencyInfo.currencyID then
                         positiveMatch = true
                     end
