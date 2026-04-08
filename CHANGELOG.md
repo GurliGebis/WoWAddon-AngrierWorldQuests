@@ -1,3 +1,6 @@
+# 12.0.1-20260408-2
+* Fix FACTION_ORDER_MIDNIGHT using hash table instead of array, causing Midnight faction filter to be empty.
+
 # 12.0.1-20260408-1
 * Fix tooltip taint caused by reading QuestScrollFrame.Contents:GetWidth() from addon code; use hardcoded width constant instead.
 

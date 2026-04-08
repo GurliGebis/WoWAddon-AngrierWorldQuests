@@ -177,10 +177,10 @@ do
     --region Midnight
     local CONTINENT_MIDNIGHT = 2537 -- Midnight main map
     local FACTION_ORDER_MIDNIGHT = {
-        [2696] = true, -- Amani Tribe
-        [2699] = true, -- The Singularity
-        [2704] = true, -- Hara'ti
-        [2710] = true, -- Silvermoon Court
+        2696, -- Amani Tribe
+        2699, -- The Singularity
+        2704, -- Hara'ti
+        2710, -- Silvermoon Court
     }
     local MAPS_MIDNIGHT = {
         [2395] = true, -- Eversong Woods
