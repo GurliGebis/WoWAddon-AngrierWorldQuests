@@ -249,7 +249,7 @@ do
         end
 
         local isThreat = C_QuestLog.IsThreatQuest(questID)
-        local numObjectives = self.numbObjectives or C_QuestLog.GetNumQuestObjectives(questID)
+        local numObjectives = self.numObjectives or C_QuestLog.GetNumQuestObjectives(questID)
         for objectiveIndex = 1, numObjectives do
             local objectiveText, _, finished = GetQuestObjectiveInfo(questID, objectiveIndex, false)
             if not (finished and isThreat) then

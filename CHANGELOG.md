@@ -1,3 +1,11 @@
+# 12.0.1-20260408-2
+* Fix FACTION_ORDER_MIDNIGHT using hash table instead of array, causing Midnight faction filter to be empty.
+* Fix typo reading self.numbObjectives instead of self.numObjectives in tooltip, causing cached value to never be used.
+* Fix X-Curse-Project-Name in TOC file from "Battle Pet Completionist" to "Angrier World Quests".
+* Fix has_value() leaking into global namespace; move to _AngrierWorldQuests table.
+* Move C_QuestLog.GetQuestRewardCurrencies call outside filter loop in IsQuestRewardFiltered.
+* Replace redundant QuestMapFrame:GetParent():GetMapID() calls with displayMapID parameter in IsQuestFiltered.
+
 # 12.0.1-20260408-1
 * Fix tooltip taint caused by reading QuestScrollFrame.Contents:GetWidth() from addon code; use hardcoded width constant instead.
 

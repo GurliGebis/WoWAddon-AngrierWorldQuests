@@ -27,7 +27,7 @@
     ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 ]]
 
-function has_value (tab, val)
+function _AngrierWorldQuests.has_value(tab, val)
     for index, value in ipairs(tab) do
         if value == val then
             return true

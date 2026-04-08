@@ -177,10 +177,10 @@ do
     --region Midnight
     local CONTINENT_MIDNIGHT = 2537 -- Midnight main map
     local FACTION_ORDER_MIDNIGHT = {
-        [2696] = true, -- Amani Tribe
-        [2699] = true, -- The Singularity
-        [2704] = true, -- Hara'ti
-        [2710] = true, -- Silvermoon Court
+        2696, -- Amani Tribe
+        2699, -- The Singularity
+        2704, -- Hara'ti
+        2710, -- Silvermoon Court
     }
     local MAPS_MIDNIGHT = {
         [2395] = true, -- Eversong Woods
@@ -308,6 +308,8 @@ do
     function DataModule:IsFilterOnCorrectMap(filter, mapID)
         local expansion = DataModule:GetExpansionByMapID(mapID)
 
+        local has_value = _AngrierWorldQuests.has_value
+
         if expansion == _AngrierWorldQuests.Enums.Expansion.LEGION and has_value(FILTERS_LEGION, filter) then
             return true
         elseif expansion == _AngrierWorldQuests.Enums.Expansion.BFA and has_value(FILTERS_BFA, filter) then
@@ -331,11 +333,13 @@ do
             positiveMatch = true
         end
 
+        local rewardCurrencies = C_QuestLog.GetQuestRewardCurrencies(questID)
+
         for key, _ in pairs(selectedFilters) do
             local filter = ConfigModule.Filters[key]
             if filter.preset == _AngrierWorldQuests.Constants.FILTERS.CURRENCY then
                 hasCurrencyFilter = true
-                for k, currencyInfo in ipairs(C_QuestLog.GetQuestRewardCurrencies(questID)) do
+                for k, currencyInfo in ipairs(rewardCurrencies) do
                     if filter.currencyID == currencyInfo.currencyID then
                         positiveMatch = true
                     end
@@ -459,7 +463,6 @@ do
             end
 
             if selectedFilters.ZONE then
-                local currentMapID = QuestMapFrame:GetParent():GetMapID()
                 local filterMapID = ConfigModule:Get("filterZone")
 
                 if filterMapID ~= 0 then
@@ -467,14 +470,14 @@ do
                         isQuestFiltered = false
                     end
                 else
-                    if info.mapID and info.mapID == currentMapID then
+                    if info.mapID and info.mapID == displayMapID then
                         isQuestFiltered = false
                     end
                 end
             end
 
             if selectedFilters.EMISSARY then
-                local mapID = QuestMapFrame:GetParent():GetMapID()
+                local mapID = displayMapID
 
                 if mapID == _AngrierWorldQuests.Constants.MAP_IDS.BROKENISLES then
                     mapID = _AngrierWorldQuests.Constants.MAP_IDS.DALARAN -- fix no emissary on broken isles continent map
