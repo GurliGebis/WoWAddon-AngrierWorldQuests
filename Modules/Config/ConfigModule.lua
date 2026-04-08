@@ -272,71 +272,51 @@ do
         end
     end
 
-    local function DropDown_OnClick(self, dropdown)
+    local function DropDown_SetSelected(dropdown, value)
         local key = dropdown.configKey
 
         if panelOriginalConfig[key] == nil then
             panelOriginalConfig[key] = ConfigModule:Get(key)
         end
 
-        ConfigModule:Set(key, self.value)
-
-        AWQ_UIDropDownMenu_SetSelectedValue( dropdown, self.value )
+        ConfigModule:Set(key, value)
     end
 
-    local function DropDown_Initialize(self)
-        local key = self.configKey
-        local selectedValue = AWQ_UIDropDownMenu_GetSelectedValue(self)
-        local info = AWQ_UIDropDownMenu_CreateInfo()
-        info.func = DropDown_OnClick
-        info.arg1 = self
+    local function DropDown_SetupMenu(dropdown, rootDescription)
+        local key = dropdown.configKey
+        local currentValue = ConfigModule:Get(key)
+
+        local function IsSelected(value) return value == currentValue end
+        local function SetSelected(value) DropDown_SetSelected(dropdown, value) end
 
         if key == 'timeFilterDuration' then
             for _, hours in ipairs(ConfigModule.Filters.TIME.values) do
-                info.text = string.format(FORMATED_HOURS, hours)
-                info.value = hours
-                if ( selectedValue == info.value ) then
-                    info.checked = 1
-                else
-                    info.checked = nil
-                end
-                AWQ_UIDropDownMenu_AddButton(info)
+                rootDescription:CreateRadio(string.format(FORMATED_HOURS, hours), IsSelected, SetSelected, hours)
             end
         elseif key == 'sortMethod' then
             for _, index in ipairs(ConfigModule.SortOrder) do
-                info.text = L["config_sortMethod_"..index]
-                info.value = index
-                if ( selectedValue == info.value ) then
-                    info.checked = 1
-                else
-                    info.checked = nil
-                end
-                AWQ_UIDropDownMenu_AddButton(info)
+                rootDescription:CreateRadio(L["config_sortMethod_"..index], IsSelected, SetSelected, index)
             end
         elseif key == 'lootUpgradesLevel' then
             for i, ilvl in ipairs(lootUpgradeLevelValues) do
+                local text
                 if L["config_lootUpgradesLevelValue"..i] ~= ("config_lootUpgradesLevelValue"..i) then
-                    info.text = L["config_lootUpgradesLevelValue"..i]
+                    text = L["config_lootUpgradesLevelValue"..i]
                 else
-                    info.text = format(L["config_lootUpgradesLevelValue"], ilvl)
+                    text = format(L["config_lootUpgradesLevelValue"], ilvl)
                 end
-                info.value = ilvl
-                if ( selectedValue == info.value ) then
-                    info.checked = 1
-                else
-                    info.checked = nil
-                end
-                AWQ_UIDropDownMenu_AddButton(info)
+                rootDescription:CreateRadio(text, IsSelected, SetSelected, ilvl)
             end
         end
     end
 
     local function DropDown_Create(self)
         DropDown_Index = DropDown_Index + 1
-        local dropdown = CreateFrame("Frame", addonName.."ConfigDropDown"..DropDown_Index, self, AWQ_UIDropDownMenuTemplate)
+        local dropdown = CreateFrame("DropdownButton", addonName.."ConfigDropDown"..DropDown_Index, self, "WowStyle1DropdownTemplate")
+        dropdown:SetWidth(180)
 
         local label = dropdown:CreateFontString(addonName.."ConfigDropLabel"..DropDown_Index, "BACKGROUND", "GameFontNormal")
-        label:SetPoint("BOTTOMLEFT", dropdown, "TOPLEFT", 16, 3)
+        label:SetPoint("BOTTOMLEFT", dropdown, "TOPLEFT", 0, 3)
         dropdown.Label = label
 
         return dropdown
@@ -409,8 +389,9 @@ do
                 dropdowns[i] = DropDown_Create(self)
                 dropdowns[i].Label:SetText( L["config_"..key] )
                 dropdowns[i].configKey = key
+                dropdowns[i]:SetupMenu(DropDown_SetupMenu)
                 if i == 1 then
-                    dropdowns[i]:SetPoint("TOPLEFT", checkboxes[#checkboxes], "BOTTOMLEFT", -13, -24)
+                    dropdowns[i]:SetPoint("TOPLEFT", checkboxes[#checkboxes], "BOTTOMLEFT", 0, -24)
                 else
                     dropdowns[i]:SetPoint("TOPLEFT", dropdowns[i-1], "BOTTOMLEFT", 0, -24)
                 end
@@ -446,8 +427,7 @@ do
         end
 
         for _, dropdown in ipairs(dropdowns) do
-            AWQ_UIDropDownMenu_Initialize(dropdown, DropDown_Initialize)
-            AWQ_UIDropDownMenu_SetSelectedValue(dropdown, ConfigModule:Get(dropdown.configKey))
+            dropdown:GenerateMenu()
         end
 
         for _, check in ipairs(filterCheckboxes) do

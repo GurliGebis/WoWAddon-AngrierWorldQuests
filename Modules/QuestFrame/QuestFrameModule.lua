@@ -92,7 +92,6 @@ do
 
     local awqContainer
     local headerButton
-    local filterMenu
     local filterButtons = {}
 
     local QuestButton_RarityColorTable = { [Enum.WorldQuestQuality.Common] = 0, [Enum.WorldQuestQuality.Rare] = 3, [Enum.WorldQuestQuality.Epic] = 10 }
@@ -107,113 +106,114 @@ do
         b = math.min(QUEST_REWARD_CONTEXT_FONT_COLOR.b + 0.15, 1)
     }
 
-    local function FilterMenu_OnClick(self, key)
-        if key == "EMISSARY" then
-            ConfigModule:Set("filterEmissary", self.value, true)
-        elseif key == "LOOT" then
-            ConfigModule:Set("filterLoot", self.value, true)
-        elseif key == "FACTION" then
-            ConfigModule:Set("filterFaction", self.value, true)
-        elseif key == "ZONE" then
-            ConfigModule:Set("filterZone", self.value, true)
-        elseif key == "TIME" then
-            ConfigModule:Set("filterTime", self.value, true)
+    local function FilterMenu_ApplySelection(filterKey, value)
+        if filterKey == "EMISSARY" then
+            ConfigModule:Set("filterEmissary", value, true)
+        elseif filterKey == "LOOT" then
+            ConfigModule:Set("filterLoot", value, true)
+        elseif filterKey == "FACTION" then
+            ConfigModule:Set("filterFaction", value, true)
+        elseif filterKey == "ZONE" then
+            ConfigModule:Set("filterZone", value, true)
+        elseif filterKey == "TIME" then
+            ConfigModule:Set("filterTime", value, true)
         end
 
-        if key == "SORT" then
-            ConfigModule:Set("sortMethod", self.value)
+        if filterKey == "SORT" then
+            ConfigModule:Set("sortMethod", value)
         elseif IsShiftKeyDown() then
-            ConfigModule:SetFilter(key, true)
+            ConfigModule:SetFilter(filterKey, true)
         else
-            ConfigModule:SetOnlyFilter(key)
+            ConfigModule:SetOnlyFilter(filterKey)
         end
     end
 
-    local function FilterMenu_Initialize(self, level)
-        local info = { func = FilterMenu_OnClick, arg1 = self.filter }
-        if self.filter == "EMISSARY" then
-            local value = ConfigModule:Get("filterEmissary")
-            if not C_QuestLog.IsOnQuest(value) then value = 0 end -- specific bounty not found, show all
+    local function FilterMenu_Generator(owner, rootDescription)
+        local filterKey = owner.filter
 
-            info.text = ALL
-            info.value = 0
-            info.checked = info.value == value
-            AWQ_UIDropDownMenu_AddButton(info, level)
+        if filterKey == "EMISSARY" then
+            local currentValue = ConfigModule:Get("filterEmissary")
+            if not C_QuestLog.IsOnQuest(currentValue) then currentValue = 0 end
+
+            local function IsSelected(value) return value == currentValue end
+            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+
+            rootDescription:CreateRadio(ALL, IsSelected, SetSelected, 0)
 
             local mapID = QuestMapFrame:GetParent():GetMapID()
-            if mapID == _AngrierWorldQuests.Constants.MAP_IDS.BROKENISLES then mapID = _AngrierWorldQuests.Constants.MAP_IDS.DALARAN end -- fix no emissary on broken isles continent map
+            if mapID == _AngrierWorldQuests.Constants.MAP_IDS.BROKENISLES then mapID = _AngrierWorldQuests.Constants.MAP_IDS.DALARAN end
             local bounties = C_QuestLog.GetBountiesForMapID(mapID)
             if bounties then
                 for _, bounty in ipairs(bounties) do
                     if not C_QuestLog.IsComplete(bounty.questID) then
-                        info.text =  C_QuestLog.GetTitleForQuestID(bounty.questID)
-                        info.icon = bounty.icon
-                        info.value = bounty.questID
-                        info.checked = info.value == value
-                        AWQ_UIDropDownMenu_AddButton(info, level)
+                        local radio = rootDescription:CreateRadio(
+                            C_QuestLog.GetTitleForQuestID(bounty.questID),
+                            IsSelected, SetSelected, bounty.questID
+                        )
+                        radio:AddInitializer(function(button)
+                            local tex = button:AttachTexture()
+                            tex:SetTexture(bounty.icon)
+                            tex:SetSize(16, 16)
+                            tex:SetPoint("RIGHT")
+                        end)
                     end
                 end
             end
-        elseif self.filter == "LOOT" then
-            local value = ConfigModule:Get("filterLoot")
-            if value == 0 then value = ConfigModule:Get("lootFilterUpgrades") and _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES or _AngrierWorldQuests.Constants.FILTERS.LOOT_ALL end
 
-            info.text = ALL
-            info.value = _AngrierWorldQuests.Constants.FILTERS.LOOT_ALL
-            info.checked = info.value == value
-            AWQ_UIDropDownMenu_AddButton(info, level)
+        elseif filterKey == "LOOT" then
+            local currentValue = ConfigModule:Get("filterLoot")
+            if currentValue == 0 then currentValue = ConfigModule:Get("lootFilterUpgrades") and _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES or _AngrierWorldQuests.Constants.FILTERS.LOOT_ALL end
 
-            info.text = L["UPGRADES"]
-            info.value = _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES
-            info.checked = info.value == value
-            AWQ_UIDropDownMenu_AddButton(info, level)
-        elseif self.filter == "ZONE" then
-            local value = ConfigModule:Get("filterZone")
+            local function IsSelected(value) return value == currentValue end
+            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
 
-            info.text = L["CURRENT_ZONE"]
-            info.value = 0
-            info.checked = info.value == value
-            AWQ_UIDropDownMenu_AddButton(info, level)
-        elseif self.filter == "FACTION" then
-            local value = ConfigModule:Get("filterFaction")
+            rootDescription:CreateRadio(ALL, IsSelected, SetSelected, _AngrierWorldQuests.Constants.FILTERS.LOOT_ALL)
+            rootDescription:CreateRadio(L["UPGRADES"], IsSelected, SetSelected, _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES)
+
+        elseif filterKey == "ZONE" then
+            local currentValue = ConfigModule:Get("filterZone")
+
+            local function IsSelected(value) return value == currentValue end
+            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+
+            rootDescription:CreateRadio(L["CURRENT_ZONE"], IsSelected, SetSelected, 0)
+
+        elseif filterKey == "FACTION" then
+            local currentValue = ConfigModule:Get("filterFaction")
+
+            local function IsSelected(value) return value == currentValue end
+            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
 
             local mapID = QuestMapFrame:GetParent():GetMapID()
             local factions = DataModule:GetFactionsByMapID(mapID)
 
             for _, factionID in ipairs(factions) do
                 local factionData = C_Reputation.GetFactionDataByID(factionID)
-                info.text = factionData.name
-                info.value = factionID
-                info.checked = info.value == value
-                AWQ_UIDropDownMenu_AddButton(info, level)
+                rootDescription:CreateRadio(factionData.name, IsSelected, SetSelected, factionID)
             end
-        elseif self.filter == "TIME" then
+
+        elseif filterKey == "TIME" then
             local filterTime = ConfigModule:Get("filterTime")
             local timeFilterDuration = ConfigModule:Get("timeFilterDuration")
-            local value = filterTime ~= 0 and filterTime or timeFilterDuration
+            local currentValue = filterTime ~= 0 and filterTime or timeFilterDuration
+
+            local function IsSelected(value) return value == currentValue end
+            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
 
             for _, hours in ipairs(ConfigModule.Filters.TIME.values) do
-                info.text = string.format(FORMATED_HOURS, hours)
-                info.value = hours
-                info.checked = info.value == value
-                AWQ_UIDropDownMenu_AddButton(info, level)
+                rootDescription:CreateRadio(string.format(FORMATED_HOURS, hours), IsSelected, SetSelected, hours)
             end
-        elseif self.filter == "SORT" then
-            local value = ConfigModule:Get("sortMethod")
 
-            info.text = ConfigModule.Filters[ self.filter ].name
-            info.notCheckable = true
-            info.isTitle = true
-            AWQ_UIDropDownMenu_AddButton(info, level)
+        elseif filterKey == "SORT" then
+            local currentValue = ConfigModule:Get("sortMethod")
 
-            info.notCheckable = false
-            info.isTitle = false
-            info.disabled = false
+            local function IsSelected(value) return value == currentValue end
+            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+
+            rootDescription:CreateTitle(ConfigModule.Filters[filterKey].name)
+
             for _, sortIndex in ipairs(ConfigModule.SortOrder) do
-                info.text =  L["config_sortMethod_"..sortIndex]
-                info.value = sortIndex
-                info.checked = info.value == value
-                AWQ_UIDropDownMenu_AddButton(info, level)
+                rootDescription:CreateRadio(L["config_sortMethod_"..sortIndex], IsSelected, SetSelected, sortIndex)
             end
         end
     end
@@ -273,13 +273,7 @@ do
     end
 
     local function FilterButton_ShowMenu(self)
-        if not filterMenu then
-            filterMenu = CreateFrame("Button", "DropDownMenuAWQ", QuestMapFrame, AWQ_UIDropDownMenuTemplate)
-        end
-
-        filterMenu.filter = self.filter
-        AWQ_UIDropDownMenu_Initialize(filterMenu, FilterMenu_Initialize, "MENU")
-        AWQ_ToggleDropDownMenu(1, nil, filterMenu, self, 0, 0)
+        MenuUtil.CreateContextMenu(self, FilterMenu_Generator)
     end
 
     local function FilterButton_OnClick(self, button)
@@ -287,17 +281,8 @@ do
         if (button == "RightButton" and (self.filter == "EMISSARY" or self.filter == "LOOT" or self.filter == "FACTION" or self.filter == "TIME"))
                 or (self.filter == "SORT")
                 or (self.filter == "FACTION" and not ConfigModule:GetFilter("FACTION")) then
-
-            local MY_UIDROPDOWNMENU_OPEN_MENU = Lib_UIDropDownMenu_Initialize and LIB_UIDROPDOWNMENU_OPEN_MENU or UIDROPDOWNMENU_OPEN_MENU
-
-            if filterMenu and MY_UIDROPDOWNMENU_OPEN_MENU == filterMenu and AWQ_DropDownList1:IsShown() and filterMenu.filter == self.filter then
-                AWQ_HideDropDownMenu(1)
-            else
-                AWQ_HideDropDownMenu(1)
-                FilterButton_ShowMenu(self)
-            end
+            FilterButton_ShowMenu(self)
         else
-            AWQ_HideDropDownMenu(1)
             if IsShiftKeyDown() then
                 if self.filter == "EMISSARY" then ConfigModule:Set("filterEmissary", 0, true) end
                 if self.filter == "LOOT" then ConfigModule:Set("filterLoot", 0, true) end

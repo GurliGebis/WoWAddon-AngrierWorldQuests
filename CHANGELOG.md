@@ -1,3 +1,6 @@
+# 12.0.1-20260409-1
+* Rework dropdowns to use the builtin menu logic.
+
 # 12.0.1-20260408-2
 * Fix FACTION_ORDER_MIDNIGHT using hash table instead of array, causing Midnight faction filter to be empty.
 * Fix typo reading self.numbObjectives instead of self.numObjectives in tooltip, causing cached value to never be used.
