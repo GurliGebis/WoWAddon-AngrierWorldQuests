@@ -919,7 +919,7 @@ do
 
     function QuestFrameModule:InitQuestLogFrames()
         awqContainer = CreateFrame("Frame", "AngrierWorldQuestsContainer", QuestScrollFrame.Contents, "VerticalLayoutFrame")
-        awqContainer.fixedWidth = QuestScrollFrame.Contents:GetWidth()
+        awqContainer.fixedWidth = 304 -- matches the fixed width defined in QuestMapFrame.xml; avoids tainting the value via GetWidth()
         awqContainer.bottomPadding = 2
         awqContainer:Hide()
 

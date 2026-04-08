@@ -1,3 +1,6 @@
+# 12.0.1-20260408-1
+* Fix tooltip taint caused by reading QuestScrollFrame.Contents:GetWidth() from addon code; use hardcoded width constant instead.
+
 # 12.0.1-20260407-2
 * Fix problem with world quests shown when quest log is collapsed.
 * Changed from using SetFrameLayoutIndex to just set index directly instead.
