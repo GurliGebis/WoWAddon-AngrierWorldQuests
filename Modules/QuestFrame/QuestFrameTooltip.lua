@@ -30,6 +30,7 @@
 local addonName, _ = ...
 local AngrierWorldQuests = LibStub("AceAddon-3.0"):GetAddon(addonName)
 local QuestFrameModule = AngrierWorldQuests:GetModule("QuestFrameModule")
+local DataModule = AngrierWorldQuests:GetModule("DataModule")
 
 local MONEY_FORMAT = "%1$s |T%2$s:16:16:0:0:64:64:5:59:5:59|t %3$s |T%4$s:16:16:0:0:64:64:5:59:5:59|t %5$s |T%6$s:16:16:0:0:64:64:5:59:5:59|t"
 
@@ -216,7 +217,7 @@ do
         local lines = {}
 
         local title = self.Text and self.Text:GetText() or C_TaskQuest.GetQuestInfoByQuestID(questID) or ""
-        local tagInfo = QuestFrameModule.GetCachedQuestTagInfo(questID)
+        local tagInfo = DataModule.GetCachedQuestTagInfo(questID)
         local titleColor = HIGHLIGHT_FONT_COLOR
         if tagInfo and tagInfo.quality then
             local colorData = ColorManager.GetColorDataForWorldQuestQuality(tagInfo.quality)
