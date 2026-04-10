@@ -473,9 +473,14 @@ do
         button.TagText:SetWidth(32)
         button.TagText:Hide()
 
+        -- Do NOT call button.Text:SetWidth() here. button.Text is a Blizzard-created
+        -- FontString (part of QuestLogTitleTemplate). Setting its width from addon code
+        -- taints the width property; Blizzard's layout engine then reads it as a
+        -- "secret number" and cascades taint into GameTooltip (EmbeddedItemTooltip,
+        -- MoneyFrame, UIWidgets). The RIGHT anchor below constrains the text width
+        -- through WoW's anchor system instead, with no taint side-effect.
         button.Text:ClearPoint("RIGHT")
         button.Text:SetPoint("RIGHT", button.TagText, "LEFT", -4, 0)
-        button.Text:SetWidth(196)
 
         button.TaskIcon:ClearAllPoints()
         button.TaskIcon:SetPoint("RIGHT", button.Text, "LEFT", -4, 0)

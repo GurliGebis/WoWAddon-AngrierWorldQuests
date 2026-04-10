@@ -102,19 +102,16 @@ do
             awqTooltip.lines[i]:Hide()
         end
 
-        local maxWidth = 0
-        local totalHeight = 0
-        for i = 1, #lines do
-            local fs = awqTooltip.lines[i]
-            local w = fs:GetStringWidth()
-            if w > maxWidth then
-                maxWidth = w
-            end
-            totalHeight = totalHeight + fs:GetStringHeight() + 2
-        end
-
-        awqTooltip:SetWidth(math.max(140, maxWidth + 16))
-        awqTooltip:SetHeight(totalHeight + 16)
+        -- GetStringWidth() and GetStringHeight() return "secret numbers" in WoW 11.x
+        -- even on addon-owned FontStrings. Using them in arithmetic taints the result,
+        -- and SetWidth/SetHeight with a tainted value cascades into GameTooltip's
+        -- layout calculations (MoneyFrame, UIWidgets, etc.). Use the font's configured
+        -- point size (a definition value, not a computed layout dimension) for height,
+        -- and a fixed width that comfortably fits all quest tooltip content.
+        local _, baseFontSize = GameFontNormal:GetFont()
+        local lineHeight = math.ceil(baseFontSize or 12) + 4
+        awqTooltip:SetWidth(300)
+        awqTooltip:SetHeight(#lines * lineHeight + 16)
         awqTooltip:ClearAllPoints()
         awqTooltip:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, 0)
         awqTooltip:Show()
