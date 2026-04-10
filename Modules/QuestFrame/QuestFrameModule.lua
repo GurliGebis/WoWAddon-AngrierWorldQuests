@@ -40,6 +40,7 @@ local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 local dataProvider
 local hoveredQuestID
 local titleFramePool
+local measureFontString
 local listRefreshPending = false
 local fullRefreshPending = false
 local fullRefreshDirty = false
@@ -755,7 +756,8 @@ do
 
         button.Text:SetTextColor( color.r, color.g, color.b )
 
-        totalHeight = totalHeight + button.Text:GetHeight()
+        measureFontString:SetText(title)
+        totalHeight = totalHeight + measureFontString:GetStringHeight()
 
         if (WorldMap_IsWorldQuestEffectivelyTracked(questID)) then
             button.Checkbox.CheckMark:Show()
@@ -1332,6 +1334,18 @@ do
         self:ExtendMapMenu()
 
         titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
+
+        -- Create a hidden addon-owned FontString used to measure quest title text height.
+        -- We must NOT call GetHeight() on button.Text (a Blizzard QuestLogTitleTemplate
+        -- FontString) because that returns a "secret number" in WoW 11.x, tainting
+        -- totalHeight and cascading taint into SetHeight → LayoutFrame → UIWidgets →
+        -- GameTooltip widget containers (same class of bug as the GetWidth() fix above).
+        do
+            local measureFrame = CreateFrame("Frame")
+            measureFontString = measureFrame:CreateFontString(nil, nil, "GameFontNormalLeft")
+            measureFontString:SetJustifyH("LEFT")
+            measureFontString:SetWidth(196) -- matches button.Text:SetWidth(196)
+        end
 
         -- Create awqContainer and headerButton inside the QuestLog upvalue scope,
         -- and register the SetFrameLayoutIndex hook there too (the hook closure must
