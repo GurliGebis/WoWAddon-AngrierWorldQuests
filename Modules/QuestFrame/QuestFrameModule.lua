@@ -461,7 +461,16 @@ do
         button:SetScript("OnLeave", QuestButton_OnLeave)
         button:SetScript("OnClick", QuestButton_OnClick)
 
-        button.TagTexture:SetSize(16, 16)
+        -- Do NOT call button.TagTexture:SetSize() here.  button.TagTexture is a
+        -- Blizzard-created Texture (part of QuestLogTitleTemplate).  Calling SetSize()
+        -- from addon code permanently marks its width/height as "written by addon".
+        -- That taint propagates through the anchor chain:
+        --   TagTexture.WIDTH (SECRET) → TagTexture.LEFT (SECRET)
+        --   → TagText.RIGHT anchor (SECRET) → TagText.LEFT (SECRET)
+        --   → button.Text RIGHT anchor (SECRET) → button.Text effective width (SECRET)
+        --   → global text-layout engine contaminated (SetText on secret-width FontString)
+        --   → UIWidget self.Text:GetHeight() returns secret number (issue #161)
+        -- Use the template-defined TagTexture size (already correct from XML).
         button.TagTexture:Hide()
 
         button.StorylineTexture:Hide()
@@ -470,20 +479,21 @@ do
         button.TagText:SetJustifyH("RIGHT")
         button.TagText:SetTextColor(1, 1, 1)
         button.TagText:SetPoint("RIGHT", button.TagTexture, "LEFT", -2, 0)
-        button.TagText:SetWidth(32)
+        -- Do NOT call button.TagText:SetWidth() here.  SetWidth() from addon code on
+        -- any frame taints its width property; the tainted width continues the anchor-
+        -- chain cascade described above.  Let TagText auto-size to its text content.
         button.TagText:Hide()
 
-        -- Do NOT call button.Text:SetWidth() here. button.Text is a Blizzard-created
-        -- FontString (part of QuestLogTitleTemplate). Setting its width from addon code
-        -- taints the width property; Blizzard's layout engine then reads it as a
-        -- "secret number" and cascades taint into GameTooltip (EmbeddedItemTooltip,
-        -- MoneyFrame, UIWidgets). The RIGHT anchor below constrains the text width
-        -- through WoW's anchor system instead, with no taint side-effect.
-        button.Text:ClearPoint("RIGHT")
-        button.Text:SetPoint("RIGHT", button.TagText, "LEFT", -4, 0)
-
-        button.TaskIcon:ClearAllPoints()
-        button.TaskIcon:SetPoint("RIGHT", button.Text, "LEFT", -4, 0)
+        -- Do NOT call ClearPoint/SetPoint on button.Text or button.TaskIcon here.
+        -- Both are Blizzard-created children of QuestLogTitleTemplate.  Any SetPoint
+        -- from addon code on a Blizzard-created frame marks its computed X/Y as
+        -- "written by addon"; Blizzard's layout engine then reads the position as a
+        -- SECRET number.  The taint propagates through the anchor chain:
+        --   TaskIcon.RIGHT (SECRET) → button.Text.LEFT (SECRET)
+        --   → button.Text effective width (SECRET)
+        --   → global text-layout engine contaminated
+        --   → UIWidget self.Text:GetHeight() returns SECRET (issue #161).
+        -- Leave button.Text and button.TaskIcon at their template-defined positions.
 
         button.TimeIcon = button:CreateTexture(nil, "OVERLAY")
         button.TimeIcon:SetAtlas("worldquest-icon-clock")
@@ -546,7 +556,11 @@ do
             awqContainer:Hide()
         end
 
-        QuestScrollFrame.Contents:Layout()
+        -- Use securecallfunction so the Layout() SetPoint calls are not attributed
+        -- to addon code, preventing button-position taint (issue #161).
+        SafeCall(function()
+            QuestScrollFrame.Contents:Layout()
+        end)
     end
 
     function QuestFrameModule:QuestLog_Update()
@@ -712,7 +726,13 @@ do
                 awqContainer.layoutIndex = 0.5
             end
         else
-            QuestScrollFrame.Contents:Layout()
+            -- Run Layout() via securecallfunction so frame:SetPoint() calls inside it
+            -- are not attributed to addon code.  Tainted button positions propagate
+            -- through anchor chains to button.Text effective width → global text layout
+            -- engine → UIWidget self.Text:GetHeight() SECRET (issue #161).
+            SafeCall(function()
+                QuestScrollFrame.Contents:Layout()
+            end)
         end
     end
 
@@ -760,12 +780,12 @@ do
 
         button.Text:SetTextColor( color.r, color.g, color.b )
 
-        -- Use the configured font size (not a dimension API, so not a secret number)
-        -- to approximate the text line height. GetStringHeight() / GetHeight() on any
-        -- frame/FontString return "secret numbers" in WoW 11.x that taint arithmetic
-        -- and cascade into Blizzard's UIWidget layout, causing the errors in issue #161.
-        local _, fontSize = GameFontNormalLeft:GetFont()
-        totalHeight = totalHeight + math.ceil(fontSize or 14) + 2
+        -- Hard-coded line height for a single-line 12pt/GameFontNormalLeft entry.
+        -- Avoids all dimension APIs (GetFont, GetHeight, GetStringHeight) which return
+        -- "secret numbers" in WoW 11.x when called from addon code, even on addon-
+        -- created frames.  Secret arithmetic taints downstream layout calculations and
+        -- cascades into Blizzard's UIWidget / GameTooltip layout (issue #161).
+        totalHeight = totalHeight + 14  -- 12pt rendered line height ≈ 14px
 
         if (WorldMap_IsWorldQuestEffectivelyTracked(questID)) then
             button.Checkbox.CheckMark:Show()
@@ -776,17 +796,23 @@ do
         local hasIcon = true
         button.TaskIcon:Show()
         button.TaskIcon:SetTexCoord(.08, .92, .08, .92)
+        -- Wrap TaskIcon:SetSize calls in SafeCall.  The template anchors
+        -- button.Text.LEFT to TaskIcon.RIGHT, so a SECRET TaskIcon size would make
+        -- TaskIcon.RIGHT SECRET → button.Text.LEFT SECRET → effective width SECRET
+        -- → global text-layout engine contaminated → UIWidget GetHeight() SECRET
+        -- (issue #161).  securecallfunction writes the size in clean context.
         if questInfo.inProgress then
             button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
-            button.TaskIcon:SetSize(10, 15)
+            SafeCall(function() button.TaskIcon:SetSize(10, 15) end)
         else
             local atlas, width, height = QuestUtil.GetWorldQuestAtlasInfo(questID, questTagInfo, false);
             if atlas and atlas ~= "Worldquest-icon" then
                 button.TaskIcon:SetAtlas(atlas);
-                button.TaskIcon:SetSize(math.min(width, 16), math.min(height, 16));
+                local w, h = math.min(width, 16), math.min(height, 16)
+                SafeCall(function() button.TaskIcon:SetSize(w, h) end)
             elseif questTagInfo.isElite then
                 button.TaskIcon:SetAtlas("questlog-questtypeicon-heroic")
-                button.TaskIcon:SetSize(16, 16);
+                SafeCall(function() button.TaskIcon:SetSize(16, 16) end)
             else
                 hasIcon = false
                 button.TaskIcon:Hide()
@@ -896,7 +922,20 @@ do
             end
         end
 
-        button:SetHeight(totalHeight)
+        -- Use the fixedHeight Lua field instead of calling button:SetHeight() from
+        -- addon code.  VerticalLayoutFrame / LayoutMixin reads child.fixedHeight before
+        -- falling back to child:GetHeight().  Calling SetHeight() from addon code on a
+        -- Blizzard-created QuestLogTitleTemplate frame (even with a clean value) marks
+        -- the frame's height property as "written by addon", causing subsequent
+        -- GetHeight() calls by Blizzard's layout engine to return a secret number and
+        -- cascade taint into UIWidget / MoneyFrame / EmbeddedItemTooltip (issue #161).
+        -- Compare: awqContainer.fixedWidth = 304 uses the same pattern to avoid
+        -- tainting the width via GetWidth().
+        -- Also call SetHeight via securecallfunction so the frame's actual visual
+        -- height matches without tainting the frame's height property from addon code
+        -- (which would cascade SECRET numbers through Layout — issue #161).
+        button.fixedHeight = totalHeight
+        SafeCall(function() button:SetHeight(totalHeight) end)
         button:Show()
 
         return button
@@ -1055,21 +1094,30 @@ do
 
         -- Adds a world quest pin via the data provider and records it so it can be
         -- cleaned up on the next refresh (Phase 0).
+        -- Wrapped in SafeCall: our callback fires from a hooksecurefunc (tainted
+        -- context), so dp:AddWorldQuest() and its internal SetSize/SetPoint calls
+        -- would otherwise run tainted, making the pin's dimensions SECRET.
+        -- QuestOfferDataProvider clones suppressed pins for tooltip display and calls
+        -- Layout() on the clone; a SECRET child dimension causes LayoutFrame.lua:491
+        -- "attempt to compare a secret number value" (issue #161).
         local function AddTrackedWorldQuestPin(info)
-            local pin = dp:AddWorldQuest(info)
+            local pin
+            SafeCall(function()
+                pin = dp:AddWorldQuest(info)
 
-            if pin then
-                -- Translate pin position from child zone to continent coordinates
-                local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
-                local continentID, worldPosition = C_Map.GetWorldPosFromMapPos(info.mapID, { x = x, y = y })
-                local translatedPos = select(2, C_Map.GetMapPosFromWorldPos(continentID, worldPosition, mapID))
+                if pin then
+                    -- Translate pin position from child zone to continent coordinates
+                    local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
+                    local continentID, worldPosition = C_Map.GetWorldPosFromMapPos(info.mapID, { x = x, y = y })
+                    local translatedPos = select(2, C_Map.GetMapPosFromWorldPos(continentID, worldPosition, mapID))
 
-                if translatedPos then
-                    pin:SetPosition(translatedPos:GetXY())
+                    if translatedPos then
+                        pin:SetPosition(translatedPos:GetXY())
+                    end
+
+                    table.insert(addonAddedPins, pin)
                 end
-
-                table.insert(addonAddedPins, pin)
-            end
+            end)
 
             return pin
         end
