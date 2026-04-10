@@ -373,7 +373,8 @@ do
             _, color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
         end
 
-        self.Text:SetTextColor( color.r, color.g, color.b )
+        local r1, g1, b1 = color.r, color.g, color.b
+        SafeCall(function() self.Text:SetTextColor(r1, g1, b1) end)
 
         hoveredQuestID = self.questID
 
@@ -392,7 +393,8 @@ do
             color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
         end
 
-        self.Text:SetTextColor( color.r, color.g, color.b )
+        local r2, g2, b2 = color.r, color.g, color.b
+        SafeCall(function() self.Text:SetTextColor(r2, g2, b2) end)
 
         hoveredQuestID = nil
 
@@ -768,7 +770,15 @@ do
         button.numObjectives = questInfo.numObjectives
         button.infoX = questInfo.x
         button.infoY = questInfo.y
-        button.Text:SetText(title)
+        -- Wrap SetText/SetTextColor in SafeCall.  button.Text is a Blizzard-created
+        -- FontString (QuestLogTitleTemplate).  Calling SetText from addon (tainted)
+        -- context causes WoW 11.x's C++ text-layout engine to compute and store the
+        -- text height in the tainted execution context, tagging it as SECRET.
+        -- Subsequent GetHeight() calls on ANY FontString that shares the measurement
+        -- state return SECRET, crashing UIWidget arithmetic (issue #161).
+        -- securecallfunction runs the measurement in clean context.
+        local titleCapture = title
+        SafeCall(function() button.Text:SetText(titleCapture) end)
 
         local color
 
@@ -778,7 +788,8 @@ do
             color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
         end
 
-        button.Text:SetTextColor( color.r, color.g, color.b )
+        local r0, g0, b0 = color.r, color.g, color.b
+        SafeCall(function() button.Text:SetTextColor(r0, g0, b0) end)
 
         -- Hard-coded line height for a single-line 12pt/GameFontNormalLeft entry.
         -- Avoids all dimension APIs (GetFont, GetHeight, GetStringHeight) which return
