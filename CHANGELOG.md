@@ -1,3 +1,6 @@
+# 12.0.1-20260414-1
+* Added logic to prevent quest log and map from being touched when in combat or battleground/arena.
+
 # 12.0.1-20260409-1
 * Rework dropdowns to use the builtin menu logic.
 * Relocate quest tag info cache and reward preload cache from QuestFrameModule to DataModule.

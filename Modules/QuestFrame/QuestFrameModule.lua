@@ -549,6 +549,10 @@ do
             return
         end
 
+        if QuestFrameModule:IsLockedDown() then
+            return
+        end
+
         titleFramePool:ReleaseAll()
 
         local mapID = QuestMapFrame:GetParent():GetMapID()
@@ -919,6 +923,16 @@ do
             end
         end)
     end
+
+    function QuestFrameModule:IsLockedDown()
+        if InCombatLockdown and InCombatLockdown() then
+            return true
+        end
+
+        local inInstance, instanceType = IsInInstance()
+
+        return inInstance and (instanceType == "pvp" or instanceType == "arena")
+    end
 end
 --endregion
 
@@ -1005,7 +1019,7 @@ do
             return
         end
 
-        if InCombatLockdown and InCombatLockdown() then
+        if QuestFrameModule:IsLockedDown() then
             if not printedLockdownMessage then
                 QuestFrameModule:Print(L["Skipping world quest pin update because player is in combat."])
                 printedLockdownMessage = true
