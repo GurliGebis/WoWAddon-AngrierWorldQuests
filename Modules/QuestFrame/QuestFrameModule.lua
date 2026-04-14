@@ -911,13 +911,20 @@ do
 
         if tagTexture and tagText then
             button.TagText:Show()
-            button.TagText:SetText(tagText)
-            button.TagText:SetTextColor(tagColor.r, tagColor.g, tagColor.b )
+            -- Wrap in SafeCall: button.TagText is a child of a button parented to
+            -- QuestScrollFrame.Contents.  Calling SetText/SetTextColor from tainted
+            -- context causes WoW 11.x's C++ text-layout engine to compute and store
+            -- the measured height as SECRET, contaminating UIWidget GetHeight() (issue #161).
+            local tt, tc = tagText, tagColor
+            SafeCall(function()
+                button.TagText:SetText(tt)
+                button.TagText:SetTextColor(tc.r, tc.g, tc.b)
+            end)
             button.TagTexture:Show()
             button.TagTexture:SetTexture(tagTexture)
         elseif tagTexture then
             button.TagText:Hide()
-            button.TagText:SetText("")
+            SafeCall(function() button.TagText:SetText("") end)
             button.TagTexture:Show()
             button.TagTexture:SetTexture(tagTexture)
         else
@@ -960,7 +967,10 @@ do
 
         headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", awqContainer, "QuestLogHeaderTemplate")
         headerButton:SetScript("OnClick", HeaderButton_OnClick)
-        headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
+        -- Wrap in SafeCall: SetText from tainted context contaminates the global
+        -- text-layout engine, causing UIWidget self.Text:GetHeight() to return
+        -- SECRET on the next Blizzard tooltip render (issue #161).
+        SafeCall(function() headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS) end)
         headerButton.topPadding = 6
         headerButton.titleFramePool = titleFramePool
         headerButton.layoutIndex = 1
@@ -1163,28 +1173,40 @@ do
         -- Phase 0: Remove any pins we previously added (from Phase 2 of a prior
         -- refresh or a different map). This ensures stale addon-added pins don't
         -- persist across map changes.
-        for _, pin in ipairs(addonAddedPins) do
-            map:RemovePin(pin)
-        end
+        -- Wrapped in SafeCall: map:RemovePin() from tainted context causes the pin
+        -- pool to release the frame while the cursor may be over it.  WoW fires
+        -- OnMouseEnter for the newly-exposed frame (AreaPOI, QuestOffer, etc.)
+        -- synchronously in the tainted call stack, making every C-API call in the
+        -- resulting UIWidget / MoneyFrame chain return SECRET values (issue #161).
+        SafeCall(function()
+            for _, pin in ipairs(addonAddedPins) do
+                map:RemovePin(pin)
+            end
+        end)
         wipe(addonAddedPins)
 
         -- Phase 1: Hide pins that our filter settings reject
-        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-            if pin.questID and C_QuestLog.IsWorldQuest(pin.questID) then
-                local shouldHide = ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID })
+        -- Wrapped in SafeCall for the same reason as Phase 0: pin:Hide()/pin:Show()
+        -- from tainted context synchronously fires OnMouseEnter on the newly-revealed
+        -- pin in tainted context, tainting UIWidget and MoneyFrame rendering (issue #161).
+        SafeCall(function()
+            for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                if pin.questID and C_QuestLog.IsWorldQuest(pin.questID) then
+                    local shouldHide = ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID })
 
-                -- Always show the hovered quest even if it would be filtered
-                if showHoveredPOI and hoveredQuestID == pin.questID then
-                    shouldHide = false
-                end
+                    -- Always show the hovered quest even if it would be filtered
+                    if showHoveredPOI and hoveredQuestID == pin.questID then
+                        shouldHide = false
+                    end
 
-                if shouldHide then
-                    pin:Hide()
-                else
-                    pin:Show()
+                    if shouldHide then
+                        pin:Hide()
+                    else
+                        pin:Show()
+                    end
                 end
             end
-        end
+        end)
 
         -- Phase 2: Add world quest pins from child zones on continent maps
         if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent then

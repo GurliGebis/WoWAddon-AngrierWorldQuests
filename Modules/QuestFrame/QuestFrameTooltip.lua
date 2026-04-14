@@ -32,6 +32,16 @@ local AngrierWorldQuests = LibStub("AceAddon-3.0"):GetAddon(addonName)
 local QuestFrameModule = AngrierWorldQuests:GetModule("QuestFrameModule")
 local DataModule = AngrierWorldQuests:GetModule("DataModule")
 
+-- Run func in secure context so text-layout measurements aren't tagged SECRET
+-- (WoW 11.x issue #161: SetText from tainted context contaminates GetHeight()).
+local function SafeCall(func, ...)
+    if securecallfunction then
+        securecallfunction(func, ...)
+    else
+        func(...)
+    end
+end
+
 local MONEY_FORMAT = "%1$s |T%2$s:16:16:0:0:64:64:5:59:5:59|t %3$s |T%4$s:16:16:0:0:64:64:5:59:5:59|t %5$s |T%6$s:16:16:0:0:64:64:5:59:5:59|t"
 
 do
@@ -87,7 +97,12 @@ do
             else
                 fs:SetFontObject(GameFontNormal)
             end
-            fs:SetText(line.text or "")
+            -- Wrap in SafeCall: calling SetText from tainted context causes WoW 11.x's
+            -- C++ text-layout engine to store the measured height as SECRET, which
+            -- contaminates UIWidget self.Text:GetHeight() on the next tooltip render
+            -- calls (including Blizzard's MoneyFrame and UIWidget renderers) — issue #161.
+            local textCapture = line.text or ""
+            SafeCall(function() fs:SetText(textCapture) end)
             local color = line.color or NORMAL_FONT_COLOR
             fs:SetTextColor(color.r, color.g, color.b)
             fs:Show()
