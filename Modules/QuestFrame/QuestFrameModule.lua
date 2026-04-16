@@ -218,53 +218,65 @@ do
     end
 
     local function FilterButton_OnEnter(self)
-        local text = ConfigModule.Filters[ self.filter ].name
+        -- FilterButton_OnEnter is called from a SetScript("OnEnter") handler (tainted).
+        -- C API calls in tainted context return SECRET values; string concatenation with
+        -- a SECRET value produces a SECRET string.  Passing a SECRET string to
+        -- fs:SetText() (even inside Tooltip_Show's inner SafeCall) permanently stores
+        -- SECRET text on the FontString, making self.Text:GetHeight() return SECRET on
+        -- every subsequent call — including Blizzard's UIWidget timer update path
+        -- (UIWidgetManager.lua:341) — causing the "arithmetic on secret number" error
+        -- (issue #161).  Wrap the entire body in SafeCall so all C APIs return clean
+        -- values and the constructed text string is never SECRET.
+        local selfCapture = self
+        SafeCall(function()
+            local text = ConfigModule.Filters[ selfCapture.filter ].name
 
-        local filterEmissary = ConfigModule:Get("filterEmissary")
-        if self.filter == "EMISSARY" and filterEmissary and not C_QuestLog.IsComplete(filterEmissary) then
-            local title = C_QuestLog.GetTitleForQuestID(filterEmissary)
-            if title then text = text..": "..title end
-        end
-
-        local filterLoot = ConfigModule:Get("filterLoot")
-        local lootFilterUpgrades = ConfigModule:Get("lootFilterUpgrades")
-        if self.filter == "LOOT" then
-            if filterLoot == _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES or (filterLoot == 0 and lootFilterUpgrades) then
-                text = string.format("%s (%s)", text, L["UPGRADES"])
+            local filterEmissary = ConfigModule:Get("filterEmissary")
+            if selfCapture.filter == "EMISSARY" and filterEmissary and not C_QuestLog.IsComplete(filterEmissary) then
+                local title = C_QuestLog.GetTitleForQuestID(filterEmissary)
+                if title then text = text..": "..title end
             end
-        end
 
-        local filterFaction = ConfigModule:Get("filterFaction")
-        if self.filter == "FACTION" and filterFaction ~= 0 then
-            local factionData = C_Reputation.GetFactionDataByID(filterFaction)
-            local title = factionData and factionData.name
-
-            if title then
-                text = text..": "..title
+            local filterLoot = ConfigModule:Get("filterLoot")
+            local lootFilterUpgrades = ConfigModule:Get("lootFilterUpgrades")
+            if selfCapture.filter == "LOOT" then
+                if filterLoot == _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES or (filterLoot == 0 and lootFilterUpgrades) then
+                    text = string.format("%s (%s)", text, L["UPGRADES"])
+                end
             end
-        end
 
-        local sortMethod = ConfigModule:Get("sortMethod")
-        if self.filter == "SORT" then
-            local title = L["config_sortMethod_"..sortMethod]
-            if title then text = text..": "..title end
-        end
+            local filterFaction = ConfigModule:Get("filterFaction")
+            if selfCapture.filter == "FACTION" and filterFaction ~= 0 then
+                local factionData = C_Reputation.GetFactionDataByID(filterFaction)
+                local title = factionData and factionData.name
 
-        local filterZone = ConfigModule:Get("filterZone")
-        if self.filter == "ZONE" and filterZone ~= 0 then
-            local mapInfo = C_Map.GetMapInfo(filterZone)
-            local title = mapInfo and mapInfo.name
-            if title then text = text..": "..title end
-        end
+                if title then
+                    text = text..": "..title
+                end
+            end
 
-        local filterTime = ConfigModule:Get("filterTime")
-        local timeFilterDuration = ConfigModule:Get("timeFilterDuration")
-        if self.filter == "TIME" then
-            local hours = filterTime ~= 0 and filterTime or timeFilterDuration
-            text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, hours))
-        end
+            local sortMethod = ConfigModule:Get("sortMethod")
+            if selfCapture.filter == "SORT" then
+                local title = L["config_sortMethod_"..sortMethod]
+                if title then text = text..": "..title end
+            end
 
-        QuestFrameModule.Tooltip_ShowSimple(self, text, HIGHLIGHT_FONT_COLOR)
+            local filterZone = ConfigModule:Get("filterZone")
+            if selfCapture.filter == "ZONE" and filterZone ~= 0 then
+                local mapInfo = C_Map.GetMapInfo(filterZone)
+                local title = mapInfo and mapInfo.name
+                if title then text = text..": "..title end
+            end
+
+            local filterTime = ConfigModule:Get("filterTime")
+            local timeFilterDuration = ConfigModule:Get("timeFilterDuration")
+            if selfCapture.filter == "TIME" then
+                local hours = filterTime ~= 0 and filterTime or timeFilterDuration
+                text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, hours))
+            end
+
+            QuestFrameModule.Tooltip_ShowSimple(selfCapture, text, HIGHLIGHT_FONT_COLOR)
+        end)
     end
 
     local function FilterButton_OnLeave(self)
@@ -781,6 +793,10 @@ do
         -- Subsequent GetHeight() calls on ANY FontString that shares the measurement
         -- state return SECRET, crashing UIWidget arithmetic (issue #161).
         -- securecallfunction runs the measurement in clean context.
+        -- Store the title as awqTitle so Tooltip_BuildSafe can read it from tainted
+        -- context without calling GetText() on a Blizzard FontString (which would
+        -- return a SECRET value and cascade into UIWidget GetHeight() — issue #161).
+        button.awqTitle = title
         local titleCapture = title
         SafeCall(function() button.Text:SetText(titleCapture) end)
 
@@ -816,14 +832,23 @@ do
         -- TaskIcon.RIGHT SECRET → button.Text.LEFT SECRET → effective width SECRET
         -- → global text-layout engine contaminated → UIWidget GetHeight() SECRET
         -- (issue #161).  securecallfunction writes the size in clean context.
+        -- Also call GetWorldQuestAtlasInfo inside SafeCall.  When invoked from
+        -- tainted context the C API returns SECRET width/height values.  Passing
+        -- those SECRET values to SetSize — even inside SafeCall — stores them as
+        -- SECRET dimensions on TaskIcon, perpetuating the anchor-chain taint above
+        -- (issue #161).  Capturing the return values via upvalue assignment inside
+        -- SafeCall ensures the C API runs in clean context and returns plain numbers.
         if questInfo.inProgress then
             button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
             SafeCall(function() button.TaskIcon:SetSize(10, 15) end)
         else
-            local atlas, width, height = QuestUtil.GetWorldQuestAtlasInfo(questID, questTagInfo, false);
+            local atlas, width, height
+            SafeCall(function()
+                atlas, width, height = QuestUtil.GetWorldQuestAtlasInfo(questID, questTagInfo, false)
+            end)
             if atlas and atlas ~= "Worldquest-icon" then
                 button.TaskIcon:SetAtlas(atlas);
-                local w, h = math.min(width, 16), math.min(height, 16)
+                local w, h = math.min(width or 16, 16), math.min(height or 16, 16)
                 SafeCall(function() button.TaskIcon:SetSize(w, h) end)
             elseif questTagInfo.isElite then
                 button.TaskIcon:SetAtlas("questlog-questtypeicon-heroic")
@@ -1515,8 +1540,16 @@ function QuestFrameModule:RequestFullRefresh(reason)
 
         -- Also refresh the world quest data provider so our post-process hook
         -- re-applies pin filtering/visibility with the updated settings.
+        -- Wrapped in SafeCall: calling RefreshAllData from addon (tainted) context
+        -- makes Blizzard's pin-setup code run in tainted execution.  Inside it,
+        -- C_TaskQuest APIs return SECRET values that flow into pin text assignments
+        -- (e.g. SetText(SECRET_title)).  That marks MoneyFrame button string widths
+        -- as SECRET, causing "attempt to perform arithmetic on a secret number value"
+        -- in MoneyFrame.lua:307 when the next map-pin tooltip is rendered (issue #161).
         if dataProvider and dataProvider.RefreshAllData then
-            dataProvider:RefreshAllData()
+            SafeCall(function()
+                dataProvider:RefreshAllData()
+            end)
         end
     end)
 end

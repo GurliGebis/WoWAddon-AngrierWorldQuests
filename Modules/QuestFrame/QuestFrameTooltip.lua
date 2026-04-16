@@ -66,9 +66,17 @@ do
         end
 
         if not awqHeaderFont then
-            local fontFile, fontSize, fontFlags = GameFontNormal:GetFont()
-            awqHeaderFont = CreateFont("AWQHeaderFont")
-            awqHeaderFont:SetFont(fontFile, fontSize + 2, fontFlags)
+            -- Wrap in SafeCall: GetFont() returns SECRET values when called from a
+            -- tainted execution context in WoW 11.x; arithmetic on a SECRET fontSize
+            -- taints the result, and SetFont with a tainted size contaminates the
+            -- FontObject's internal layout properties.  A tainted FontObject used in
+            -- SetFontObject() then marks the subsequent text measurement as SECRET,
+            -- cascading into UIWidget self.Text:GetHeight() (issue #161).
+            SafeCall(function()
+                local fontFile, fontSize, fontFlags = GameFontNormal:GetFont()
+                awqHeaderFont = CreateFont("AWQHeaderFont")
+                awqHeaderFont:SetFont(fontFile, fontSize + 2, fontFlags)
+            end)
         end
 
         if not awqTooltip then
@@ -84,52 +92,50 @@ do
             awqTooltip.lines = {}
         end
 
-        for i, line in ipairs(lines) do
-            local fs = awqTooltip.lines[i]
-            if not fs then
-                fs = awqTooltip:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-                awqTooltip.lines[i] = fs
-            end
-            if line.fontObject then
-                fs:SetFontObject(line.fontObject)
-            elseif i == 1 then
-                fs:SetFontObject(awqHeaderFont)
-            else
-                fs:SetFontObject(GameFontNormal)
-            end
-            -- Wrap in SafeCall: calling SetText from tainted context causes WoW 11.x's
-            -- C++ text-layout engine to store the measured height as SECRET, which
-            -- contaminates UIWidget self.Text:GetHeight() on the next tooltip render
-            -- calls (including Blizzard's MoneyFrame and UIWidget renderers) — issue #161.
-            local textCapture = line.text or ""
-            SafeCall(function() fs:SetText(textCapture) end)
-            local color = line.color or NORMAL_FONT_COLOR
-            fs:SetTextColor(color.r, color.g, color.b)
-            fs:Show()
-            if i == 1 then
-                fs:SetPoint("TOPLEFT", awqTooltip, "TOPLEFT", 8, -8)
-            else
-                fs:SetPoint("TOPLEFT", awqTooltip.lines[i - 1], "BOTTOMLEFT", 0, -2)
-            end
-        end
+        -- All layout operations on FontStrings (SetFontObject, SetText, SetTextColor,
+        -- Show, SetPoint) and on the container (SetWidth, SetHeight, Show) must run in
+        -- secure context.  Tooltip_Show is called from OnEnter script handlers which
+        -- execute in tainted addon context.  Any text measurement triggered by Show()
+        -- or SetPoint() in tainted context contaminates WoW 11.x's global C++ text-
+        -- layout engine, causing Blizzard UIWidget self.Text:GetHeight() to return a
+        -- SECRET number on the next tooltip render (issue #161).
+        local lineCount = #lines
+        local anchorCapture = anchor
+        SafeCall(function()
+            -- Obtain font size in secure context so the value is never SECRET.
+            local _, baseFontSize = GameFontNormal:GetFont()
+            local lineHeight = math.ceil(baseFontSize or 12) + 4
 
-        for i = #lines + 1, #awqTooltip.lines do
-            awqTooltip.lines[i]:Hide()
-        end
+            for i, line in ipairs(lines) do
+                local fs = awqTooltip.lines[i]
+                if not fs then
+                    fs = awqTooltip:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+                    awqTooltip.lines[i] = fs
+                end
+                local fontObj = line.fontObject or (i == 1 and awqHeaderFont or GameFontNormal)
+                local textCapture = line.text or ""
+                local color = line.color or NORMAL_FONT_COLOR
+                fs:SetFontObject(fontObj)
+                fs:SetText(textCapture)
+                fs:SetTextColor(color.r, color.g, color.b)
+                fs:Show()
+                if i == 1 then
+                    fs:SetPoint("TOPLEFT", awqTooltip, "TOPLEFT", 8, -8)
+                else
+                    fs:SetPoint("TOPLEFT", awqTooltip.lines[i - 1], "BOTTOMLEFT", 0, -2)
+                end
+            end
 
-        -- GetStringWidth() and GetStringHeight() return "secret numbers" in WoW 11.x
-        -- even on addon-owned FontStrings. Using them in arithmetic taints the result,
-        -- and SetWidth/SetHeight with a tainted value cascades into GameTooltip's
-        -- layout calculations (MoneyFrame, UIWidgets, etc.). Use the font's configured
-        -- point size (a definition value, not a computed layout dimension) for height,
-        -- and a fixed width that comfortably fits all quest tooltip content.
-        local _, baseFontSize = GameFontNormal:GetFont()
-        local lineHeight = math.ceil(baseFontSize or 12) + 4
-        awqTooltip:SetWidth(300)
-        awqTooltip:SetHeight(#lines * lineHeight + 16)
-        awqTooltip:ClearAllPoints()
-        awqTooltip:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, 0)
-        awqTooltip:Show()
+            for i = lineCount + 1, #awqTooltip.lines do
+                awqTooltip.lines[i]:Hide()
+            end
+
+            awqTooltip:SetWidth(300)
+            awqTooltip:SetHeight(lineCount * lineHeight + 16)
+            awqTooltip:ClearAllPoints()
+            awqTooltip:SetPoint("TOPLEFT", anchorCapture, "TOPRIGHT", 10, 0)
+            awqTooltip:Show()
+        end)
     end
 
     function QuestFrameModule.Tooltip_ShowSimple(anchor, text, color)
@@ -226,54 +232,66 @@ do
             return
         end
 
-        local lines = {}
+        -- Tooltip_BuildSafe is called from QuestButton_OnEnter (SetScript → tainted).
+        -- ALL C API calls made from tainted context return SECRET values; passing a
+        -- SECRET string to fs:SetText() (even inside SafeCall) stores SECRET text on
+        -- the FontString, causing GetHeight() to return SECRET and cascading into
+        -- Blizzard's UIWidget self.Text:GetHeight() (issue #161).
+        -- Wrapping the entire body in SafeCall ensures every API call, string
+        -- construction, and display operation runs in secure context.
+        local selfCapture = self
+        SafeCall(function()
+            local lines = {}
 
-        local title = self.Text and self.Text:GetText() or C_TaskQuest.GetQuestInfoByQuestID(questID) or ""
-        local tagInfo = DataModule.GetCachedQuestTagInfo(questID)
-        local titleColor = HIGHLIGHT_FONT_COLOR
-        if tagInfo and tagInfo.quality then
-            local colorData = ColorManager.GetColorDataForWorldQuestQuality(tagInfo.quality)
-            if colorData then
-                titleColor = colorData.color
-            end
-        end
-        table.insert(lines, { text = title, color = titleColor })
-
-        if C_QuestLog.IsAccountQuest(questID) then
-            table.insert(lines, { text = ACCOUNT_QUEST_LABEL, color = ACCOUNT_WIDE_FONT_COLOR })
-        end
-
-        local questTypeText = QuestUtils_GetQuestTypeIconMarkupString(questID, 20, 20)
-        if questTypeText then
-            table.insert(lines, { text = questTypeText, color = NORMAL_FONT_COLOR })
-        end
-
-        local factionID = self.factionID or select(2, C_TaskQuest.GetQuestInfoByQuestID(questID))
-        if factionID then
-            local factionData = C_Reputation.GetFactionDataByID(factionID)
-            if factionData and factionData.name then
-                table.insert(lines, { text = factionData.name, color = NORMAL_FONT_COLOR })
-            end
-        end
-
-        local formattedTime, timeColor = WorldMap_GetQuestTimeForTooltip(questID)
-        if formattedTime and timeColor then
-            table.insert(lines, { text = MAP_TOOLTIP_TIME_LEFT:format(WrapTextWithColor(timeColor, formattedTime)) })
-        end
-
-        local isThreat = C_QuestLog.IsThreatQuest(questID)
-        local numObjectives = self.numObjectives or C_QuestLog.GetNumQuestObjectives(questID)
-        for objectiveIndex = 1, numObjectives do
-            local objectiveText, _, finished = GetQuestObjectiveInfo(questID, objectiveIndex, false)
-            if not (finished and isThreat) then
-                if objectiveText and #objectiveText > 0 then
-                    table.insert(lines, { text = QUEST_DASH .. objectiveText, color = finished and GRAY_FONT_COLOR or HIGHLIGHT_FONT_COLOR })
+            -- Use the pre-stored awqTitle (set from clean context in QuestLog_AddQuestButton)
+            -- to avoid calling GetText() on a Blizzard FontString in tainted context.
+            local title = selfCapture.awqTitle or C_TaskQuest.GetQuestInfoByQuestID(questID) or ""
+            local tagInfo = DataModule.GetCachedQuestTagInfo(questID)
+            local titleColor = HIGHLIGHT_FONT_COLOR
+            if tagInfo and tagInfo.quality then
+                local colorData = ColorManager.GetColorDataForWorldQuestQuality(tagInfo.quality)
+                if colorData then
+                    titleColor = colorData.color
                 end
             end
-        end
+            table.insert(lines, { text = title, color = titleColor })
 
-        table.insert(lines, { text = " ", color = NORMAL_FONT_COLOR })
-        QuestFrameModule.Tooltip_AddRewards(lines, questID)
-        QuestFrameModule.Tooltip_Show(self, lines)
+            if C_QuestLog.IsAccountQuest(questID) then
+                table.insert(lines, { text = ACCOUNT_QUEST_LABEL, color = ACCOUNT_WIDE_FONT_COLOR })
+            end
+
+            local questTypeText = QuestUtils_GetQuestTypeIconMarkupString(questID, 20, 20)
+            if questTypeText then
+                table.insert(lines, { text = questTypeText, color = NORMAL_FONT_COLOR })
+            end
+
+            local factionID = selfCapture.factionID or select(2, C_TaskQuest.GetQuestInfoByQuestID(questID))
+            if factionID then
+                local factionData = C_Reputation.GetFactionDataByID(factionID)
+                if factionData and factionData.name then
+                    table.insert(lines, { text = factionData.name, color = NORMAL_FONT_COLOR })
+                end
+            end
+
+            local formattedTime, timeColor = WorldMap_GetQuestTimeForTooltip(questID)
+            if formattedTime and timeColor then
+                table.insert(lines, { text = MAP_TOOLTIP_TIME_LEFT:format(WrapTextWithColor(timeColor, formattedTime)) })
+            end
+
+            local isThreat = C_QuestLog.IsThreatQuest(questID)
+            local numObjectives = selfCapture.numObjectives or C_QuestLog.GetNumQuestObjectives(questID)
+            for objectiveIndex = 1, numObjectives do
+                local objectiveText, _, finished = GetQuestObjectiveInfo(questID, objectiveIndex, false)
+                if not (finished and isThreat) then
+                    if objectiveText and #objectiveText > 0 then
+                        table.insert(lines, { text = QUEST_DASH .. objectiveText, color = finished and GRAY_FONT_COLOR or HIGHLIGHT_FONT_COLOR })
+                    end
+                end
+            end
+
+            table.insert(lines, { text = " ", color = NORMAL_FONT_COLOR })
+            QuestFrameModule.Tooltip_AddRewards(lines, questID)
+            QuestFrameModule.Tooltip_Show(selfCapture, lines)
+        end)
     end
 end
