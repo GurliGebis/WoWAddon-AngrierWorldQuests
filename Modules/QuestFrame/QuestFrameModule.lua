@@ -217,66 +217,52 @@ do
         end
     end
 
+    -- Module-level (untainted): called via securecallfunction from SetScript wrapper.
     local function FilterButton_OnEnter(self)
-        -- FilterButton_OnEnter is called from a SetScript("OnEnter") handler (tainted).
-        -- C API calls in tainted context return SECRET values; string concatenation with
-        -- a SECRET value produces a SECRET string.  Passing a SECRET string to
-        -- fs:SetText() (even inside Tooltip_Show's inner SafeCall) permanently stores
-        -- SECRET text on the FontString, making self.Text:GetHeight() return SECRET on
-        -- every subsequent call — including Blizzard's UIWidget timer update path
-        -- (UIWidgetManager.lua:341) — causing the "arithmetic on secret number" error
-        -- (issue #161).  Wrap the entire body in SafeCall so all C APIs return clean
-        -- values and the constructed text string is never SECRET.
-        local selfCapture = self
-        SafeCall(function()
-            local text = ConfigModule.Filters[ selfCapture.filter ].name
+        local text = ConfigModule.Filters[ self.filter ].name
 
-            local filterEmissary = ConfigModule:Get("filterEmissary")
-            if selfCapture.filter == "EMISSARY" and filterEmissary and not C_QuestLog.IsComplete(filterEmissary) then
-                local title = C_QuestLog.GetTitleForQuestID(filterEmissary)
-                if title then text = text..": "..title end
+        local filterEmissary = ConfigModule:Get("filterEmissary")
+        if self.filter == "EMISSARY" and filterEmissary and not C_QuestLog.IsComplete(filterEmissary) then
+            local title = C_QuestLog.GetTitleForQuestID(filterEmissary)
+            if title then text = text..": "..title end
+        end
+
+        local filterLoot = ConfigModule:Get("filterLoot")
+        local lootFilterUpgrades = ConfigModule:Get("lootFilterUpgrades")
+        if self.filter == "LOOT" then
+            if filterLoot == _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES or (filterLoot == 0 and lootFilterUpgrades) then
+                text = string.format("%s (%s)", text, L["UPGRADES"])
             end
+        end
 
-            local filterLoot = ConfigModule:Get("filterLoot")
-            local lootFilterUpgrades = ConfigModule:Get("lootFilterUpgrades")
-            if selfCapture.filter == "LOOT" then
-                if filterLoot == _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES or (filterLoot == 0 and lootFilterUpgrades) then
-                    text = string.format("%s (%s)", text, L["UPGRADES"])
-                end
-            end
+        local filterFaction = ConfigModule:Get("filterFaction")
+        if self.filter == "FACTION" and filterFaction ~= 0 then
+            local factionData = C_Reputation.GetFactionDataByID(filterFaction)
+            local title = factionData and factionData.name
+            if title then text = text..": "..title end
+        end
 
-            local filterFaction = ConfigModule:Get("filterFaction")
-            if selfCapture.filter == "FACTION" and filterFaction ~= 0 then
-                local factionData = C_Reputation.GetFactionDataByID(filterFaction)
-                local title = factionData and factionData.name
+        local sortMethod = ConfigModule:Get("sortMethod")
+        if self.filter == "SORT" then
+            local title = L["config_sortMethod_"..sortMethod]
+            if title then text = text..": "..title end
+        end
 
-                if title then
-                    text = text..": "..title
-                end
-            end
+        local filterZone = ConfigModule:Get("filterZone")
+        if self.filter == "ZONE" and filterZone ~= 0 then
+            local mapInfo = C_Map.GetMapInfo(filterZone)
+            local title = mapInfo and mapInfo.name
+            if title then text = text..": "..title end
+        end
 
-            local sortMethod = ConfigModule:Get("sortMethod")
-            if selfCapture.filter == "SORT" then
-                local title = L["config_sortMethod_"..sortMethod]
-                if title then text = text..": "..title end
-            end
+        local filterTime = ConfigModule:Get("filterTime")
+        local timeFilterDuration = ConfigModule:Get("timeFilterDuration")
+        if self.filter == "TIME" then
+            local hours = filterTime ~= 0 and filterTime or timeFilterDuration
+            text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, hours))
+        end
 
-            local filterZone = ConfigModule:Get("filterZone")
-            if selfCapture.filter == "ZONE" and filterZone ~= 0 then
-                local mapInfo = C_Map.GetMapInfo(filterZone)
-                local title = mapInfo and mapInfo.name
-                if title then text = text..": "..title end
-            end
-
-            local filterTime = ConfigModule:Get("filterTime")
-            local timeFilterDuration = ConfigModule:Get("timeFilterDuration")
-            if selfCapture.filter == "TIME" then
-                local hours = filterTime ~= 0 and filterTime or timeFilterDuration
-                text = string.format(BLACK_MARKET_HOT_ITEM_TIME_LEFT, string.format(FORMATED_HOURS, hours))
-            end
-
-            QuestFrameModule.Tooltip_ShowSimple(selfCapture, text, HIGHLIGHT_FONT_COLOR)
-        end)
+        QuestFrameModule.Tooltip_ShowSimple(self, text, HIGHLIGHT_FONT_COLOR)
     end
 
     local function FilterButton_OnLeave(self)
@@ -316,7 +302,7 @@ do
                 end
             end
 
-            FilterButton_OnEnter(self)
+            securecallfunction(FilterButton_OnEnter, self)
         end
     end
 
@@ -326,8 +312,8 @@ do
             local button = CreateFrame("Button", nil, awqContainer)
             button.filter = key
 
-            button:SetScript("OnEnter", FilterButton_OnEnter)
-            button:SetScript("OnLeave", FilterButton_OnLeave)
+            button:SetScript("OnEnter", function(self) securecallfunction(FilterButton_OnEnter, self) end)
+            button:SetScript("OnLeave", function(self) securecallfunction(FilterButton_OnLeave, self) end)
             button:RegisterForClicks("LeftButtonUp","RightButtonUp")
             button:SetScript("OnClick", FilterButton_OnClick)
 
@@ -374,44 +360,37 @@ do
         return C_QuestLog.QuestContainsFirstTimeRepBonusForPlayer(questID)
     end
 
+    -- These functions are defined at module level (clean load context) so they are
+    -- UNTAINTED function objects.  securecallfunction(f) requires f to be untainted;
+    -- anonymous functions created inside tainted event handlers are themselves tainted
+    -- and securecallfunction cannot elevate them.  The SetScript wrappers below call
+    -- these via securecallfunction so all C API calls, frame Show/Hide, and
+    -- SetTextColor run in secure context (issue #161).
     local function QuestButton_OnEnter(self)
         local questTagInfo = DataModule.GetCachedQuestTagInfo(self.questID)
-
         local color
-
         if ShouldQuestBeBonusColored(self.questID) then
             color = QUEST_BONUS_COLOR
         else
-            _, color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
+            _, color = GetQuestDifficultyColor(UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality])
         end
-
-        local r1, g1, b1 = color.r, color.g, color.b
-        SafeCall(function() self.Text:SetTextColor(r1, g1, b1) end)
-
+        self.Text:SetTextColor(color.r, color.g, color.b)
         hoveredQuestID = self.questID
-
-        self.HighlightTexture:SetShown(true);
+        self.HighlightTexture:SetShown(true)
         QuestFrameModule.Tooltip_BuildSafe(self)
     end
 
     local function QuestButton_OnLeave(self)
         local questTagInfo = DataModule.GetCachedQuestTagInfo(self.questID)
-
         local color
-
         if ShouldQuestBeBonusColored(self.questID) then
             color = QUEST_REWARD_CONTEXT_FONT_COLOR
         else
-            color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
+            color = GetQuestDifficultyColor(UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality])
         end
-
-        local r2, g2, b2 = color.r, color.g, color.b
-        SafeCall(function() self.Text:SetTextColor(r2, g2, b2) end)
-
+        self.Text:SetTextColor(color.r, color.g, color.b)
         hoveredQuestID = nil
-
-        self.HighlightTexture:SetShown(false);
-
+        self.HighlightTexture:SetShown(false)
         QuestFrameModule.Tooltip_Hide(self)
     end
 
@@ -471,8 +450,10 @@ do
         button.OnLegendPinMouseEnter = function() end
         button.OnLegendPinMouseLeave = function() end
 
-        button:SetScript("OnEnter", QuestButton_OnEnter)
-        button:SetScript("OnLeave", QuestButton_OnLeave)
+        -- Call via securecallfunction so the untainted module-level implementations
+        -- run in secure context regardless of the tainted OnEnter/OnLeave event (issue #161).
+        button:SetScript("OnEnter", function(self) securecallfunction(QuestButton_OnEnter, self) end)
+        button:SetScript("OnLeave", function(self) securecallfunction(QuestButton_OnLeave, self) end)
         button:SetScript("OnClick", QuestButton_OnClick)
 
         -- Do NOT call button.TagTexture:SetSize() here.  button.TagTexture is a
@@ -1004,18 +985,27 @@ do
         headerButton.titleFramePool = titleFramePool
         headerButton.layoutIndex = 1
 
-        hooksecurefunc(QuestMapFrame, "SetFrameLayoutIndex", function(mapFrame, frame)
+        -- Module-level (untainted) implementation of the SetFrameLayoutIndex hook body.
+        -- hooksecurefunc callbacks always run in addon-tainted context regardless of who
+        -- called the original function.  Doing arithmetic (frame.layoutIndex + 0.5) in
+        -- tainted context produces a SECRET number that is stored in awqContainer.layoutIndex,
+        -- which then flows through Layout() into SetPoint calls, giving our frames SECRET
+        -- positions.  frame:GetLeft() on those frames returns SECRET; any Blizzard code
+        -- that reads those positions in ANY context and does arithmetic on them will error
+        -- with "attempt to perform arithmetic on a secret number value" (issue #161).
+        -- By passing an untainted module-level function to securecallfunction, the
+        -- arithmetic runs in secure context and awqContainer.layoutIndex is always a
+        -- clean number.
+        local function ApplyLayoutIndex(_, frame)
             if awqContainer:IsShown()
                     and ConfigModule:Get("showAtTop")
                     and frame == QuestScrollFrame.Contents.Separator then
-                -- Assign directly instead of calling mapFrame:SetFrameLayoutIndex(awqContainer),
-                -- which would write back to mapFrame.layoutIndex (a Blizzard-owned value) from
-                -- addon code, tainting it and cascading taints into LayoutFrame, UIWidgets,
-                -- GameTooltip, and QuestMapFrame layout calculations.
-                -- The post-hook fires after Blizzard has already set frame.layoutIndex, so
-                -- reading it here is safe. We place awqContainer just after the separator.
                 awqContainer.layoutIndex = frame.layoutIndex + 0.5
             end
+        end
+
+        hooksecurefunc(QuestMapFrame, "SetFrameLayoutIndex", function(mapFrame, frame)
+            securecallfunction(ApplyLayoutIndex, mapFrame, frame)
         end)
     end
 
@@ -1305,10 +1295,19 @@ do
             dataProvider = dp
 
             -- Use hooksecurefunc to post-process pins after Blizzard's untainted RefreshAllData completes.
-            -- This keeps the data provider instance clean so taint doesn't propagate to other data providers
-            -- (AreaPOI, etc.) via secureexecuterange in RefreshAllDataProviders.
+            -- Wrap PostProcessWorldQuestPins in SafeCall: the hooksecurefunc fires in tainted context.
+            -- Code in PostProcessWorldQuestPins that runs between internal SafeCall blocks (GetMapID,
+            -- GetMapInfo, pin pool enumeration, supertracked-quest loop) still runs tainted and can
+            -- expose Vignette/AreaPOI pins, causing their OnMouseEnter to fire in tainted context and
+            -- making C_UIWidgetManager APIs return SECRET widgetSizeSetting → self.Text:SetWidth(SECRET)
+            -- → self.Text:GetHeight() returns SECRET (issue #161).
+            -- Wrapping the entire call ensures ALL of PostProcessWorldQuestPins runs in secure context.
+            -- PostProcessWorldQuestPins is a module-level (untainted) function.
+            -- securecallfunction requires the callee to be untainted; anonymous
+            -- functions created inside a tainted hook callback are tainted and
+            -- cannot be elevated (issue #161).
             hooksecurefunc(dataProvider, "RefreshAllData", function(self)
-                PostProcessWorldQuestPins(self)
+                securecallfunction(PostProcessWorldQuestPins, self)
             end)
         end
     end
@@ -1494,7 +1493,11 @@ function QuestFrameModule:RequestQuestLogUpdate()
     C_Timer.After(0.05, function()
         listRefreshPending = false
         if QuestMapFrame and QuestMapFrame:IsShown() then
-            QuestFrameModule:QuestLog_Update()
+            -- QuestFrameModule.QuestLog_Update is a module-level (untainted) function.
+            -- If this timer was registered from tainted context, calling QuestLog_Update
+            -- directly would run it tainted; button:Show() inside it would expose map
+            -- pins and fire their OnMouseEnter in tainted context (issue #161).
+            securecallfunction(QuestFrameModule.QuestLog_Update, QuestFrameModule)
         end
     end)
 end
@@ -1546,10 +1549,16 @@ function QuestFrameModule:RequestFullRefresh(reason)
         -- (e.g. SetText(SECRET_title)).  That marks MoneyFrame button string widths
         -- as SECRET, causing "attempt to perform arithmetic on a secret number value"
         -- in MoneyFrame.lua:307 when the next map-pin tooltip is rendered (issue #161).
+        -- Use securecallfunction with the Blizzard method directly (untainted).
+        -- SafeCall(function()...end) would not work here: the anonymous function is
+        -- created inside a tainted timer callback (RequestFullRefresh is called from
+        -- tainted FilterButton_OnClick / config callbacks), so securecallfunction
+        -- cannot elevate a tainted anonymous function.  dataProvider.RefreshAllData
+        -- is a Blizzard method — untainted — so securecallfunction works correctly
+        -- and Blizzard's pin-adding code (plus our PostProcessWorldQuestPins hook
+        -- which itself uses securecallfunction) runs in secure context (issue #161).
         if dataProvider and dataProvider.RefreshAllData then
-            SafeCall(function()
-                dataProvider:RefreshAllData()
-            end)
+            securecallfunction(dataProvider.RefreshAllData, dataProvider)
         end
     end)
 end

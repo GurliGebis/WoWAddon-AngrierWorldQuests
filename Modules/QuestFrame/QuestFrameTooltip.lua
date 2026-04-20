@@ -148,7 +148,14 @@ do
 
     function QuestFrameModule:Tooltip_Hide()
         if awqTooltip then
-            awqTooltip:Hide()
+            -- Wrap in SafeCall: Tooltip_Hide is called from tainted OnLeave/OnClick
+            -- handlers.  awqTooltip:Hide() may expose an AreaPOI or other map pin
+            -- underneath our tooltip frame, causing WoW to fire OnMouseEnter on that
+            -- pin synchronously within the tainted call stack.  That would make
+            -- GameTooltip_AddWidgetSet and UIWidget processing run in tainted context,
+            -- causing self.Text:GetHeight() to return SECRET and permanently storing
+            -- SECRET height on the FontString (issue #161).
+            SafeCall(function() awqTooltip:Hide() end)
         end
     end
 
