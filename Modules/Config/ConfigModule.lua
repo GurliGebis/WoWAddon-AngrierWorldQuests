@@ -218,18 +218,6 @@ end
 --region Configuration dialog
 
 do
-    -- SafeCall: run func in secure (untainted) context so text-layout operations on
-    -- Blizzard-created FontStrings (InterfaceOptionsCheckButtonTemplate .Text) don't
-    -- contaminate the global C++ text-layout engine and cause UIWidget
-    -- self.Text:GetHeight() to return a secret number (issue #161).
-    local function SafeCall(func)
-        if securecallfunction then
-            securecallfunction(func)
-        else
-            func()
-        end
-    end
-
     local panelOriginalConfig = {}
     local panelInit, checkboxes, dropdowns, filterCheckboxes
     local lootUpgradeLevelValues = { -1, 0, 5, 10, 15, 20, 25, 30 }
@@ -325,10 +313,7 @@ do
     local function DropDown_Create(self)
         DropDown_Index = DropDown_Index + 1
         local dropdown = CreateFrame("DropdownButton", addonName.."ConfigDropDown"..DropDown_Index, self, "WowStyle1DropdownTemplate")
-        -- Wrap in SafeCall: SetWidth on a Blizzard WowStyle1DropdownTemplate frame from
-        -- tainted context marks its width as SECRET, contaminating the global text-layout
-        -- engine and causing UIWidget self.Text:GetHeight() to return SECRET (issue #161).
-        SafeCall(function() dropdown:SetWidth(180) end)
+        dropdown:SetWidth(180)
 
         local label = dropdown:CreateFontString(addonName.."ConfigDropLabel"..DropDown_Index, "BACKGROUND", "GameFontNormal")
         label:SetPoint("BOTTOMLEFT", dropdown, "TOPLEFT", 0, 3)
@@ -361,19 +346,13 @@ do
         if not panelInit then
             local footer = self:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
             footer:SetPoint('BOTTOMRIGHT', -16, 16)
-            -- Wrap SetText in SafeCall: Panel_OnRefresh may be called from tainted context
-            -- (e.g. via slash command handler). SetText on any FontString in tainted context
-            -- contaminates the global C++ text-layout engine, causing UIWidget
-            -- self.Text:GetHeight() to return SECRET (issue #161).
-            local footerText = AngrierWorldQuests.Version or "Dev"
-            SafeCall(function() footer:SetText(footerText) end)
+            footer:SetText(AngrierWorldQuests.Version or "Dev")
 
             local label = self:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
             label:SetPoint("TOPLEFT", 16, -16)
             label:SetJustifyH("LEFT")
             label:SetJustifyV("TOP")
-            local labelText = AngrierWorldQuests.Name
-            SafeCall(function() label:SetText(labelText) end)
+            label:SetText(AngrierWorldQuests.Name)
 
             checkboxes = {}
             dropdowns = {}
@@ -392,15 +371,11 @@ do
                  "enableDebugging"
             }
 
-            for i,key in ipairs(checkboxes_order) do
+            for i, key in ipairs(checkboxes_order) do
                 checkboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
                 checkboxes[i]:SetScript("OnClick", CheckBox_OnClick)
                 checkboxes[i].configKey = key
-                -- checkboxes[i].Text is a Blizzard-created FontString (part of
-                -- InterfaceOptionsCheckButtonTemplate).  SetText from tainted context
-                -- contaminates the global text-layout engine (issue #161).
-                local cbText = L["config_"..key]
-                SafeCall(function() checkboxes[i].Text:SetText(cbText) end)
+                checkboxes[i].Text:SetText(L["config_"..key])
                 if i == 1 then
                     checkboxes[i]:SetPoint("TOPLEFT", label, "BOTTOMLEFT", -2, -8)
                 else
@@ -412,8 +387,7 @@ do
 
             for i, key in ipairs(dropdowns_order) do
                 dropdowns[i] = DropDown_Create(self)
-                local dropLabelText = L["config_"..key]
-                SafeCall(function() dropdowns[i].Label:SetText(dropLabelText) end)
+                dropdowns[i].Label:SetText(L["config_"..key])
                 dropdowns[i].configKey = key
                 dropdowns[i]:SetupMenu(DropDown_SetupMenu)
                 if i == 1 then
@@ -427,27 +401,16 @@ do
             label2:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 435, -5)
             label2:SetJustifyH("LEFT")
             label2:SetJustifyV("TOP")
-            local label2Text = L["config_enabledFilters"]
-            SafeCall(function() label2:SetText(label2Text) end)
+            label2:SetText(L["config_enabledFilters"])
 
-            for i,key in ipairs(ConfigModule.FiltersOrder) do
+            for i, key in ipairs(ConfigModule.FiltersOrder) do
                 local filter = ConfigModule.Filters[key]
                 filterCheckboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
                 filterCheckboxes[i]:SetScript("OnClick", FilterCheckBox_OnClick)
                 filterCheckboxes[i].filterMask = ConfigModule:FilterKeyToMask(key)
-                -- filterCheckboxes[i].Text is Blizzard-created (InterfaceOptionsCheckButtonTemplate).
-                -- SetFontObject triggers re-layout on existing text; both SetFontObject and
-                -- SetText must run in clean context to avoid SECRET height contamination (issue #161).
-                local fcFontObj = "GameFontHighlightSmall"
-                local fcText = filter.name
-                SafeCall(function()
-                    filterCheckboxes[i].Text:SetFontObject(fcFontObj)
-                    filterCheckboxes[i].Text:SetText(fcText)
-                end)
-                -- Wrap SetPoint on Blizzard-created FontString in SafeCall.
-                -- Setting a point from tainted context marks the anchor as SECRET,
-                -- which cascades into layout and UIWidget GetHeight() (issue #161).
-                SafeCall(function() filterCheckboxes[i].Text:SetPoint("LEFT", filterCheckboxes[i], "RIGHT", 0, 1) end)
+                filterCheckboxes[i].Text:SetFontObject("GameFontHighlightSmall")
+                filterCheckboxes[i].Text:SetText(filter.name)
+                filterCheckboxes[i].Text:SetPoint("LEFT", filterCheckboxes[i], "RIGHT", 0, 1)
 
                 if i == 1 then
                     filterCheckboxes[1]:SetPoint("TOPLEFT", label2, "BOTTOMLEFT", 0, -5)
@@ -486,8 +449,8 @@ do
     end
 
     function ConfigModule:CreateProfilePanel()
-		local profileOptions = LibStub("AceDBOptions-3.0"):GetOptionsTable(DBModule.AceDB)
-		LibStub("AceConfig-3.0"):RegisterOptionsTable("AWQ-Profiles", profileOptions)
+local profileOptions = LibStub("AceDBOptions-3.0"):GetOptionsTable(DBModule.AceDB)
+LibStub("AceConfig-3.0"):RegisterOptionsTable("AWQ-Profiles", profileOptions)
         local profilePanel = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("AWQ-Profiles", "Profiles", addonName)
 
         return profilePanel

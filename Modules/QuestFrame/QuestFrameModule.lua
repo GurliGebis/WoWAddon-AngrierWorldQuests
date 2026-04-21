@@ -36,26 +36,22 @@ local DataModule = AngrierWorldQuests:GetModule("DataModule")
 local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 
 -- ============================================================
--- TAINT-SAFE FRAME OPERATIONS (issue #161)
+-- TAINT AVOIDANCE (issue #161)
 -- ============================================================
--- ALL addon Lua functions are tainted (created in tainted addon
--- execution context during addon loading).
--- securecallfunction(addonFunc) does NOT create a clean context —
--- it only works with BLIZZARD function objects (untainted).
+-- securecallfunction / securecall protect a SECURE caller from
+-- being tainted by a tainted callee — the opposite of what was
+-- mistakenly applied in earlier attempts.  Calling secure Blizzard
+-- frame methods via securecallfunction() from tainted addon code
+-- provides NO protection; the frame operations still run tainted.
 --
--- Correct pattern for EVERY frame operation:
---   securecallfunction(frame.Show, frame)
---   securecallfunction(frame.SetFrameLevel, frame, level)
---   securecallfunction(frame.ClearAllPoints, frame)
---   securecallfunction(frame.SetPoint, frame, ...)
---   securecallfunction(frame.Text.SetText, frame.Text, text)
--- where the first argument is Blizzard's untainted method from
--- the Frame/FontString/Texture metatable.
+-- The only correct fix for taint-sensitive frame Show/Hide
+-- operations is to ensure they run from a clean Lua coroutine.
+-- C_Timer.After(0, ...) callbacks fire from WoW's main game loop
+-- in a fresh untainted coroutine.
 --
--- ANY frame visibility, Z-order, or position change from tainted
--- context can synchronously fire OnMouseEnter on a newly-exposed
--- AreaPOI/Vignette pin, causing UIWidget C APIs to run in tainted
--- context and return SECRET values → SetWidth(SECRET) error.
+-- PostProcessWorldQuestPins is therefore deferred via
+-- C_Timer.After(0) rather than called directly from the
+-- hooksecurefunc hook (which always runs tainted).
 -- ============================================================
 
 --region Variables
@@ -382,9 +378,9 @@ do
         else
             _, color = GetQuestDifficultyColor(UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality])
         end
-        securecallfunction(self.Text.SetTextColor, self.Text, color.r, color.g, color.b)
+        self.Text:SetTextColor(color.r, color.g, color.b)
         hoveredQuestID = self.questID
-        securecallfunction(self.HighlightTexture.SetShown, self.HighlightTexture, true)
+        self.HighlightTexture:SetShown(true)
         QuestFrameModule.Tooltip_BuildSafe(self)
     end
 
@@ -396,9 +392,9 @@ do
         else
             color = GetQuestDifficultyColor(UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality])
         end
-        securecallfunction(self.Text.SetTextColor, self.Text, color.r, color.g, color.b)
+        self.Text:SetTextColor(color.r, color.g, color.b)
         hoveredQuestID = nil
-        securecallfunction(self.HighlightTexture.SetShown, self.HighlightTexture, false)
+        self.HighlightTexture:SetShown(false)
         QuestFrameModule.Tooltip_Hide(self)
     end
 
@@ -452,8 +448,7 @@ do
             return
         end
 
-        -- button.SetParent is Blizzard's untainted Frame:SetParent (issue #161).
-        securecallfunction(button.SetParent, button, awqContainer)
+        button:SetParent(awqContainer)
 
         button.questRewardTooltipStyle = TOOLTIP_QUEST_REWARDS_STYLE_WORLD_QUEST
         button.OnLegendPinMouseEnter = function() end
@@ -463,24 +458,18 @@ do
         button:SetScript("OnLeave", QuestButton_OnLeave)
         button:SetScript("OnClick", QuestButton_OnClick)
 
-        -- Do NOT call button.TagTexture:SetSize() — taints anchor chain → SECRET
-        -- UIWidget GetHeight() (issue #161).
-        securecallfunction(button.TagTexture.Hide, button.TagTexture)
-        securecallfunction(button.StorylineTexture.Hide, button.StorylineTexture)
+        button.TagTexture:Hide()
+        button.StorylineTexture:Hide()
 
         button.TagText = button:CreateFontString(nil, nil, "GameFontNormalLeft")
         button.TagText:SetJustifyH("RIGHT")
-        securecallfunction(button.TagText.SetTextColor, button.TagText, 1, 1, 1)
-        securecallfunction(button.TagText.SetPoint, button.TagText, "RIGHT", button.TagTexture, "LEFT", -2, 0)
-        -- Do NOT call button.TagText:SetWidth() — taints width (issue #161).
-        securecallfunction(button.TagText.Hide, button.TagText)
-
-        -- Do NOT call SetPoint on button.Text or button.TaskIcon — marks computed
-        -- X/Y SECRET, cascades through anchor chain (issue #161).
+        button.TagText:SetTextColor(1, 1, 1)
+        button.TagText:SetPoint("RIGHT", button.TagTexture, "LEFT", -2, 0)
+        button.TagText:Hide()
 
         button.TimeIcon = button:CreateTexture(nil, "OVERLAY")
         button.TimeIcon:SetAtlas("worldquest-icon-clock")
-        securecallfunction(button.TimeIcon.SetPoint, button.TimeIcon, "RIGHT", button.Text, "LEFT", -5, 0)
+        button.TimeIcon:SetPoint("RIGHT", button.Text, "LEFT", -5, 0)
 
         button.ToggleTracking = QuestButton_ToggleTracking
 
@@ -532,14 +521,14 @@ do
 
     function QuestFrameModule:HideWorldQuestsHeader()
         for i = 1, #filterButtons do
-            securecallfunction(filterButtons[i].Hide, filterButtons[i])
+            filterButtons[i]:Hide()
         end
 
         if awqContainer then
-            securecallfunction(awqContainer.Hide, awqContainer)
+            awqContainer:Hide()
         end
 
-        securecallfunction(QuestScrollFrame.Contents.Layout, QuestScrollFrame.Contents)
+        QuestScrollFrame.Contents:Layout()
     end
 
     function QuestFrameModule:QuestLog_Update()
@@ -574,11 +563,11 @@ do
         if not showAtTop then
             awqContainer.layoutIndex = 9999.5
         end
-        securecallfunction(awqContainer.Show, awqContainer)
+        awqContainer:Show()
 
         local needsReposition = showAtTop and not awqContainer.layoutIndex
 
-        securecallfunction(headerButton.Show, headerButton)
+        headerButton:Show()
         local prevButton = headerButton
 
         local usedButtons = {}
@@ -622,7 +611,7 @@ do
 
         if questsCollapsed then
             for i = 1, #filterButtons do
-                securecallfunction(filterButtons[i].Hide, filterButtons[i])
+                filterButtons[i]:Hide()
             end
         else
             local selectedFilters = ConfigModule:GetFilterTable()
@@ -637,34 +626,28 @@ do
 
                 local optionKey = ConfigModule.FiltersOrder[i]
                 local filterButton = GetFilterButton(optionKey)
-                -- SetFrameLevel changes Z-ordering; if a filter button was covering
-                -- an AreaPOI pin, this exposes it synchronously → OnMouseEnter fires.
-                -- Use securecallfunction(BlizzardMethod) to keep that chain clean
-                -- (issue #161).
-                securecallfunction(filterButton.SetFrameLevel, filterButton, 50 + i)
+                filterButton:SetFrameLevel(50 + i)
                 local rightMap = DataModule:IsFilterOnCorrectMap(optionKey, mapID)
 
                 if ConfigModule:GetFilterDisabled(optionKey) or (not rightMap) then
-                    securecallfunction(filterButton.Hide, filterButton)
+                    filterButton:Hide()
                 else
-                    securecallfunction(filterButton.Show, filterButton)
-                    -- ClearAllPoints + SetPoint reposition the button; wrap them too
-                    -- so any resulting OnMouseEnter fires in clean context (issue #161).
-                    securecallfunction(filterButton.ClearAllPoints, filterButton)
+                    filterButton:Show()
+                    filterButton:ClearAllPoints()
 
                     if prevFilter then
-                        securecallfunction(filterButton.SetPoint, filterButton, "RIGHT", prevFilter, "LEFT", 5, 0)
-                        securecallfunction(filterButton.SetPoint, filterButton, "TOP", prevButton, "TOP", 0, 2)
+                        filterButton:SetPoint("RIGHT", prevFilter, "LEFT", 5, 0)
+                        filterButton:SetPoint("TOP", prevButton, "TOP", 0, 2)
                     else
-                        securecallfunction(filterButton.SetPoint, filterButton, "LEFT", prevButton.CollapseButton, "LEFT", -22, 0)
-                        securecallfunction(filterButton.SetPoint, filterButton, "TOP", prevButton, "TOP", 0, 2)
+                        filterButton:SetPoint("LEFT", prevButton.CollapseButton, "LEFT", -22, 0)
+                        filterButton:SetPoint("TOP", prevButton, "TOP", 0, 2)
                     end
 
                     if optionKey ~= "SORT" then
                         if selectedFilters[optionKey] then
-                            securecallfunction(filterButton.SetNormalAtlas, filterButton, "worldquest-tracker-ring-selected")
+                            filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
                         else
-                            securecallfunction(filterButton.SetNormalAtlas, filterButton, "worldquest-tracker-ring")
+                            filterButton:SetNormalAtlas("worldquest-tracker-ring")
                         end
                     end
                     prevFilter = filterButton
@@ -672,15 +655,15 @@ do
             end
 
             if #usedButtons > 0 then
-                securecallfunction(QuestScrollFrame.EmptyText.Hide, QuestScrollFrame.EmptyText)
-                securecallfunction(QuestScrollFrame.NoSearchResultsText.Hide, QuestScrollFrame.NoSearchResultsText)
+                QuestScrollFrame.EmptyText:Hide()
+                QuestScrollFrame.NoSearchResultsText:Hide()
             end
 
             table.sort(usedButtons, QuestSorter)
 
             for i, button in ipairs(usedButtons) do
                 button.layoutIndex = i + 1
-                securecallfunction(button.Show, button)
+                button:Show()
 
                 if hoveredQuestID == button.questID then
                     QuestButton_OnEnter(button)
@@ -689,18 +672,17 @@ do
         end
 
         headerButton.CollapseButton:UpdateCollapsedState(ConfigModule:Get("collapsed"))
-        -- CollapseButton.Show is Blizzard's untainted Frame:Show (issue #161).
-        securecallfunction(headerButton.CollapseButton.Show, headerButton.CollapseButton)
+        headerButton.CollapseButton:Show()
 
         if needsReposition then
             awqContainer.layoutIndex = nil
-            securecallfunction(QuestLogQuests_Update)
+            QuestLogQuests_Update()
 
             if not awqContainer.layoutIndex then
                 awqContainer.layoutIndex = 0.5
             end
         else
-            securecallfunction(QuestScrollFrame.Contents.Layout, QuestScrollFrame.Contents)
+            QuestScrollFrame.Contents:Layout()
         end
     end
 
@@ -736,8 +718,10 @@ do
         button.numObjectives = questInfo.numObjectives
         button.infoX = questInfo.x
         button.infoY = questInfo.y
+        -- Store title as awqTitle so Tooltip_BuildSafe can read it without
+        -- calling GetText() on a FontString (issue #161).
         button.awqTitle = title
-        securecallfunction(button.Text.SetText, button.Text, title)
+        button.Text:SetText(title)
 
         local color
 
@@ -747,55 +731,55 @@ do
             color = GetQuestDifficultyColor( UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality] )
         end
 
-        securecallfunction(button.Text.SetTextColor, button.Text, color.r, color.g, color.b)
+        button.Text:SetTextColor(color.r, color.g, color.b)
 
-        -- Hard-coded line height avoids GetFont/GetHeight which return SECRET in
-        -- tainted context (issue #161).
+        -- Hard-coded line height: avoids GetFont/GetHeight/GetStringHeight which
+        -- return SECRET in WoW 11.x when called from a tainted coroutine (issue #161).
         totalHeight = totalHeight + 14  -- 12pt rendered line height ≈ 14px
 
         if (WorldMap_IsWorldQuestEffectivelyTracked(questID)) then
-            securecallfunction(button.Checkbox.CheckMark.Show, button.Checkbox.CheckMark)
+            button.Checkbox.CheckMark:Show()
         else
-            securecallfunction(button.Checkbox.CheckMark.Hide, button.Checkbox.CheckMark)
+            button.Checkbox.CheckMark:Hide()
         end
 
         local hasIcon = true
-        securecallfunction(button.TaskIcon.Show, button.TaskIcon)
+        button.TaskIcon:Show()
         button.TaskIcon:SetTexCoord(.08, .92, .08, .92)
 
         if questInfo.inProgress then
             button.TaskIcon:SetAtlas("worldquest-questmarker-questionmark")
-            securecallfunction(button.TaskIcon.SetSize, button.TaskIcon, 10, 15)
+            button.TaskIcon:SetSize(10, 15)
         else
             local atlas, width, height = QuestUtil.GetWorldQuestAtlasInfo(questID, questTagInfo, false)
             if atlas and atlas ~= "Worldquest-icon" then
                 button.TaskIcon:SetAtlas(atlas)
                 local w, h = math.min(width or 16, 16), math.min(height or 16, 16)
-                securecallfunction(button.TaskIcon.SetSize, button.TaskIcon, w, h)
+                button.TaskIcon:SetSize(w, h)
             elseif questTagInfo.isElite then
                 button.TaskIcon:SetAtlas("questlog-questtypeicon-heroic")
-                securecallfunction(button.TaskIcon.SetSize, button.TaskIcon, 16, 16)
+                button.TaskIcon:SetSize(16, 16)
             else
                 hasIcon = false
-                securecallfunction(button.TaskIcon.Hide, button.TaskIcon)
+                button.TaskIcon:Hide()
             end
         end
 
         if ( timeLeftMinutes and timeLeftMinutes > 0 and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
-            securecallfunction(button.TimeIcon.Show, button.TimeIcon)
+            button.TimeIcon:Show()
 
             if hasIcon then
-                securecallfunction(button.TimeIcon.SetSize, button.TimeIcon, 14, 14)
-                securecallfunction(button.TimeIcon.SetPoint, button.TimeIcon, "CENTER", button.TaskIcon, "BOTTOMLEFT", 0, 0)
+                button.TimeIcon:SetSize(14, 14)
+                button.TimeIcon:SetPoint("CENTER", button.TaskIcon, "BOTTOMLEFT", 0, 0)
             else
-                securecallfunction(button.TimeIcon.SetSize, button.TimeIcon, 16, 16)
-                securecallfunction(button.TimeIcon.SetPoint, button.TimeIcon, "CENTER", button.Text, "LEFT", -15, 0)
+                button.TimeIcon:SetSize(16, 16)
+                button.TimeIcon:SetPoint("CENTER", button.Text, "LEFT", -15, 0)
             end
         else
-            securecallfunction(button.TimeIcon.Hide, button.TimeIcon)
+            button.TimeIcon:Hide()
         end
 
-        securecallfunction(button.HighlightTexture.SetShown, button.HighlightTexture, false)
+        button.HighlightTexture:SetShown(false)
 
         local tagText, tagTexture, tagTexCoords, tagColor
         tagColor = {r=1, g=1, b=1}
@@ -861,19 +845,19 @@ do
         end
 
         if tagTexture and tagText then
-            securecallfunction(button.TagText.Show, button.TagText)
-            securecallfunction(button.TagText.SetText, button.TagText, tagText)
-            securecallfunction(button.TagText.SetTextColor, button.TagText, tagColor.r, tagColor.g, tagColor.b)
-            securecallfunction(button.TagTexture.Show, button.TagTexture)
+            button.TagText:Show()
+            button.TagText:SetText(tagText)
+            button.TagText:SetTextColor(tagColor.r, tagColor.g, tagColor.b)
+            button.TagTexture:Show()
             button.TagTexture:SetTexture(tagTexture)
         elseif tagTexture then
-            securecallfunction(button.TagText.Hide, button.TagText)
-            securecallfunction(button.TagText.SetText, button.TagText, "")
-            securecallfunction(button.TagTexture.Show, button.TagTexture)
+            button.TagText:Hide()
+            button.TagText:SetText("")
+            button.TagTexture:Show()
             button.TagTexture:SetTexture(tagTexture)
         else
-            securecallfunction(button.TagText.Hide, button.TagText)
-            securecallfunction(button.TagTexture.Hide, button.TagTexture)
+            button.TagText:Hide()
+            button.TagTexture:Hide()
         end
 
         if tagTexture then
@@ -884,9 +868,11 @@ do
             end
         end
 
+        -- fixedHeight lets VerticalLayoutFrame read height without calling
+        -- GetHeight() (which returns SECRET from a tainted coroutine — issue #161).
         button.fixedHeight = totalHeight
-        securecallfunction(button.SetHeight, button, totalHeight)
-        securecallfunction(button.Show, button)
+        button:SetHeight(totalHeight)
+        button:Show()
 
         return button
     end
@@ -899,7 +885,7 @@ do
 
         headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", awqContainer, "QuestLogHeaderTemplate")
         headerButton:SetScript("OnClick", HeaderButton_OnClick)
-        securecallfunction(headerButton.SetText, headerButton, TRACKER_HEADER_WORLD_QUESTS)
+        headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
         headerButton.topPadding = 6
         headerButton.titleFramePool = titleFramePool
         headerButton.layoutIndex = 1
@@ -913,7 +899,7 @@ do
         end
 
         hooksecurefunc(QuestMapFrame, "SetFrameLayoutIndex", function(mapFrame, frame)
-            securecallfunction(ApplyLayoutIndex, mapFrame, frame)
+            ApplyLayoutIndex(mapFrame, frame)
         end)
     end
 
@@ -1047,7 +1033,7 @@ do
         end
 
         local function AddTrackedWorldQuestPin(info)
-            local pin = securecallfunction(dp.AddWorldQuest, dp, info)
+            local pin = dp:AddWorldQuest(info)
 
             if pin then
                 local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
@@ -1055,7 +1041,7 @@ do
                 local translatedPos = select(2, C_Map.GetMapPosFromWorldPos(continentID, worldPosition, mapID))
 
                 if translatedPos then
-                    securecallfunction(pin.SetPosition, pin, translatedPos:GetXY())
+                    pin:SetPosition(translatedPos:GetXY())
                 end
 
                 table.insert(addonAddedPins, pin)
@@ -1090,7 +1076,7 @@ do
         end
 
         for _, pin in ipairs(addonAddedPins) do
-            securecallfunction(map.RemovePin, map, pin)
+            map:RemovePin(pin)
         end
         wipe(addonAddedPins)
 
@@ -1103,9 +1089,9 @@ do
                 end
 
                 if shouldHide then
-                    securecallfunction(pin.Hide, pin)
+                    pin:Hide()
                 else
-                    securecallfunction(pin.Show, pin)
+                    pin:Show()
                 end
             end
         end
@@ -1163,17 +1149,18 @@ do
         if dp ~= nil then
             dataProvider = dp
 
-            -- IMPORTANT: Do NOT call PostProcessWorldQuestPins directly inside this
-            -- hook.  hooksecurefunc hooks always execute in tainted Lua context.
-            -- Even if individual frame ops inside PostProcessWorldQuestPins use
-            -- securecallfunction(BlizzardMethod), C++ still fires OnMouseEnter
-            -- callbacks (on newly-exposed AreaPOI pins) in the OUTER tainted
-            -- coroutine — not in securecallfunction's clean scope.
+            -- Defer PostProcessWorldQuestPins via C_Timer.After(0) so it runs from
+            -- WoW's game-loop in a fresh untainted coroutine.
             --
-            -- Deferring via C_Timer.After(0) fires the work from WoW's event loop
-            -- in a fresh, untainted Lua coroutine.  Any OnMouseEnter callbacks
-            -- fired by pin:Hide/Show() then run in clean context, preventing
-            -- UIWidget C APIs from returning SECRET values (issue #161).
+            -- hooksecurefunc hooks always run in a tainted coroutine.  Any frame
+            -- Show/Hide called from a tainted coroutine can synchronously fire
+            -- OnMouseEnter on a newly-exposed AreaPOI pin in that same tainted
+            -- coroutine, causing UIWidget C APIs to return SECRET values and
+            -- arithmetic on them to error (issue #161).
+            --
+            -- Note: securecallfunction protects a SECURE caller from being tainted
+            -- by a tainted callee — it cannot make tainted code run securely.
+            -- C_Timer.After(0) is the correct solution here.
             local postProcessPending = false
             hooksecurefunc(dataProvider, "RefreshAllData", function(dpArg)
                 if postProcessPending then return end
@@ -1391,10 +1378,10 @@ function QuestFrameModule:RequestFullRefresh(reason)
         fullRefreshReason = nil
 
         DebugLog(string.format("Applying full refresh (%s)", reasonText))
-        securecallfunction(QuestLogQuests_Update)
+        QuestLogQuests_Update()
 
         if dataProvider and dataProvider.RefreshAllData then
-            securecallfunction(dataProvider.RefreshAllData, dataProvider)
+            dataProvider:RefreshAllData()
         end
     end)
 end

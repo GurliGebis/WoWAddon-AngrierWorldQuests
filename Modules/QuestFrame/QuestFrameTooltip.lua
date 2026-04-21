@@ -32,25 +32,6 @@ local AngrierWorldQuests = LibStub("AceAddon-3.0"):GetAddon(addonName)
 local QuestFrameModule = AngrierWorldQuests:GetModule("QuestFrameModule")
 local DataModule = AngrierWorldQuests:GetModule("DataModule")
 
--- ============================================================
--- TAINT-SAFE FRAME OPERATIONS (issue #161)
--- ============================================================
--- ALL addon Lua functions are tainted (created in tainted addon
--- execution context).  securecallfunction(addonFunc) does NOT
--- create a clean context — only securecallfunction(blizzardMethod)
--- does, because Blizzard methods are untainted function objects.
---
--- Pattern: instead of
---   frame:Show()   (tainted → taints frame layout → SECRET GetHeight)
--- use
---   securecallfunction(frame.Show, frame)
---   (frame.Show is Blizzard's Frame:Show — untainted ✓)
---
--- Applied to every Show/Hide/SetText/SetTextColor/SetSize/SetPoint
--- that could expose a map pin and fire AreaPOI OnMouseEnter (or
--- contaminate the global text-layout engine) in tainted context.
--- ============================================================
-
 local MONEY_FORMAT = "%1$s |T%2$s:16:16:0:0:64:64:5:59:5:59|t %3$s |T%4$s:16:16:0:0:64:64:5:59:5:59|t %5$s |T%6$s:16:16:0:0:64:64:5:59:5:59|t"
 
 do
@@ -75,14 +56,9 @@ do
         end
 
         if not awqHeaderFont then
-            -- GetFont() can return SECRET values in tainted context (issue #161).
-            -- GameFontNormal.GetFont is Blizzard's untainted method → securecallfunction
-            -- runs it in clean context, returning plain numbers.
-            local fontFile, fontSize, fontFlags = securecallfunction(GameFontNormal.GetFont, GameFontNormal)
+            local fontFile, fontSize, fontFlags = GameFontNormal:GetFont()
             awqHeaderFont = CreateFont("AWQHeaderFont")
-            -- SetFont with a SECRET size would contaminate awqHeaderFont's layout
-            -- properties; call via securecallfunction with the clean size (issue #161).
-            securecallfunction(awqHeaderFont.SetFont, awqHeaderFont, fontFile, (fontSize or 12) + 2, fontFlags)
+            awqHeaderFont:SetFont(fontFile, (fontSize or 12) + 2, fontFlags)
         end
 
         if not awqTooltip then
@@ -98,18 +74,7 @@ do
             awqTooltip.lines = {}
         end
 
-        -- Use securecallfunction(BlizzardMethod, frame, ...) for every layout and
-        -- visibility operation.  All addon functions (including this one) run in
-        -- tainted execution context (created during tainted addon loading).
-        -- SafeCall(anon_func) with an anonymous function created in tainted context
-        -- produces a tainted anon; securecallfunction cannot elevate a tainted
-        -- function object.  Frame methods (Show, Hide, SetText, SetPoint, etc.) are
-        -- Blizzard's untainted methods from the Frame/FontString metatables.
-        -- securecallfunction(frame.Show, frame) always runs in clean context (issue #161).
-
-        -- Get base font size in clean context so lineHeight arithmetic is on a
-        -- plain number, not a SECRET (issue #161).
-        local _, baseFontSize = securecallfunction(GameFontNormal.GetFont, GameFontNormal)
+        local _, baseFontSize = GameFontNormal:GetFont()
         local lineHeight = math.ceil(baseFontSize or 12) + 4
 
         local lineCount = #lines
@@ -120,34 +85,27 @@ do
                 awqTooltip.lines[i] = fs
             end
             local fontObj = line.fontObject or (i == 1 and awqHeaderFont or GameFontNormal)
-            local textCapture = line.text or ""
             local color = line.color or NORMAL_FONT_COLOR
-            -- Each call below uses the Blizzard method (untainted) via securecallfunction
-            -- so the text layout engine and frame positions are written in clean context.
-            securecallfunction(fs.SetFontObject, fs, fontObj)
-            securecallfunction(fs.SetText, fs, textCapture)
-            securecallfunction(fs.SetTextColor, fs, color.r, color.g, color.b)
-            securecallfunction(fs.Show, fs)
+            fs:SetFontObject(fontObj)
+            fs:SetText(line.text or "")
+            fs:SetTextColor(color.r, color.g, color.b)
+            fs:Show()
             if i == 1 then
-                securecallfunction(fs.SetPoint, fs, "TOPLEFT", awqTooltip, "TOPLEFT", 8, -8)
+                fs:SetPoint("TOPLEFT", awqTooltip, "TOPLEFT", 8, -8)
             else
-                securecallfunction(fs.SetPoint, fs, "TOPLEFT", awqTooltip.lines[i - 1], "BOTTOMLEFT", 0, -2)
+                fs:SetPoint("TOPLEFT", awqTooltip.lines[i - 1], "BOTTOMLEFT", 0, -2)
             end
         end
 
         for i = lineCount + 1, #awqTooltip.lines do
-            securecallfunction(awqTooltip.lines[i].Hide, awqTooltip.lines[i])
+            awqTooltip.lines[i]:Hide()
         end
 
-        securecallfunction(awqTooltip.SetWidth, awqTooltip, 300)
-        securecallfunction(awqTooltip.SetHeight, awqTooltip, lineCount * lineHeight + 16)
-        securecallfunction(awqTooltip.ClearAllPoints, awqTooltip)
-        securecallfunction(awqTooltip.SetPoint, awqTooltip, "TOPLEFT", anchor, "TOPRIGHT", 10, 0)
-        -- Show() may expose AreaPOI/Vignette pins under awqTooltip and fire their
-        -- OnMouseEnter synchronously.  Running in clean context via securecallfunction
-        -- prevents UIWidget processing (GameTooltip_AddWidgetSet → ProcessAllWidgets)
-        -- from running in tainted context and storing SECRET dimensions (issue #161).
-        securecallfunction(awqTooltip.Show, awqTooltip)
+        awqTooltip:SetWidth(300)
+        awqTooltip:SetHeight(lineCount * lineHeight + 16)
+        awqTooltip:ClearAllPoints()
+        awqTooltip:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, 0)
+        awqTooltip:Show()
     end
 
     function QuestFrameModule.Tooltip_ShowSimple(anchor, text, color)
@@ -160,11 +118,7 @@ do
 
     function QuestFrameModule:Tooltip_Hide()
         if awqTooltip then
-            -- Hide() may expose an AreaPOI pin underneath our tooltip, firing its
-            -- OnMouseEnter synchronously.  awqTooltip.Hide is Blizzard's untainted
-            -- Frame:Hide method; securecallfunction runs it in clean context so
-            -- UIWidget rendering stays clean (issue #161).
-            securecallfunction(awqTooltip.Hide, awqTooltip)
+            awqTooltip:Hide()
         end
     end
 
@@ -248,10 +202,6 @@ do
             return
         end
 
-        -- Build lines array then call Tooltip_Show.  All C API calls here are game-
-        -- data APIs (not UI layout APIs) so they return plain values even in tainted
-        -- context.  The layout/visibility operations are inside Tooltip_Show which
-        -- uses securecallfunction(BlizzardMethod, ...) throughout (issue #161).
         local lines = {}
 
         local title = self.awqTitle or C_TaskQuest.GetQuestInfoByQuestID(questID) or ""
