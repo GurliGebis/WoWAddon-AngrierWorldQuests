@@ -1,3 +1,6 @@
+# 12.0.5-20260421-1
+* Updated TOC to match WoW 12.0.5
+
 # 12.0.1-20260414-1
 * Added logic to prevent quest log and map from being touched when in combat or battleground/arena.
 
