@@ -1090,8 +1090,6 @@ do
 
                 if shouldHide then
                     pin:Hide()
-                else
-                    pin:Show()
                 end
             end
         end
