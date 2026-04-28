@@ -346,13 +346,13 @@ do
         if not panelInit then
             local footer = self:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
             footer:SetPoint('BOTTOMRIGHT', -16, 16)
-            footer:SetText( AngrierWorldQuests.Version or "Dev" )
+            footer:SetText(AngrierWorldQuests.Version or "Dev")
 
             local label = self:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
             label:SetPoint("TOPLEFT", 16, -16)
             label:SetJustifyH("LEFT")
             label:SetJustifyV("TOP")
-            label:SetText( AngrierWorldQuests.Name )
+            label:SetText(AngrierWorldQuests.Name)
 
             checkboxes = {}
             dropdowns = {}
@@ -371,11 +371,11 @@ do
                  "enableDebugging"
             }
 
-            for i,key in ipairs(checkboxes_order) do
+            for i, key in ipairs(checkboxes_order) do
                 checkboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
                 checkboxes[i]:SetScript("OnClick", CheckBox_OnClick)
                 checkboxes[i].configKey = key
-                checkboxes[i].Text:SetText( L["config_"..key] )
+                checkboxes[i].Text:SetText(L["config_"..key])
                 if i == 1 then
                     checkboxes[i]:SetPoint("TOPLEFT", label, "BOTTOMLEFT", -2, -8)
                 else
@@ -387,7 +387,7 @@ do
 
             for i, key in ipairs(dropdowns_order) do
                 dropdowns[i] = DropDown_Create(self)
-                dropdowns[i].Label:SetText( L["config_"..key] )
+                dropdowns[i].Label:SetText(L["config_"..key])
                 dropdowns[i].configKey = key
                 dropdowns[i]:SetupMenu(DropDown_SetupMenu)
                 if i == 1 then
@@ -403,14 +403,14 @@ do
             label2:SetJustifyV("TOP")
             label2:SetText(L["config_enabledFilters"])
 
-            for i,key in ipairs(ConfigModule.FiltersOrder) do
+            for i, key in ipairs(ConfigModule.FiltersOrder) do
                 local filter = ConfigModule.Filters[key]
                 filterCheckboxes[i] = CreateFrame("CheckButton", nil, self, "InterfaceOptionsCheckButtonTemplate")
                 filterCheckboxes[i]:SetScript("OnClick", FilterCheckBox_OnClick)
                 filterCheckboxes[i].filterMask = ConfigModule:FilterKeyToMask(key)
                 filterCheckboxes[i].Text:SetFontObject("GameFontHighlightSmall")
+                filterCheckboxes[i].Text:SetText(filter.name)
                 filterCheckboxes[i].Text:SetPoint("LEFT", filterCheckboxes[i], "RIGHT", 0, 1)
-                filterCheckboxes[i].Text:SetText( filter.name )
 
                 if i == 1 then
                     filterCheckboxes[1]:SetPoint("TOPLEFT", label2, "BOTTOMLEFT", 0, -5)
@@ -449,8 +449,8 @@ do
     end
 
     function ConfigModule:CreateProfilePanel()
-		local profileOptions = LibStub("AceDBOptions-3.0"):GetOptionsTable(DBModule.AceDB)
-		LibStub("AceConfig-3.0"):RegisterOptionsTable("AWQ-Profiles", profileOptions)
+local profileOptions = LibStub("AceDBOptions-3.0"):GetOptionsTable(DBModule.AceDB)
+LibStub("AceConfig-3.0"):RegisterOptionsTable("AWQ-Profiles", profileOptions)
         local profilePanel = LibStub("AceConfigDialog-3.0"):AddToBlizOptions("AWQ-Profiles", "Profiles", addonName)
 
         return profilePanel

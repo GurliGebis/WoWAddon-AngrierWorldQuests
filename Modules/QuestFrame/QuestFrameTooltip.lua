@@ -58,7 +58,7 @@ do
         if not awqHeaderFont then
             local fontFile, fontSize, fontFlags = GameFontNormal:GetFont()
             awqHeaderFont = CreateFont("AWQHeaderFont")
-            awqHeaderFont:SetFont(fontFile, fontSize + 2, fontFlags)
+            awqHeaderFont:SetFont(fontFile, (fontSize or 12) + 2, fontFlags)
         end
 
         if not awqTooltip then
@@ -74,21 +74,20 @@ do
             awqTooltip.lines = {}
         end
 
+        local _, baseFontSize = GameFontNormal:GetFont()
+        local lineHeight = math.ceil(baseFontSize or 12) + 4
+
+        local lineCount = #lines
         for i, line in ipairs(lines) do
             local fs = awqTooltip.lines[i]
             if not fs then
                 fs = awqTooltip:CreateFontString(nil, "ARTWORK", "GameFontNormal")
                 awqTooltip.lines[i] = fs
             end
-            if line.fontObject then
-                fs:SetFontObject(line.fontObject)
-            elseif i == 1 then
-                fs:SetFontObject(awqHeaderFont)
-            else
-                fs:SetFontObject(GameFontNormal)
-            end
-            fs:SetText(line.text or "")
+            local fontObj = line.fontObject or (i == 1 and awqHeaderFont or GameFontNormal)
             local color = line.color or NORMAL_FONT_COLOR
+            fs:SetFontObject(fontObj)
+            fs:SetText(line.text or "")
             fs:SetTextColor(color.r, color.g, color.b)
             fs:Show()
             if i == 1 then
@@ -98,23 +97,12 @@ do
             end
         end
 
-        for i = #lines + 1, #awqTooltip.lines do
+        for i = lineCount + 1, #awqTooltip.lines do
             awqTooltip.lines[i]:Hide()
         end
 
-        local maxWidth = 0
-        local totalHeight = 0
-        for i = 1, #lines do
-            local fs = awqTooltip.lines[i]
-            local w = fs:GetStringWidth()
-            if w > maxWidth then
-                maxWidth = w
-            end
-            totalHeight = totalHeight + fs:GetStringHeight() + 2
-        end
-
-        awqTooltip:SetWidth(math.max(140, maxWidth + 16))
-        awqTooltip:SetHeight(totalHeight + 16)
+        awqTooltip:SetWidth(300)
+        awqTooltip:SetHeight(lineCount * lineHeight + 16)
         awqTooltip:ClearAllPoints()
         awqTooltip:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, 0)
         awqTooltip:Show()
@@ -216,7 +204,7 @@ do
 
         local lines = {}
 
-        local title = self.Text and self.Text:GetText() or C_TaskQuest.GetQuestInfoByQuestID(questID) or ""
+        local title = self.awqTitle or C_TaskQuest.GetQuestInfoByQuestID(questID) or ""
         local tagInfo = DataModule.GetCachedQuestTagInfo(questID)
         local titleColor = HIGHLIGHT_FONT_COLOR
         if tagInfo and tagInfo.quality then
