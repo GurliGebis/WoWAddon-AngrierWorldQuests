@@ -1010,23 +1010,22 @@ do
         end
 
         local mapID = map:GetMapID()
-
         local hideFilteredPOI = ConfigModule:Get("hideFilteredPOI")
         local hideUntrackedPOI = ConfigModule:Get("hideUntrackedPOI")
         local showHoveredPOI = ConfigModule:Get("showHoveredPOI")
         local showContinentPOI = ConfigModule:Get("showContinentPOI")
 
         local function ShouldFilterQuest(info)
-            if hideFilteredPOI then
-                if DataModule:IsQuestFiltered(info, mapID) then
-                    return true
-                end
+            if showHoveredPOI and hoveredQuestID == info.questID then
+                return false
             end
 
-            if hideUntrackedPOI then
-                if not WorldMap_IsWorldQuestEffectivelyTracked(info.questID) then
-                    return true
-                end
+            if hideFilteredPOI and DataModule:IsQuestFiltered(info, mapID) then
+                return true
+            end
+
+            if hideUntrackedPOI and not WorldMap_IsWorldQuestEffectivelyTracked(info.questID) then
+                return true
             end
 
             return false
@@ -1075,26 +1074,75 @@ do
             return
         end
 
-        for _, pin in ipairs(addonAddedPins) do
-            map:RemovePin(pin)
+        -- TAINT-SAFE FILTERING (issue #161)
+        --
+        -- pin:Hide() fires synchronous OnLeave/OnEnter mouse events.  If called
+        -- from our tainted C_Timer callback while the cursor is near an Area POI
+        -- pin, the Area POI's OnMouseEnter runs tainted.  Inside that chain,
+        -- Blizzard calls self.Text:SetText() (tainted) on a UIWidget FontString.
+        -- Once tainted, self.Text:GetStringHeight() permanently returns SECRET,
+        -- causing arithmetic errors every time that widget is rendered or its
+        -- timer fires — even from fully untainted Blizzard code.
+        --
+        -- The fix: NEVER call Hide() on pins.  Instead use:
+        --   pin:SetAlpha(0)       — makes pin invisible (pure render, no events)
+        --   pin:EnableMouse(false) — removes it from mouse hit-testing (no events)
+        --
+        -- Neither API fires OnEnter/OnLeave synchronously, so Area POI
+        -- OnMouseEnter can never run in our tainted context.
+        --
+        -- Pass 1: restore alpha on any pins we previously hidden.
+        -- SetAlpha(1) is purely visual and fires NO mouse events, so this is
+        -- always safe regardless of cursor position.
+        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+            if pin.awqAlphaHidden then
+                pin:SetAlpha(1)
+                pin.awqAlphaHidden = nil
+            end
         end
-        wipe(addonAddedPins)
 
+        -- Clean up stale addon-pin references (pins released by Blizzard's
+        -- pool:ReleaseAll on the previous RefreshAllData are no longer active).
+        -- We do NOT call map:RemovePin — that calls pin:Hide() internally.
+        -- Blizzard's own pool management will release them on the next refresh.
+        local activeSet = {}
+        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+            activeSet[pin] = true
+        end
+        local remainingAddonPins = {}
+        for _, pin in ipairs(addonAddedPins) do
+            if activeSet[pin] then
+                table.insert(remainingAddonPins, pin)
+            end
+        end
+        addonAddedPins = remainingAddonPins
+
+        -- Pass 2: alpha-hide filtered pins.
+        --
+        -- ONLY SetAlpha(0) is used — no Hide(), EnableMouse(false), or
+        -- SetHitRectInsets().  Every other API that affects mouse hit-testing
+        -- (Hide, EnableMouse, SetHitRectInsets) fires a synchronous mouse-focus
+        -- recalculation.  If the cursor is over the affected pin, that
+        -- recalculation fires OnEnter on the Area POI beneath in our tainted
+        -- C_Timer context, permanently tainting UIWidget FontString geometry
+        -- values (issue #161).
+        --
+        -- SetAlpha(0) is purely visual: it makes the pin invisible but leaves
+        -- it in the hit-test system.  No synchronous mouse events fire.
+        -- Trade-off: invisible pins still intercept mouse input at their exact
+        -- pixel positions, so Area POI tooltips may not appear directly under a
+        -- filtered quest pin.  This is acceptable vs. permanent SECRET errors.
         for pin in map.pinPools[pinTemplate]:EnumerateActive() do
             if pin.questID and C_QuestLog.IsWorldQuest(pin.questID) then
-                local shouldHide = ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID })
-
-                if showHoveredPOI and hoveredQuestID == pin.questID then
-                    shouldHide = false
-                end
-
-                if shouldHide then
-                    pin:Hide()
+                if ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID }) then
+                    pin:SetAlpha(0)
+                    pin.awqAlphaHidden = true
                 end
             end
         end
 
-        if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent then
+        local unsafe = map:IsMouseOver() or GameTooltip:IsShown()
+        if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent and not unsafe then
             local childQuests = GetChildMapQuests()
 
             if showContinentPOI then
@@ -1333,7 +1381,12 @@ function QuestFrameModule:RequestQuestLogUpdate()
     listRefreshPending = true
     C_Timer.After(0.05, function()
         listRefreshPending = false
-        if QuestMapFrame and QuestMapFrame:IsShown() then
+        -- Skip when any tooltip is shown.  QuestLog_Update hides/shows quest
+        -- log buttons (children of WorldMapFrame) from tainted code; this can
+        -- trigger a canvas mouse-focus recalculation and fire Area POI OnEnter
+        -- in our tainted context, causing UIWidget SECRET errors (issue #161).
+        -- The next QuestLogQuests_Update event reschedules naturally.
+        if QuestMapFrame and QuestMapFrame:IsShown() and not GameTooltip:IsShown() then
             QuestFrameModule:QuestLog_Update()
         end
     end)
@@ -1355,7 +1408,12 @@ function QuestFrameModule:RequestFullRefresh(reason)
             return
         end
 
-        if not CanApplyFullRefresh() then
+        -- Also defer if any tooltip is currently shown.  QuestLogQuests_Update
+        -- hides/shows WorldMapFrame children from tainted code; if the user is
+        -- hovering over an Area POI at that instant the mouse-focus
+        -- recalculation fires Area POI OnEnter tainted, permanently tainting
+        -- UIWidget FontString values (issue #161).
+        if not CanApplyFullRefresh() or GameTooltip:IsShown() then
             fullRefreshRetryCount = fullRefreshRetryCount + 1
 
             if fullRefreshRetryCount <= 20 then
@@ -1378,8 +1436,18 @@ function QuestFrameModule:RequestFullRefresh(reason)
         DebugLog(string.format("Applying full refresh (%s)", reasonText))
         QuestLogQuests_Update()
 
-        if dataProvider and dataProvider.RefreshAllData then
-            dataProvider:RefreshAllData()
-        end
+        -- Do NOT call dataProvider:RefreshAllData() directly from addon code.
+        -- Addon code is tainted; calling RefreshAllData() from here taints the
+        -- entire synchronous call-chain including any OnMouseEnter handlers for
+        -- Area POI pins that may fire while pins are being recreated.  This causes
+        -- UIWidget C APIs (e.g. GetWidth) to return SECRET values and triggers the
+        -- "attempt to perform arithmetic on a secret number value" error (#161).
+        --
+        -- Instead we rely on Blizzard's own event-driven refresh cycle.
+        -- When QuestLogQuests_Update() runs it fires QUEST_LOG_UPDATE and similar
+        -- events that cause the WorldQuestDataProvider to call RefreshAllData()
+        -- from its own (untainted) Lua context.  Our hooksecurefunc post-hook on
+        -- RefreshAllData then defers PostProcessWorldQuestPins via C_Timer.After(0)
+        -- as normal.
     end)
 end
