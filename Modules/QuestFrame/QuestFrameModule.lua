@@ -35,25 +35,6 @@ local DataModule = AngrierWorldQuests:GetModule("DataModule")
 
 local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 
--- ============================================================
--- TAINT AVOIDANCE (issue #161)
--- ============================================================
--- securecallfunction / securecall protect a SECURE caller from
--- being tainted by a tainted callee — the opposite of what was
--- mistakenly applied in earlier attempts.  Calling secure Blizzard
--- frame methods via securecallfunction() from tainted addon code
--- provides NO protection; the frame operations still run tainted.
---
--- The only correct fix for taint-sensitive frame Show/Hide
--- operations is to ensure they run from a clean Lua coroutine.
--- C_Timer.After(0, ...) callbacks fire from WoW's main game loop
--- in a fresh untainted coroutine.
---
--- PostProcessWorldQuestPins is therefore deferred via
--- C_Timer.After(0) rather than called directly from the
--- hooksecurefunc hook (which always runs tainted).
--- ============================================================
-
 --region Variables
 
 local dataProvider
@@ -249,7 +230,10 @@ do
         if self.filter == "FACTION" and filterFaction ~= 0 then
             local factionData = C_Reputation.GetFactionDataByID(filterFaction)
             local title = factionData and factionData.name
-            if title then text = text..": "..title end
+
+            if title then
+                text = text..": "..title
+            end
         end
 
         local sortMethod = ConfigModule:Get("sortMethod")
@@ -373,11 +357,13 @@ do
     local function QuestButton_OnEnter(self)
         local questTagInfo = DataModule.GetCachedQuestTagInfo(self.questID)
         local color
+
         if ShouldQuestBeBonusColored(self.questID) then
             color = QUEST_BONUS_COLOR
         else
             _, color = GetQuestDifficultyColor(UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality])
         end
+
         self.Text:SetTextColor(color.r, color.g, color.b)
         hoveredQuestID = self.questID
         self.HighlightTexture:SetShown(true)
@@ -387,11 +373,13 @@ do
     local function QuestButton_OnLeave(self)
         local questTagInfo = DataModule.GetCachedQuestTagInfo(self.questID)
         local color
+
         if ShouldQuestBeBonusColored(self.questID) then
             color = QUEST_REWARD_CONTEXT_FONT_COLOR
         else
             color = GetQuestDifficultyColor(UnitLevel("player") + QuestButton_RarityColorTable[questTagInfo.quality])
         end
+
         self.Text:SetTextColor(color.r, color.g, color.b)
         hoveredQuestID = nil
         self.HighlightTexture:SetShown(false)
@@ -400,8 +388,8 @@ do
 
     local function QuestButton_OnClick(self, button)
         if ( not ChatEdit_TryInsertQuestLinkForQuestID(self.questID) ) then
-            local watchType = C_QuestLog.GetQuestWatchType(self.questID);
-            local isSuperTracked = C_SuperTrack.GetSuperTrackedQuestID() == self.questID;
+            local watchType = C_QuestLog.GetQuestWatchType(self.questID)
+            local isSuperTracked = C_SuperTrack.GetSuperTrackedQuestID() == self.questID
 
             if ( button == "RightButton" ) then
                 if ( self.mapID ) then
@@ -409,24 +397,24 @@ do
                 end
             elseif IsShiftKeyDown() then
                 if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and isSuperTracked) then
-                    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
+                    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
                     C_Timer.After(0, function() QuestUtil.UntrackWorldQuest(self.questID) end)
                 else
-                    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+                    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
                     C_Timer.After(0, function() QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual) end)
                 end
             else
                 if isSuperTracked then
-                    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF);
+                    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
                     C_Timer.After(0, function() C_SuperTrack.SetSuperTrackedQuestID(0) end)
                 else
-                    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON);
+                    PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
                     C_Timer.After(0, function()
                         if watchType ~= Enum.QuestWatchType.Manual then
-                            QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic);
+                            QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic)
                         end
 
-                        C_SuperTrack.SetSuperTrackedQuestID(self.questID);
+                        C_SuperTrack.SetSuperTrackedQuestID(self.questID)
                     end)
                 end
             end
@@ -544,7 +532,7 @@ do
 
         local mapID = QuestMapFrame:GetParent():GetMapID()
 
-        local displayLocation, lockedQuestID = C_QuestLog.GetBountySetInfoForMapID(mapID);
+        local displayLocation, lockedQuestID = C_QuestLog.GetBountySetInfoForMapID(mapID)
 
         local tasksOnMap = C_TaskQuest.GetQuestsOnMap(mapID)
         if (ConfigModule:Get("onlyCurrentZone")) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) and (mapID ~= MAPID_ARGUS) then
@@ -573,6 +561,9 @@ do
         local usedButtons = {}
         local filtersOwnRow = false
 
+        -- Always gather available world quests, even when collapsed, so we can
+        -- hide the header entirely if there are no quests in the current zone.
+        -- When collapsed, just count quests without acquiring pool buttons.
         local addedQuests = {}
         local questCount = 0
         local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
@@ -605,6 +596,7 @@ do
         end
 
         if questCount == 0 and ConfigModule:HasFilters() == false then
+            -- No quests available and no active filters — hide the header entirely.
             QuestFrameModule:HideWorldQuestsHeader()
             return
         end
@@ -655,13 +647,18 @@ do
             end
 
             if #usedButtons > 0 then
+                -- In the situation where the normal quest log is empty, but we have world quests.
+                -- We shouldn't show the empty quest log text.
                 QuestScrollFrame.EmptyText:Hide()
+
+                -- We need to also make sure the "No search results" text is hidden.
                 QuestScrollFrame.NoSearchResultsText:Hide()
             end
 
             table.sort(usedButtons, QuestSorter)
 
             for i, button in ipairs(usedButtons) do
+                -- layoutIndex starts at 2 (headerButton is 1); all addon-owned integers.
                 button.layoutIndex = i + 1
                 button:Show()
 
@@ -675,6 +672,11 @@ do
         headerButton.CollapseButton:Show()
 
         if needsReposition then
+            -- awqContainer wasn't shown when QuestLogQuests_Update ran, so the hook
+            -- couldn't assign a real layoutIndex. Clear it, re-run QuestLogQuests_Update
+            -- so the hook fires with awqContainer shown and assigns the correct
+            -- separator + 1 index. If the hook still doesn't fire (no campaign quests /
+            -- no separator), fall back to 0.5 so the container sorts to the very top.
             awqContainer.layoutIndex = nil
             QuestLogQuests_Update()
 
@@ -879,7 +881,7 @@ do
 
     function QuestFrameModule:InitQuestLogFrames()
         awqContainer = CreateFrame("Frame", "AngrierWorldQuestsContainer", QuestScrollFrame.Contents, "VerticalLayoutFrame")
-        awqContainer.fixedWidth = 304
+        awqContainer.fixedWidth = 304 -- matches the fixed width defined in QuestMapFrame.xml; avoids tainting the value via GetWidth()
         awqContainer.bottomPadding = 2
         awqContainer:Hide()
 
@@ -894,6 +896,12 @@ do
             if awqContainer:IsShown()
                     and ConfigModule:Get("showAtTop")
                     and frame == QuestScrollFrame.Contents.Separator then
+                -- Assign directly instead of calling mapFrame:SetFrameLayoutIndex(awqContainer),
+                -- which would write back to mapFrame.layoutIndex (a Blizzard-owned value) from
+                -- addon code, tainting it and cascading taints into LayoutFrame, UIWidgets,
+                -- GameTooltip, and QuestMapFrame layout calculations.
+                -- The post-hook fires after Blizzard has already set frame.layoutIndex, so
+                -- reading it here is safe. We place awqContainer just after the separator.
                 awqContainer.layoutIndex = frame.layoutIndex + 0.5
             end
         end
@@ -1035,6 +1043,7 @@ do
             local pin = dp:AddWorldQuest(info)
 
             if pin then
+                -- Translate pin position from child zone to continent coordinates
                 local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
                 local continentID, worldPosition = C_Map.GetWorldPosFromMapPos(info.mapID, { x = x, y = y })
                 local translatedPos = select(2, C_Map.GetMapPosFromWorldPos(continentID, worldPosition, mapID))
@@ -1049,6 +1058,8 @@ do
             return pin
         end
 
+        -- Collects quest info tables from all child zones of the given continent
+        -- map, excluding the continent map itself.  Returns a flat list.
         local function GetChildMapQuests()
             local quests = {}
             local childMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
@@ -1146,6 +1157,7 @@ do
             local childQuests = GetChildMapQuests()
 
             if showContinentPOI then
+                -- Collect already-shown questIDs to avoid duplicates
                 local shownQuests = {}
                 for pin in map.pinPools[pinTemplate]:EnumerateActive() do
                     if pin.questID then
@@ -1220,6 +1232,10 @@ do
     end
 
     function QuestFrameModule:ApplyWorkarounds()
+        -- Override QuestUtil.TrackWorldQuest/UntrackWorldQuest to remove the
+        -- ObjectiveTrackerManager:UpdateAll() call that Blizzard's code calls.
+        -- When called from addon code the taint propagates into the objective tracker,
+        -- blocking protected actions like UseQuestLogSpecialItem(). See issue #67.
         do
             local lastTrackedQuestID = nil
 
@@ -1227,24 +1243,26 @@ do
                 if C_QuestLog.AddWorldQuestWatch(questID, watchType) then
                     if lastTrackedQuestID and lastTrackedQuestID ~= questID then
                         if C_QuestLog.GetQuestWatchType(lastTrackedQuestID) ~= Enum.QuestWatchType.Manual and watchType == Enum.QuestWatchType.Manual then
-                            C_QuestLog.AddWorldQuestWatch(lastTrackedQuestID, Enum.QuestWatchType.Manual);
+                            C_QuestLog.AddWorldQuestWatch(lastTrackedQuestID, Enum.QuestWatchType.Manual)
                         end
                     end
-                    lastTrackedQuestID = questID;
+                    lastTrackedQuestID = questID
                 end
 
                 if watchType == Enum.QuestWatchType.Automatic then
-                    local forceAllowTasks = true;
-                    QuestUtil.CheckAutoSuperTrackQuest(questID, forceAllowTasks);
+                    local forceAllowTasks = true
+                    QuestUtil.CheckAutoSuperTrackQuest(questID, forceAllowTasks)
                 end
             end
 
             function QuestUtil.UntrackWorldQuest(questID)
                 if C_QuestLog.RemoveWorldQuestWatch(questID) then
                     if lastTrackedQuestID == questID then
-                        lastTrackedQuestID = nil;
+                        lastTrackedQuestID = nil
                     end
                 end
+                -- Don't call ObjectiveTrackerManager:UpdateAll() here, see issue #67.
+                --ObjectiveTrackerManager:UpdateAll();
             end
         end
     end
@@ -1255,17 +1273,20 @@ do
                 QuestFrameModule:RequestFullRefresh("MENU_WORLD_MAP_TRACKING")
             end)
 
+            -- Add our filters as a submenu below Blizzard's tracking options
             rootDescription:CreateDivider()
             local awqMenu = rootDescription:CreateButton(AngrierWorldQuests.Name)
 
             local mapID = QuestMapFrame and QuestMapFrame:GetParent():GetMapID()
 
+            -- Reward/type filters
             awqMenu:CreateTitle(TRACKER_FILTER_QUESTS or FILTERS)
 
             for _, optionKey in ipairs(ConfigModule.FiltersOrder) do
                 if optionKey ~= "SORT" then
                     local filter = ConfigModule.Filters[optionKey]
 
+                    -- Skip filters not relevant to the current map
                     if not ConfigModule:GetFilterDisabled(optionKey) and (not mapID or DataModule:IsFilterOnCorrectMap(optionKey, mapID)) then
                         local filterButton = awqMenu:CreateCheckbox(
                             filter.name,
@@ -1295,6 +1316,7 @@ do
                 end
             end
 
+            -- Sort options
             awqMenu:CreateDivider()
             awqMenu:CreateTitle(RAID_FRAME_SORT_LABEL)
 
@@ -1308,6 +1330,7 @@ do
                 )
             end
 
+            -- Display options
             awqMenu:CreateDivider()
             awqMenu:CreateTitle(DISPLAY_OPTIONS or OPTIONS)
 
@@ -1358,12 +1381,19 @@ do
 
         titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
 
+        -- Create awqContainer and headerButton inside the QuestLog upvalue scope,
+        -- and register the SetFrameLayoutIndex hook there too (the hook closure must
+        -- capture awqContainer from that scope). Must happen after titleFramePool is
+        -- created (headerButton references it).
         self:InitQuestLogFrames()
 
         hooksecurefunc("QuestLogQuests_Update", function()
             self:RequestQuestLogUpdate()
         end)
 
+        -- Refresh the quest list when the user navigates between maps
+        -- (e.g. right-clicking to zoom into a zone) so stale entries from
+        -- the previous map are removed and the correct quests are shown.
         hooksecurefunc(WorldMapFrame, "OnMapChanged", function()
             self:RequestQuestLogUpdate()
         end)
@@ -1449,5 +1479,8 @@ function QuestFrameModule:RequestFullRefresh(reason)
         -- from its own (untainted) Lua context.  Our hooksecurefunc post-hook on
         -- RefreshAllData then defers PostProcessWorldQuestPins via C_Timer.After(0)
         -- as normal.
+        -- if dataProvider and dataProvider.RefreshAllData then
+        --     dataProvider:RefreshAllData()
+        -- end
     end)
 end
