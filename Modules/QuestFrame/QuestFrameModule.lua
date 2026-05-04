@@ -1152,8 +1152,7 @@ do
             end
         end
 
-        local unsafe = map:IsMouseOver() or GameTooltip:IsShown()
-        if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent and not unsafe then
+        if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent then
             local childQuests = GetChildMapQuests()
 
             if showContinentPOI then
@@ -1207,26 +1206,14 @@ do
         if dp ~= nil then
             dataProvider = dp
 
-            -- Defer PostProcessWorldQuestPins via C_Timer.After(0) so it runs from
-            -- WoW's game-loop in a fresh untainted coroutine.
-            --
-            -- hooksecurefunc hooks always run in a tainted coroutine.  Any frame
-            -- Show/Hide called from a tainted coroutine can synchronously fire
-            -- OnMouseEnter on a newly-exposed AreaPOI pin in that same tainted
-            -- coroutine, causing UIWidget C APIs to return SECRET values and
-            -- arithmetic on them to error (issue #161).
-            --
-            -- Note: securecallfunction protects a SECURE caller from being tainted
-            -- by a tainted callee — it cannot make tainted code run securely.
-            -- C_Timer.After(0) is the correct solution here.
-            local postProcessPending = false
+            -- Post-process pins after Blizzard's RefreshAllData completes to
+            -- apply our filtering (SetAlpha) and add continent child-zone pins.
+            -- This runs synchronously in the hooksecurefunc — safe because
+            -- PostProcessWorldQuestPins never calls Hide() on pins (uses
+            -- SetAlpha(0) instead), so no synchronous mouse-focus shifts to
+            -- AreaPOI pins can occur (issue #161).
             hooksecurefunc(dataProvider, "RefreshAllData", function(dpArg)
-                if postProcessPending then return end
-                postProcessPending = true
-                C_Timer.After(0, function()
-                    postProcessPending = false
-                    PostProcessWorldQuestPins(dpArg)
-                end)
+                PostProcessWorldQuestPins(dpArg)
             end)
         end
     end
