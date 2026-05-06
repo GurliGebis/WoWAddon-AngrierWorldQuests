@@ -1,3 +1,6 @@
+# 12.0.5-20260506-1
+* Refactor map and tooltip logic to help prevent taints, patches provided by Frurox on github.
+
 # 12.0.5-20260421-1
 * Updated TOC to match WoW 12.0.5
 
