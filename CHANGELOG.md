@@ -1,3 +1,6 @@
+# 12.0.5-20260602-1
+* Fix "attempt to compare a secret number value" error when hovering QuestHub pins.
+
 # 12.0.5-20260506-1
 * Refactor map and tooltip logic to help prevent taints, patches provided by Frurox on github.
 

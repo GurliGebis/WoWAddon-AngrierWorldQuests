@@ -1208,12 +1208,20 @@ do
 
             -- Post-process pins after Blizzard's RefreshAllData completes to
             -- apply our filtering (SetAlpha) and add continent child-zone pins.
-            -- This runs synchronously in the hooksecurefunc — safe because
-            -- PostProcessWorldQuestPins never calls Hide() on pins (uses
-            -- SetAlpha(0) instead), so no synchronous mouse-focus shifts to
-            -- AreaPOI pins can occur (issue #161).
+            -- Deferred by one frame (C_Timer.After(0)) to run outside the
+            -- addon's tainted execution context (issue #156).
             hooksecurefunc(dataProvider, "RefreshAllData", function(dpArg)
-                PostProcessWorldQuestPins(dpArg)
+                -- Defer to next frame via C_Timer to cleanse addon taint.
+                -- hooksecurefunc hooks always run in the addon's (tainted)
+                -- execution context.  PostProcessWorldQuestPins calls
+                -- dp:AddWorldQuest() and pin:SetPosition() which taint pin
+                -- geometry.  When Blizzard later clones tainted pins for the
+                -- QuestHub tooltip (FrameCloneManager:Clone -> GetSize()),
+                -- the SECRET values cause "attempt to compare a secret number
+                -- value" errors in LayoutFrame:GetExtents(). (issue #156)
+                C_Timer.After(0, function()
+                    PostProcessWorldQuestPins(dpArg)
+                end)
             end)
         end
     end
