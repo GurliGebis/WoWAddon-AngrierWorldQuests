@@ -1,3 +1,6 @@
+# 12.0.7-20260617-1
+* Updated TOC to match 12.0.7
+
 # 12.0.5-20260602-1
 * Fix "attempt to compare a secret number value" error when hovering QuestHub pins.
 
