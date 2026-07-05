@@ -1043,6 +1043,16 @@ do
             local pin = dp:AddWorldQuest(info)
 
             if pin then
+                -- A pin reclaimed from Blizzard's pool may still be alpha-hidden
+                -- from when it belonged to a previous map (issue #166), so make
+                -- sure pins we actively add are visible.  Tag the pin with the map
+                -- and quest it was placed for; PostProcessWorldQuestPins uses these
+                -- to re-hide our pins once they are no longer valid.
+                pin:SetAlpha(1)
+                pin.awqAlphaHidden = nil
+                pin.awqMapID = mapID
+                pin.awqQuestID = info.questID
+
                 -- Translate pin position from child zone to continent coordinates
                 local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
                 local continentID, worldPosition = C_Map.GetWorldPosFromMapPos(info.mapID, { x = x, y = y })
@@ -1128,6 +1138,79 @@ do
         end
         addonAddedPins = remainingAddonPins
 
+        local childQuests
+        local childQuestByID
+        local superTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID()
+
+        local function GetCachedChildQuests()
+            if not childQuests then
+                childQuests = GetChildMapQuests()
+            end
+
+            return childQuests
+        end
+
+        local function GetCachedChildQuestByID()
+            if not childQuestByID then
+                childQuestByID = {}
+
+                for _, info in ipairs(GetCachedChildQuests()) do
+                    childQuestByID[info.questID] = info
+                end
+            end
+
+            return childQuestByID
+        end
+
+        local function IsAddonPinExpected(pin)
+            if pin.awqMapID ~= mapID then
+                return false
+            end
+
+            if not mapInfo or mapInfo.mapType ~= Enum.UIMapType.Continent then
+                return false
+            end
+
+            if superTrackedQuestID and superTrackedQuestID > 0 and pin.awqQuestID == superTrackedQuestID then
+                return true
+            end
+
+            if not showContinentPOI then
+                return false
+            end
+
+            local info = GetCachedChildQuestByID()[pin.awqQuestID]
+
+            return info
+                and HaveQuestData(info.questID)
+                and QuestUtils_IsQuestWorldQuest(info.questID)
+                and WorldMap_DoesWorldQuestInfoPassFilters(info)
+                and DataModule:GetContentMapIDFromMapID(info.mapID) == mapID
+                and not ShouldFilterQuest(info)
+        end
+
+        -- Pass 1b: re-hide pins we added that are no longer valid for this map.
+        --
+        -- AWQ borrows pins from Blizzard's WorldQuest pool to show child-zone
+        -- quests on continent maps.  Blizzard normally releases them via
+        -- pool:ReleaseAll on the next RefreshAllData, but on some maps (e.g. the
+        -- Eastern Kingdoms continent) its data provider returns without refreshing
+        -- its pins, so ours stay active and linger at their previous map's
+        -- coordinates — out in the ocean (issue #166).  Pass 1 above just restored
+        -- their alpha, so re-hide them here on every refresh.  The same guard also
+        -- covers same-map stale pins, such as a super-tracked WQ pin after the
+        -- quest is untracked while continent POIs are disabled.
+        --
+        -- Keying on our own tracking list is safe: those pins are always active
+        -- (Blizzard only recycles inactive pins), and the questID guard skips any
+        -- pin Blizzard has meanwhile reclaimed for a different quest.
+        for _, pin in ipairs(addonAddedPins) do
+            if pin.questID == pin.awqQuestID and not IsAddonPinExpected(pin) then
+                pin:SetAlpha(0)
+                pin.awqAlphaHidden = true
+            end
+        end
+
         -- Pass 2: alpha-hide filtered pins.
         --
         -- ONLY SetAlpha(0) is used — no Hide(), EnableMouse(false), or
@@ -1153,7 +1236,7 @@ do
         end
 
         if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent then
-            local childQuests = GetChildMapQuests()
+            local childQuests = GetCachedChildQuests()
 
             if showContinentPOI then
                 -- Collect already-shown questIDs to avoid duplicates
@@ -1178,7 +1261,6 @@ do
                 end
             end
 
-            local superTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID()
             if superTrackedQuestID and superTrackedQuestID > 0 then
                 local hasPin = false
                 for pin in map.pinPools[pinTemplate]:EnumerateActive() do
@@ -1242,6 +1324,7 @@ do
                         end
                     end
                     lastTrackedQuestID = questID
+                    QuestFrameModule:RequestFullRefresh("TRACK_WORLD_QUEST")
                 end
 
                 if watchType == Enum.QuestWatchType.Automatic then
@@ -1255,6 +1338,7 @@ do
                     if lastTrackedQuestID == questID then
                         lastTrackedQuestID = nil
                     end
+                    QuestFrameModule:RequestFullRefresh("UNTRACK_WORLD_QUEST")
                 end
                 -- Don't call ObjectiveTrackerManager:UpdateAll() here, see issue #67.
                 --ObjectiveTrackerManager:UpdateAll();
@@ -1391,6 +1475,10 @@ do
         -- the previous map are removed and the correct quests are shown.
         hooksecurefunc(WorldMapFrame, "OnMapChanged", function()
             self:RequestQuestLogUpdate()
+        end)
+
+        hooksecurefunc(C_SuperTrack, "SetSuperTrackedQuestID", function()
+            self:RequestFullRefresh("SUPER_TRACKED_QUEST")
         end)
 
         self:RegisterCallbacks()
