@@ -47,6 +47,14 @@ local fullRefreshRetryCount = 0
 local fullRefreshReason
 local addonAddedPins = {}
 
+-- Cache of per-quest filter decisions, populated by QuestLog_Update in a
+-- non-secure context and read back by PostProcessWorldQuestPins.  This keeps
+-- the reward-money read (GetQuestLogRewardMoney, via DataModule:IsQuestFiltered)
+-- OUT of Blizzard's secure RefreshAllData execution range, where it would taint
+-- the quest's money value and break the gold-reward tooltip on hover (issue #156).
+local filterDecisionCache = {}
+local filterDecisionMapID
+
 local function DebugLog(message)
     if not ConfigModule:Get("enableDebugging") then
         return
@@ -67,6 +75,36 @@ local function CanApplyFullRefresh()
     end
 
     return true
+end
+
+-- Recompute the per-quest filter-decision cache for the given map.  The reward
+-- reads inside DataModule:IsQuestFiltered (GetQuestLogRewardMoney) run here, in a
+-- non-secure context, so PostProcessWorldQuestPins can apply hide-filtered from
+-- the cache without re-reading reward money inside Blizzard's secure
+-- RefreshAllData range (which taints the money and breaks gold tooltips, #156).
+local function RebuildFilterDecisionCache(mapID)
+    wipe(filterDecisionCache)
+    filterDecisionMapID = mapID
+
+    if not mapID then
+        return
+    end
+
+    local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
+
+    for mID in pairs(displayMapIDs) do
+        local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
+
+        if taskInfo then
+            for _, info in ipairs(taskInfo) do
+                if HaveQuestData(info.questID) and QuestUtils_IsQuestWorldQuest(info.questID) then
+                    if WorldMap_DoesWorldQuestInfoPassFilters(info) then
+                        filterDecisionCache[info.questID] = DataModule:IsQuestFiltered(info, mapID) or false
+                    end
+                end
+            end
+        end
+    end
 end
 
 --endregion
@@ -569,6 +607,10 @@ do
         local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
         local searchBoxText = QuestScrollFrame.SearchBox:GetText():lower()
 
+        -- Compute filter decisions once, into the shared cache, so the list below
+        -- and the secure pin hook both read the same non-secure result (issue #156).
+        RebuildFilterDecisionCache(mapID)
+
         for mID in pairs(displayMapIDs) do
             local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
 
@@ -576,7 +618,7 @@ do
                 for _, info in ipairs(taskInfo) do
                     if HaveQuestData(info.questID) and QuestUtils_IsQuestWorldQuest(info.questID) then
                         if WorldMap_DoesWorldQuestInfoPassFilters(info) then
-                            local isFiltered = DataModule:IsQuestFiltered(info, mapID)
+                            local isFiltered = filterDecisionCache[info.questID]
                             if not isFiltered then
                                 if addedQuests[info.questID] == nil then
                                     addedQuests[info.questID] = true
@@ -1028,7 +1070,13 @@ do
                 return false
             end
 
-            if hideFilteredPOI and DataModule:IsQuestFiltered(info, mapID) then
+            -- Read the filter decision from the cache QuestLog_Update populated in
+            -- a non-secure context.  Calling DataModule:IsQuestFiltered() here would
+            -- run GetQuestLogRewardMoney inside Blizzard's secure RefreshAllData
+            -- range, tainting the quest's reward money and killing the gold tooltip
+            -- on hover (issue #156).  A cache miss or stale map defaults to "not
+            -- filtered" (pin shown) until the next QuestLog_Update refreshes it.
+            if hideFilteredPOI and filterDecisionMapID == mapID and filterDecisionCache[info.questID] then
                 return true
             end
 
@@ -1568,6 +1616,13 @@ function QuestFrameModule:RequestFullRefresh(reason)
         fullRefreshReason = nil
 
         DebugLog(string.format("Applying full refresh (%s)", reasonText))
+
+        -- Refresh the filter-decision cache before QuestLogQuests_Update() kicks off
+        -- the WorldQuestDataProvider RefreshAllData -> PostProcessWorldQuestPins
+        -- cycle, so the secure pin hook reads up-to-date hide-filtered decisions
+        -- for the current map without recomputing them itself (issue #156).
+        RebuildFilterDecisionCache(QuestMapFrame and QuestMapFrame:GetParent():GetMapID())
+
         QuestLogQuests_Update()
 
         -- Do NOT call dataProvider:RefreshAllData() directly from addon code.
