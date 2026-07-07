@@ -487,6 +487,13 @@ do
         button.TagTexture:Hide()
         button.StorylineTexture:Hide()
 
+        -- Disable word wrap so long titles truncate to "..." instead of
+        -- wrapping to a second line. Wrapping also causes a layout loop:
+        -- the taller button changes available width, which in turn changes
+        -- whether the text fits, oscillating between wrapped and truncated
+        -- states and producing visible flicker.
+        button.Text:SetWordWrap(false)
+
         button.TagText = button:CreateFontString(nil, nil, "GameFontNormalLeft")
         button.TagText:SetJustifyH("RIGHT")
         button.TagText:SetTextColor(1, 1, 1)
