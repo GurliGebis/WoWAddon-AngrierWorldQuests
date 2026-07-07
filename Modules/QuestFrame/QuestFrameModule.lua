@@ -1095,34 +1095,30 @@ do
         end
 
         local function AddTrackedWorldQuestPin(info)
-            -- Resolve the quest's position within its own zone, then project it
-            -- onto the displayed continent map with GetMapRectOnMap, which
-            -- resolves the full nested map hierarchy (zone -> region -> continent)
-            -- in normalized UI space.  This replaces a world-coordinate round-trip
-            -- (GetWorldPosFromMapPos/GetMapPosFromWorldPos) that mis-projected
-            -- some deeply nested Midnight zones into the ocean on the Eastern
-            -- Kingdoms map (issue #147).
-            --
-            -- Any step can fail (data not loaded, no rect for this map pairing);
-            -- skip the pin rather than place it at bogus coordinates.
-            local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
+            local cx, cy
 
-            if not x or not y then
-                return nil
+            if info.mapID == mapID then
+                -- info came from GetQuestsOnMap(continentMapID): coordinates are
+                -- already in continent-normalised space (cold-continent fallback).
+                cx, cy = C_TaskQuest.GetQuestLocation(info.questID, mapID)
+            else
+                -- info came from GetQuestsOnMap(childMapID): project zone-space
+                -- coordinates onto the continent via GetMapRectOnMap (issue #147).
+                local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
+
+                if x and y and C_Map.GetMapRectOnMap then
+                    local minX, maxX, minY, maxY = C_Map.GetMapRectOnMap(info.mapID, mapID)
+
+                    if minX and maxX > minX and maxY > minY then
+                        cx = minX + x * (maxX - minX)
+                        cy = minY + y * (maxY - minY)
+                    end
+                end
             end
 
-            if not C_Map.GetMapRectOnMap then
+            if not cx or not cy then
                 return nil
             end
-
-            local minX, maxX, minY, maxY = C_Map.GetMapRectOnMap(info.mapID, mapID)
-
-            if not minX or maxX <= minX or maxY <= minY then
-                return nil
-            end
-
-            local cx = minX + x * (maxX - minX)
-            local cy = minY + y * (maxY - minY)
 
             local pin = dp:AddWorldQuest(info)
 
@@ -1144,10 +1140,19 @@ do
             return pin
         end
 
-        -- Collects quest info tables from all child zones of the given continent
-        -- map, excluding the continent map itself.  Returns a flat list.
+        -- Collects quest info tables from child zones of the given continent map.
+        -- Returns a flat list.
+        --
+        -- On a cold continent open, C_TaskQuest.GetQuestsOnMap(childMapID) returns
+        -- nothing because Blizzard's data provider only loads child-zone quest data
+        -- after the player has opened that zone map.  However,
+        -- C_TaskQuest.GetQuestsOnMap(continentMapID) is always populated by
+        -- Blizzard's RefreshAllData when on the continent.  We query both: child
+        -- zones first (so info.mapID is the zone mapID for accurate projection),
+        -- then fall back to the continent query for any quests not yet found.
         local function GetChildMapQuests()
             local quests = {}
+            local seen = {}
             local childMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
 
             for mID in pairs(childMapIDs) do
@@ -1155,8 +1160,24 @@ do
                     local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
                     if taskInfo then
                         for _, info in ipairs(taskInfo) do
-                            table.insert(quests, info)
+                            if not seen[info.questID] then
+                                seen[info.questID] = true
+                                table.insert(quests, info)
+                            end
                         end
+                    end
+                end
+            end
+
+            -- Fallback: continent-mapID query.  info.mapID will be the continent
+            -- mapID, so AddTrackedWorldQuestPin uses GetQuestLocation(questID,
+            -- continentMapID) which works even before child-zone data is loaded.
+            local continentTaskInfo = C_TaskQuest.GetQuestsOnMap(mapID)
+            if continentTaskInfo then
+                for _, info in ipairs(continentTaskInfo) do
+                    if not seen[info.questID] then
+                        seen[info.questID] = true
+                        table.insert(quests, info)
                     end
                 end
             end
@@ -1166,8 +1187,19 @@ do
 
         local mapInfo = C_Map.GetMapInfo(mapID)
         local pinTemplate = dp.GetPinTemplate and dp:GetPinTemplate() or dp.pinTemplate
+        local isContinent = mapInfo and mapInfo.mapType == Enum.UIMapType.Continent
 
-        if not pinTemplate or not map.pinPools or not map.pinPools[pinTemplate] then
+        if not pinTemplate then
+            return
+        end
+
+        -- On a cold continent open the pin pool doesn't exist yet: Blizzard's
+        -- data provider adds no WQ pins natively on continent maps (child-zone
+        -- quests only appear via our own AddTrackedWorldQuestPin calls).  The
+        -- alpha-hide passes are no-ops with no active pins, so skip the pool
+        -- guard and let dp:AddWorldQuest() create the pool on first use.
+        local hasPool = map.pinPools and map.pinPools[pinTemplate]
+        if not hasPool and not isContinent then
             return
         end
 
@@ -1191,10 +1223,12 @@ do
         -- Pass 1: restore alpha on any pins we previously hidden.
         -- SetAlpha(1) is purely visual and fires NO mouse events, so this is
         -- always safe regardless of cursor position.
-        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-            if pin.awqAlphaHidden then
-                pin:SetAlpha(1)
-                pin.awqAlphaHidden = nil
+        if hasPool then
+            for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                if pin.awqAlphaHidden then
+                    pin:SetAlpha(1)
+                    pin.awqAlphaHidden = nil
+                end
             end
         end
 
@@ -1203,8 +1237,10 @@ do
         -- We do NOT call map:RemovePin — that calls pin:Hide() internally.
         -- Blizzard's own pool management will release them on the next refresh.
         local activeSet = {}
-        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-            activeSet[pin] = true
+        if hasPool then
+            for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                activeSet[pin] = true
+            end
         end
         local remainingAddonPins = {}
         for _, pin in ipairs(addonAddedPins) do
@@ -1261,7 +1297,7 @@ do
                 and HaveQuestData(info.questID)
                 and QuestUtils_IsQuestWorldQuest(info.questID)
                 and WorldMap_DoesWorldQuestInfoPassFilters(info)
-                and DataModule:GetContentMapIDFromMapID(info.mapID) == mapID
+                and (info.mapID == mapID or DataModule:GetContentMapIDFromMapID(info.mapID) == mapID)
                 and not ShouldFilterQuest(info)
         end
 
@@ -1302,11 +1338,13 @@ do
         -- Trade-off: invisible pins still intercept mouse input at their exact
         -- pixel positions, so Area POI tooltips may not appear directly under a
         -- filtered quest pin.  This is acceptable vs. permanent SECRET errors.
-        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-            if pin.questID and C_QuestLog.IsWorldQuest(pin.questID) then
-                if ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID }) then
-                    pin:SetAlpha(0)
-                    pin.awqAlphaHidden = true
+        if hasPool then
+            for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                if pin.questID and C_QuestLog.IsWorldQuest(pin.questID) then
+                    if ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID }) then
+                        pin:SetAlpha(0)
+                        pin.awqAlphaHidden = true
+                    end
                 end
             end
         end
@@ -1317,9 +1355,11 @@ do
             if showContinentPOI then
                 -- Collect already-shown questIDs to avoid duplicates
                 local shownQuests = {}
-                for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-                    if pin.questID then
-                        shownQuests[pin.questID] = true
+                if hasPool then
+                    for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                        if pin.questID then
+                            shownQuests[pin.questID] = true
+                        end
                     end
                 end
 
@@ -1328,7 +1368,7 @@ do
                         and HaveQuestData(info.questID)
                         and QuestUtils_IsQuestWorldQuest(info.questID)
                         and WorldMap_DoesWorldQuestInfoPassFilters(info)
-                        and DataModule:GetContentMapIDFromMapID(info.mapID) == mapID
+                        and (info.mapID == mapID or DataModule:GetContentMapIDFromMapID(info.mapID) == mapID)
                         and not ShouldFilterQuest(info) then
 
                         AddTrackedWorldQuestPin(info)
@@ -1339,10 +1379,12 @@ do
 
             if superTrackedQuestID and superTrackedQuestID > 0 then
                 local hasPin = false
-                for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-                    if pin.questID == superTrackedQuestID then
-                        hasPin = true
-                        break
+                if hasPool then
+                    for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                        if pin.questID == superTrackedQuestID then
+                            hasPin = true
+                            break
+                        end
                     end
                 end
 
