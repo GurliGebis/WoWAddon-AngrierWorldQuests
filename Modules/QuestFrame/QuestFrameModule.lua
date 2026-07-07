@@ -1040,18 +1040,39 @@ do
         end
 
         local function AddTrackedWorldQuestPin(info)
+            -- Resolve the quest's position within its own zone, then project it
+            -- onto the displayed continent map with GetMapRectOnMap, which
+            -- resolves the full nested map hierarchy (zone -> region -> continent)
+            -- in normalized UI space.  This replaces a world-coordinate round-trip
+            -- (GetWorldPosFromMapPos/GetMapPosFromWorldPos) that mis-projected
+            -- some deeply nested Midnight zones into the ocean on the Eastern
+            -- Kingdoms map (issue #147).
+            --
+            -- Any step can fail (data not loaded, no rect for this map pairing);
+            -- skip the pin rather than place it at bogus coordinates.
+            local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
+
+            if not x or not y then
+                return nil
+            end
+
+            if not C_Map.GetMapRectOnMap then
+                return nil
+            end
+
+            local minX, maxX, minY, maxY = C_Map.GetMapRectOnMap(info.mapID, mapID)
+
+            if not minX or maxX <= minX or maxY <= minY then
+                return nil
+            end
+
+            local cx = minX + x * (maxX - minX)
+            local cy = minY + y * (maxY - minY)
+
             local pin = dp:AddWorldQuest(info)
 
             if pin then
-                -- Translate pin position from child zone to continent coordinates
-                local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
-                local continentID, worldPosition = C_Map.GetWorldPosFromMapPos(info.mapID, { x = x, y = y })
-                local translatedPos = select(2, C_Map.GetMapPosFromWorldPos(continentID, worldPosition, mapID))
-
-                if translatedPos then
-                    pin:SetPosition(translatedPos:GetXY())
-                end
-
+                pin:SetPosition(cx, cy)
                 table.insert(addonAddedPins, pin)
             end
 
