@@ -47,6 +47,14 @@ local fullRefreshRetryCount = 0
 local fullRefreshReason
 local addonAddedPins = {}
 
+-- Cache of per-quest filter decisions, populated by QuestLog_Update in a
+-- non-secure context and read back by PostProcessWorldQuestPins.  This keeps
+-- the reward-money read (GetQuestLogRewardMoney, via DataModule:IsQuestFiltered)
+-- OUT of Blizzard's secure RefreshAllData execution range, where it would taint
+-- the quest's money value and break the gold-reward tooltip on hover (issue #156).
+local filterDecisionCache = {}
+local filterDecisionMapID
+
 local function DebugLog(message)
     if not ConfigModule:Get("enableDebugging") then
         return
@@ -67,6 +75,36 @@ local function CanApplyFullRefresh()
     end
 
     return true
+end
+
+-- Recompute the per-quest filter-decision cache for the given map.  The reward
+-- reads inside DataModule:IsQuestFiltered (GetQuestLogRewardMoney) run here, in a
+-- non-secure context, so PostProcessWorldQuestPins can apply hide-filtered from
+-- the cache without re-reading reward money inside Blizzard's secure
+-- RefreshAllData range (which taints the money and breaks gold tooltips, #156).
+local function RebuildFilterDecisionCache(mapID)
+    wipe(filterDecisionCache)
+    filterDecisionMapID = mapID
+
+    if not mapID then
+        return
+    end
+
+    local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
+
+    for mID in pairs(displayMapIDs) do
+        local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
+
+        if taskInfo then
+            for _, info in ipairs(taskInfo) do
+                if HaveQuestData(info.questID) and QuestUtils_IsQuestWorldQuest(info.questID) then
+                    if WorldMap_DoesWorldQuestInfoPassFilters(info) then
+                        filterDecisionCache[info.questID] = DataModule:IsQuestFiltered(info, mapID) or false
+                    end
+                end
+            end
+        end
+    end
 end
 
 --endregion
@@ -449,6 +487,13 @@ do
         button.TagTexture:Hide()
         button.StorylineTexture:Hide()
 
+        -- Disable word wrap so long titles truncate to "..." instead of
+        -- wrapping to a second line. Wrapping also causes a layout loop:
+        -- the taller button changes available width, which in turn changes
+        -- whether the text fits, oscillating between wrapped and truncated
+        -- states and producing visible flicker.
+        button.Text:SetWordWrap(false)
+
         button.TagText = button:CreateFontString(nil, nil, "GameFontNormalLeft")
         button.TagText:SetJustifyH("RIGHT")
         button.TagText:SetTextColor(1, 1, 1)
@@ -569,6 +614,10 @@ do
         local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
         local searchBoxText = QuestScrollFrame.SearchBox:GetText():lower()
 
+        -- Compute filter decisions once, into the shared cache, so the list below
+        -- and the secure pin hook both read the same non-secure result (issue #156).
+        RebuildFilterDecisionCache(mapID)
+
         for mID in pairs(displayMapIDs) do
             local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
 
@@ -576,7 +625,7 @@ do
                 for _, info in ipairs(taskInfo) do
                     if HaveQuestData(info.questID) and QuestUtils_IsQuestWorldQuest(info.questID) then
                         if WorldMap_DoesWorldQuestInfoPassFilters(info) then
-                            local isFiltered = DataModule:IsQuestFiltered(info, mapID)
+                            local isFiltered = filterDecisionCache[info.questID]
                             if not isFiltered then
                                 if addedQuests[info.questID] == nil then
                                     addedQuests[info.questID] = true
@@ -1028,7 +1077,13 @@ do
                 return false
             end
 
-            if hideFilteredPOI and DataModule:IsQuestFiltered(info, mapID) then
+            -- Read the filter decision from the cache QuestLog_Update populated in
+            -- a non-secure context.  Calling DataModule:IsQuestFiltered() here would
+            -- run GetQuestLogRewardMoney inside Blizzard's secure RefreshAllData
+            -- range, tainting the quest's reward money and killing the gold tooltip
+            -- on hover (issue #156).  A cache miss or stale map defaults to "not
+            -- filtered" (pin shown) until the next QuestLog_Update refreshes it.
+            if hideFilteredPOI and filterDecisionMapID == mapID and filterDecisionCache[info.questID] then
                 return true
             end
 
@@ -1040,28 +1095,64 @@ do
         end
 
         local function AddTrackedWorldQuestPin(info)
+            local cx, cy
+
+            if info.mapID == mapID then
+                -- info came from GetQuestsOnMap(continentMapID): coordinates are
+                -- already in continent-normalised space (cold-continent fallback).
+                cx, cy = C_TaskQuest.GetQuestLocation(info.questID, mapID)
+            else
+                -- info came from GetQuestsOnMap(childMapID): project zone-space
+                -- coordinates onto the continent via GetMapRectOnMap (issue #147).
+                local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
+
+                if x and y and C_Map.GetMapRectOnMap then
+                    local minX, maxX, minY, maxY = C_Map.GetMapRectOnMap(info.mapID, mapID)
+
+                    if minX and maxX > minX and maxY > minY then
+                        cx = minX + x * (maxX - minX)
+                        cy = minY + y * (maxY - minY)
+                    end
+                end
+            end
+
+            if not cx or not cy then
+                return nil
+            end
+
             local pin = dp:AddWorldQuest(info)
 
             if pin then
-                -- Translate pin position from child zone to continent coordinates
-                local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
-                local continentID, worldPosition = C_Map.GetWorldPosFromMapPos(info.mapID, { x = x, y = y })
-                local translatedPos = select(2, C_Map.GetMapPosFromWorldPos(continentID, worldPosition, mapID))
+                -- A pin reclaimed from Blizzard's pool may still be alpha-hidden
+                -- from when it belonged to a previous map (issue #166), so make
+                -- sure pins we actively add are visible.  Tag the pin with the map
+                -- and quest it was placed for; PostProcessWorldQuestPins uses these
+                -- to re-hide our pins once they are no longer valid.
+                pin:SetAlpha(1)
+                pin.awqAlphaHidden = nil
+                pin.awqMapID = mapID
+                pin.awqQuestID = info.questID
 
-                if translatedPos then
-                    pin:SetPosition(translatedPos:GetXY())
-                end
-
+                pin:SetPosition(cx, cy)
                 table.insert(addonAddedPins, pin)
             end
 
             return pin
         end
 
-        -- Collects quest info tables from all child zones of the given continent
-        -- map, excluding the continent map itself.  Returns a flat list.
+        -- Collects quest info tables from child zones of the given continent map.
+        -- Returns a flat list.
+        --
+        -- On a cold continent open, C_TaskQuest.GetQuestsOnMap(childMapID) returns
+        -- nothing because Blizzard's data provider only loads child-zone quest data
+        -- after the player has opened that zone map.  However,
+        -- C_TaskQuest.GetQuestsOnMap(continentMapID) is always populated by
+        -- Blizzard's RefreshAllData when on the continent.  We query both: child
+        -- zones first (so info.mapID is the zone mapID for accurate projection),
+        -- then fall back to the continent query for any quests not yet found.
         local function GetChildMapQuests()
             local quests = {}
+            local seen = {}
             local childMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
 
             for mID in pairs(childMapIDs) do
@@ -1069,8 +1160,24 @@ do
                     local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
                     if taskInfo then
                         for _, info in ipairs(taskInfo) do
-                            table.insert(quests, info)
+                            if not seen[info.questID] then
+                                seen[info.questID] = true
+                                table.insert(quests, info)
+                            end
                         end
+                    end
+                end
+            end
+
+            -- Fallback: continent-mapID query.  info.mapID will be the continent
+            -- mapID, so AddTrackedWorldQuestPin uses GetQuestLocation(questID,
+            -- continentMapID) which works even before child-zone data is loaded.
+            local continentTaskInfo = C_TaskQuest.GetQuestsOnMap(mapID)
+            if continentTaskInfo then
+                for _, info in ipairs(continentTaskInfo) do
+                    if not seen[info.questID] then
+                        seen[info.questID] = true
+                        table.insert(quests, info)
                     end
                 end
             end
@@ -1080,8 +1187,19 @@ do
 
         local mapInfo = C_Map.GetMapInfo(mapID)
         local pinTemplate = dp.GetPinTemplate and dp:GetPinTemplate() or dp.pinTemplate
+        local isContinent = mapInfo and mapInfo.mapType == Enum.UIMapType.Continent
 
-        if not pinTemplate or not map.pinPools or not map.pinPools[pinTemplate] then
+        if not pinTemplate then
+            return
+        end
+
+        -- On a cold continent open the pin pool doesn't exist yet: Blizzard's
+        -- data provider adds no WQ pins natively on continent maps (child-zone
+        -- quests only appear via our own AddTrackedWorldQuestPin calls).  The
+        -- alpha-hide passes are no-ops with no active pins, so skip the pool
+        -- guard and let dp:AddWorldQuest() create the pool on first use.
+        local hasPool = map.pinPools and map.pinPools[pinTemplate]
+        if not hasPool and not isContinent then
             return
         end
 
@@ -1105,10 +1223,12 @@ do
         -- Pass 1: restore alpha on any pins we previously hidden.
         -- SetAlpha(1) is purely visual and fires NO mouse events, so this is
         -- always safe regardless of cursor position.
-        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-            if pin.awqAlphaHidden then
-                pin:SetAlpha(1)
-                pin.awqAlphaHidden = nil
+        if hasPool then
+            for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                if pin.awqAlphaHidden then
+                    pin:SetAlpha(1)
+                    pin.awqAlphaHidden = nil
+                end
             end
         end
 
@@ -1117,8 +1237,10 @@ do
         -- We do NOT call map:RemovePin — that calls pin:Hide() internally.
         -- Blizzard's own pool management will release them on the next refresh.
         local activeSet = {}
-        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-            activeSet[pin] = true
+        if hasPool then
+            for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                activeSet[pin] = true
+            end
         end
         local remainingAddonPins = {}
         for _, pin in ipairs(addonAddedPins) do
@@ -1127,6 +1249,79 @@ do
             end
         end
         addonAddedPins = remainingAddonPins
+
+        local childQuests
+        local childQuestByID
+        local superTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID()
+
+        local function GetCachedChildQuests()
+            if not childQuests then
+                childQuests = GetChildMapQuests()
+            end
+
+            return childQuests
+        end
+
+        local function GetCachedChildQuestByID()
+            if not childQuestByID then
+                childQuestByID = {}
+
+                for _, info in ipairs(GetCachedChildQuests()) do
+                    childQuestByID[info.questID] = info
+                end
+            end
+
+            return childQuestByID
+        end
+
+        local function IsAddonPinExpected(pin)
+            if pin.awqMapID ~= mapID then
+                return false
+            end
+
+            if not mapInfo or mapInfo.mapType ~= Enum.UIMapType.Continent then
+                return false
+            end
+
+            if superTrackedQuestID and superTrackedQuestID > 0 and pin.awqQuestID == superTrackedQuestID then
+                return true
+            end
+
+            if not showContinentPOI then
+                return false
+            end
+
+            local info = GetCachedChildQuestByID()[pin.awqQuestID]
+
+            return info
+                and HaveQuestData(info.questID)
+                and QuestUtils_IsQuestWorldQuest(info.questID)
+                and WorldMap_DoesWorldQuestInfoPassFilters(info)
+                and (info.mapID == mapID or DataModule:GetContentMapIDFromMapID(info.mapID) == mapID)
+                and not ShouldFilterQuest(info)
+        end
+
+        -- Pass 1b: re-hide pins we added that are no longer valid for this map.
+        --
+        -- AWQ borrows pins from Blizzard's WorldQuest pool to show child-zone
+        -- quests on continent maps.  Blizzard normally releases them via
+        -- pool:ReleaseAll on the next RefreshAllData, but on some maps (e.g. the
+        -- Eastern Kingdoms continent) its data provider returns without refreshing
+        -- its pins, so ours stay active and linger at their previous map's
+        -- coordinates — out in the ocean (issue #166).  Pass 1 above just restored
+        -- their alpha, so re-hide them here on every refresh.  The same guard also
+        -- covers same-map stale pins, such as a super-tracked WQ pin after the
+        -- quest is untracked while continent POIs are disabled.
+        --
+        -- Keying on our own tracking list is safe: those pins are always active
+        -- (Blizzard only recycles inactive pins), and the questID guard skips any
+        -- pin Blizzard has meanwhile reclaimed for a different quest.
+        for _, pin in ipairs(addonAddedPins) do
+            if pin.questID == pin.awqQuestID and not IsAddonPinExpected(pin) then
+                pin:SetAlpha(0)
+                pin.awqAlphaHidden = true
+            end
+        end
 
         -- Pass 2: alpha-hide filtered pins.
         --
@@ -1143,24 +1338,28 @@ do
         -- Trade-off: invisible pins still intercept mouse input at their exact
         -- pixel positions, so Area POI tooltips may not appear directly under a
         -- filtered quest pin.  This is acceptable vs. permanent SECRET errors.
-        for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-            if pin.questID and C_QuestLog.IsWorldQuest(pin.questID) then
-                if ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID }) then
-                    pin:SetAlpha(0)
-                    pin.awqAlphaHidden = true
+        if hasPool then
+            for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                if pin.questID and C_QuestLog.IsWorldQuest(pin.questID) then
+                    if ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID }) then
+                        pin:SetAlpha(0)
+                        pin.awqAlphaHidden = true
+                    end
                 end
             end
         end
 
         if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent then
-            local childQuests = GetChildMapQuests()
+            local childQuests = GetCachedChildQuests()
 
             if showContinentPOI then
                 -- Collect already-shown questIDs to avoid duplicates
                 local shownQuests = {}
-                for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-                    if pin.questID then
-                        shownQuests[pin.questID] = true
+                if hasPool then
+                    for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                        if pin.questID then
+                            shownQuests[pin.questID] = true
+                        end
                     end
                 end
 
@@ -1169,7 +1368,7 @@ do
                         and HaveQuestData(info.questID)
                         and QuestUtils_IsQuestWorldQuest(info.questID)
                         and WorldMap_DoesWorldQuestInfoPassFilters(info)
-                        and DataModule:GetContentMapIDFromMapID(info.mapID) == mapID
+                        and (info.mapID == mapID or DataModule:GetContentMapIDFromMapID(info.mapID) == mapID)
                         and not ShouldFilterQuest(info) then
 
                         AddTrackedWorldQuestPin(info)
@@ -1178,13 +1377,14 @@ do
                 end
             end
 
-            local superTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID()
             if superTrackedQuestID and superTrackedQuestID > 0 then
                 local hasPin = false
-                for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-                    if pin.questID == superTrackedQuestID then
-                        hasPin = true
-                        break
+                if hasPool then
+                    for pin in map.pinPools[pinTemplate]:EnumerateActive() do
+                        if pin.questID == superTrackedQuestID then
+                            hasPin = true
+                            break
+                        end
                     end
                 end
 
@@ -1242,6 +1442,7 @@ do
                         end
                     end
                     lastTrackedQuestID = questID
+                    QuestFrameModule:RequestFullRefresh("TRACK_WORLD_QUEST")
                 end
 
                 if watchType == Enum.QuestWatchType.Automatic then
@@ -1255,6 +1456,7 @@ do
                     if lastTrackedQuestID == questID then
                         lastTrackedQuestID = nil
                     end
+                    QuestFrameModule:RequestFullRefresh("UNTRACK_WORLD_QUEST")
                 end
                 -- Don't call ObjectiveTrackerManager:UpdateAll() here, see issue #67.
                 --ObjectiveTrackerManager:UpdateAll();
@@ -1393,6 +1595,10 @@ do
             self:RequestQuestLogUpdate()
         end)
 
+        hooksecurefunc(C_SuperTrack, "SetSuperTrackedQuestID", function()
+            self:RequestFullRefresh("SUPER_TRACKED_QUEST")
+        end)
+
         self:RegisterCallbacks()
     end
 end
@@ -1459,6 +1665,13 @@ function QuestFrameModule:RequestFullRefresh(reason)
         fullRefreshReason = nil
 
         DebugLog(string.format("Applying full refresh (%s)", reasonText))
+
+        -- Refresh the filter-decision cache before QuestLogQuests_Update() kicks off
+        -- the WorldQuestDataProvider RefreshAllData -> PostProcessWorldQuestPins
+        -- cycle, so the secure pin hook reads up-to-date hide-filtered decisions
+        -- for the current map without recomputing them itself (issue #156).
+        RebuildFilterDecisionCache(QuestMapFrame and QuestMapFrame:GetParent():GetMapID())
+
         QuestLogQuests_Update()
 
         -- Do NOT call dataProvider:RefreshAllData() directly from addon code.
