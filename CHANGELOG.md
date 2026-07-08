@@ -1,3 +1,10 @@
+# 12.0.7-20260708-1
+* Fix continent POI positions, patches provided by bloqaudio on github.
+* Fix stuck continent POI, patches provided by bloqaudio on github.
+* Fix world quest tooltip taints, patches provided by bloqaudio on github.
+* Fix quest name word wrap and flicker in quest log.
+* Fix tracked WQ pins not appearing on cold continent map open.
+
 # 12.0.7-20260617-1
 * Updated TOC to match 12.0.7
 
