@@ -1,3 +1,6 @@
+# 12.1.0-20260812-1
+* Updated TOC to match 12.1.0
+
 # 12.0.7-20260708-1
 * Fix continent POI positions, patches provided by bloqaudio on github.
 * Fix stuck continent POI, patches provided by bloqaudio on github.
