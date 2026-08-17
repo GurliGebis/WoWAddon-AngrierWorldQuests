@@ -38,6 +38,9 @@ local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 --region Variables
 
 local dataProvider
+-- Hoisted out of the QuestLog region so the taint-safe refresh triggers
+-- (defined after it) can schedule pin post-processing (issues #161/#168).
+local PostProcessWorldQuestPins
 local hoveredQuestID
 local titleFramePool
 local listRefreshPending = false
@@ -424,6 +427,16 @@ do
         QuestFrameModule.Tooltip_Hide(self)
     end
 
+    -- Executes a deferred tracking action with a clean execution context:
+    -- TrackWorldQuest/UntrackWorldQuest and SetSuperTrackedQuestID kick off
+    -- Blizzard's objective-tracker and quest-log chains; run from the addon's
+    -- C_Timer attribution they tainted those chains (#67, #168).
+    local function RunTrackingDeferred(action)
+        C_Timer.After(0, function()
+            securecallfunction(action)
+        end)
+    end
+
     local function QuestButton_OnClick(self, button)
         if ( not ChatEdit_TryInsertQuestLinkForQuestID(self.questID) ) then
             local watchType = C_QuestLog.GetQuestWatchType(self.questID)
@@ -436,18 +449,18 @@ do
             elseif IsShiftKeyDown() then
                 if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and isSuperTracked) then
                     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
-                    C_Timer.After(0, function() QuestUtil.UntrackWorldQuest(self.questID) end)
+                    RunTrackingDeferred(function() QuestUtil.UntrackWorldQuest(self.questID) end)
                 else
                     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-                    C_Timer.After(0, function() QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual) end)
+                    RunTrackingDeferred(function() QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual) end)
                 end
             else
                 if isSuperTracked then
                     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_OFF)
-                    C_Timer.After(0, function() C_SuperTrack.SetSuperTrackedQuestID(0) end)
+                    RunTrackingDeferred(function() C_SuperTrack.SetSuperTrackedQuestID(0) end)
                 else
                     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-                    C_Timer.After(0, function()
+                    RunTrackingDeferred(function()
                         if watchType ~= Enum.QuestWatchType.Manual then
                             QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Automatic)
                         end
@@ -463,9 +476,9 @@ do
         local watchType = C_QuestLog.GetQuestWatchType(self.questID)
 
         if watchType == Enum.QuestWatchType.Manual or (watchType == Enum.QuestWatchType.Automatic and C_SuperTrack.GetSuperTrackedQuestID() == self.questID) then
-            C_Timer.After(0, function() QuestUtil.UntrackWorldQuest(self.questID) end)
+            RunTrackingDeferred(function() QuestUtil.UntrackWorldQuest(self.questID) end)
         else
-            C_Timer.After(0, function() QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual) end)
+            RunTrackingDeferred(function() QuestUtil.TrackWorldQuest(self.questID, Enum.QuestWatchType.Manual) end)
         end
     end
 
@@ -593,12 +606,20 @@ do
         local questsCollapsed = ConfigModule:Get("collapsed")
         local showAtTop = ConfigModule:Get("showAtTop")
 
-        if not showAtTop then
+        -- Blizzard assigned the separator's layoutIndex in its own
+        -- QuestLogQuests_Update, which ran before this deferred update; place the
+        -- container right after the separator (the 0.5 fallback sorts it to the
+        -- very top, e.g. when no separator is displayed).  Previously a
+        -- SetFrameLayoutIndex post-hook did this, but that hook ran inside
+        -- Blizzard's own chains, tainting everything that followed (issue #168).
+        if showAtTop then
+            local separatorIndex = QuestScrollFrame.Contents.Separator.layoutIndex
+            awqContainer.layoutIndex = (separatorIndex or 0) + 0.5
+        else
             awqContainer.layoutIndex = 9999.5
         end
-        awqContainer:Show()
 
-        local needsReposition = showAtTop and not awqContainer.layoutIndex
+        awqContainer:Show()
 
         headerButton:Show()
         local prevButton = headerButton
@@ -720,21 +741,9 @@ do
         headerButton.CollapseButton:UpdateCollapsedState(ConfigModule:Get("collapsed"))
         headerButton.CollapseButton:Show()
 
-        if needsReposition then
-            -- awqContainer wasn't shown when QuestLogQuests_Update ran, so the hook
-            -- couldn't assign a real layoutIndex. Clear it, re-run QuestLogQuests_Update
-            -- so the hook fires with awqContainer shown and assigns the correct
-            -- separator + 1 index. If the hook still doesn't fire (no campaign quests /
-            -- no separator), fall back to 0.5 so the container sorts to the very top.
-            awqContainer.layoutIndex = nil
-            QuestLogQuests_Update()
-
-            if not awqContainer.layoutIndex then
-                awqContainer.layoutIndex = 0.5
-            end
-        else
-            QuestScrollFrame.Contents:Layout()
-        end
+        -- Layout now that the container's index is final.  Runs after Blizzard's
+        -- own layout pass, so the separator.layoutIndex read above was current.
+        QuestScrollFrame.Contents:Layout()
     end
 
     function QuestFrameModule:QuestLog_AddQuestButton(questInfo, searchBoxText)
@@ -941,23 +950,10 @@ do
         headerButton.titleFramePool = titleFramePool
         headerButton.layoutIndex = 1
 
-        local function ApplyLayoutIndex(_, frame)
-            if awqContainer:IsShown()
-                    and ConfigModule:Get("showAtTop")
-                    and frame == QuestScrollFrame.Contents.Separator then
-                -- Assign directly instead of calling mapFrame:SetFrameLayoutIndex(awqContainer),
-                -- which would write back to mapFrame.layoutIndex (a Blizzard-owned value) from
-                -- addon code, tainting it and cascading taints into LayoutFrame, UIWidgets,
-                -- GameTooltip, and QuestMapFrame layout calculations.
-                -- The post-hook fires after Blizzard has already set frame.layoutIndex, so
-                -- reading it here is safe. We place awqContainer just after the separator.
-                awqContainer.layoutIndex = frame.layoutIndex + 0.5
-            end
-        end
-
-        hooksecurefunc(QuestMapFrame, "SetFrameLayoutIndex", function(mapFrame, frame)
-            ApplyLayoutIndex(mapFrame, frame)
-        end)
+        -- The container's layoutIndex is now assigned directly in QuestLog_Update
+        -- (read separator.layoutIndex after Blizzard's own QuestLogQuests_Update
+        -- finished).  The old SetFrameLayoutIndex post-hook ran inside Blizzard's
+        -- quest-log render chains and tainted them (issue #168).
     end
 
     function QuestFrameModule:IsLockedDown()
@@ -968,6 +964,125 @@ do
         local inInstance, instanceType = IsInInstance()
 
         return inInstance and (instanceType == "pvp" or instanceType == "arena")
+    end
+end
+--endregion
+
+--region Taint-safe refresh triggers
+--
+-- Blizzard invokes its map/quest-log functions from inside its own protected
+-- chains: data provider RefreshAllData runs within the map canvas
+-- secureexecuterange, and QuestLogQuests_Update is called from the map pin
+-- hover chains (QuestMapFrame OnMapCanvasPinEnter).  Any addon hook on those
+-- functions places addon Lua frames inside the chains, which in 12.1 makes the
+-- rest of the chain execute tainted — protected calls are then blocked
+-- (Button:SetPassThroughButtons -> ADDON_ACTION_BLOCKED) and UIWidget geometry
+-- reads return SECRET values, erroring Blizzard's own widget Setup code on the
+-- next POI hover (issue #168).
+--
+-- Instead, all refresh work is triggered from contexts the game dispatches
+-- cleanly and in isolation, never nested inside a Blizzard chain:
+--   * our own event frame (events are delivered to every registered frame in
+--     separate calls),
+--   * C_Timer callbacks (fire from the game's timer processing, outside any
+--     Blizzard chain),
+--   * and every outgoing mutation runs inside securecallfunction so nothing is
+--     attributed to the addon.
+do
+    local QUEST_REFRESH_EVENTS = {
+        "QUEST_LOG_UPDATE",       -- world quest data provider refresh (WorldQuestDataProvider.lua:166)
+        "SUPER_TRACKING_CHANGED", -- the provider's other refresh event (line 106)
+        "QUEST_POI_UPDATE",       -- dynamic quest / POI updates (e.g. Void Assaults)
+        "UNIT_QUEST_LOG_CHANGED", -- quest log additions/removals
+        "WORLD_MAP_OPEN",         -- map opened; the provider's OnShow starts its own ticker
+        "PLAYER_ENTERING_WORLD",  -- zone-in refresh
+    }
+
+    local questLogEventFrame
+    local pinRefreshScheduled = false
+    local lastSearchText
+    local lastMapID
+
+    -- Runs Blizzard-facing pin work with a clean execution context, so pin
+    -- geometry/alpha written here can never surface as SECRET to Blizzard's own
+    -- later reads (pin pool recycling, QuestHub tooltip cloning).
+    local function RunPinPostProcessing()
+        if not dataProvider or not QuestMapFrame or not QuestMapFrame:IsShown() then
+            return
+        end
+
+        securecallfunction(function()
+            PostProcessWorldQuestPins(dataProvider)
+        end)
+    end
+
+    -- Post-processes pins one frame after a quest/map event.  Blizzard's own
+    -- RefreshAllData for the event completes during the event dispatch; this
+    -- runs right after it, in an isolated context.
+    local function SchedulePinRefresh()
+        if pinRefreshScheduled then
+            return
+        end
+
+        pinRefreshScheduled = true
+        C_Timer.After(0, function()
+            pinRefreshScheduled = false
+            RunPinPostProcessing()
+        end)
+    end
+
+    function QuestFrameModule:OnMapEvent(event)
+        SchedulePinRefresh()
+
+        if event == "SUPER_TRACKING_CHANGED" or event == "QUEST_LOG_UPDATE" or event == "QUEST_POI_UPDATE" then
+            self:RequestQuestLogUpdate()
+            self:RequestFullRefresh(event)
+        elseif event == "WORLD_MAP_OPEN" then
+            self:RequestQuestLogUpdate()
+            self:RequestFullRefresh(event)
+        elseif event == "UNIT_QUEST_LOG_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
+            self:RequestQuestLogUpdate()
+        end
+    end
+
+    function QuestFrameModule:InitializeRefreshTriggers()
+        questLogEventFrame = CreateFrame("Frame")
+        questLogEventFrame:Hide()
+        questLogEventFrame:SetScript("OnEvent", function(_, event)
+            QuestFrameModule:OnMapEvent(event)
+        end)
+        for _, event in ipairs(QUEST_REFRESH_EVENTS) do
+            questLogEventFrame:RegisterEvent(event)
+        end
+        questLogEventFrame:Show()
+
+        -- Mirror of the world quest provider's own 0.5s RefreshAllData ticker
+        -- (WorldQuestDataProvider.lua:178): it re-acquires pins (resetting their
+        -- alpha and position), so event triggers alone would let our filtered
+        -- pins flicker back to visible between refetches.  Also detects search
+        -- box text changes, which trigger a QuestLogQuests_Update without any
+        -- quest/map event (search parity with the old QuestLogQuests_Update hook).
+        -- And it detects map display changes via GetMapID() diff (parity with the
+        -- old OnMapChanged hook; there is no WORLD_MAP_UPDATE event).
+        C_Timer.NewTicker(0.5, function()
+            RunPinPostProcessing()
+
+            if QuestMapFrame and QuestMapFrame:IsShown() then
+                local mapID = WorldMapFrame:GetMapID()
+                if mapID ~= lastMapID then
+                    lastMapID = mapID
+                    QuestFrameModule:RequestQuestLogUpdate()
+                end
+            end
+
+            if QuestMapFrame and QuestMapFrame:IsShown() and QuestScrollFrame and QuestScrollFrame.SearchBox then
+                local searchText = QuestScrollFrame.SearchBox:GetText()
+                if searchText ~= lastSearchText then
+                    lastSearchText = searchText
+                    QuestFrameModule:RequestQuestLogUpdate()
+                end
+            end
+        end)
     end
 end
 --endregion
@@ -1048,7 +1163,12 @@ do
 
     local printedLockdownMessage = false
 
-    local function PostProcessWorldQuestPins(dp)
+    -- Post-processes pins after Blizzard's data provider refreshed them.  Does
+    -- NOT use Hide()/EnableMouse() on pins — SetAlpha(0) is the only safe way to
+    -- filter pins; every hit-test-affecting API fires synchronous OnEnter/OnLeave
+    -- that, if fired from addon-triggered code while the cursor is over a POI,
+    -- permanently taints UIWidget FontString geometry (issues #161/#168).
+    PostProcessWorldQuestPins = function(dp)
         local map = dp:GetMap()
 
         if not map then
@@ -1401,29 +1521,17 @@ do
     end
 
     function QuestFrameModule:InitializeProvider()
-        local dp = GetDataProvider()
+        dataProvider = GetDataProvider()
 
-        if dp ~= nil then
-            dataProvider = dp
-
-            -- Post-process pins after Blizzard's RefreshAllData completes to
-            -- apply our filtering (SetAlpha) and add continent child-zone pins.
-            -- Deferred by one frame (C_Timer.After(0)) to run outside the
-            -- addon's tainted execution context (issue #156).
-            hooksecurefunc(dataProvider, "RefreshAllData", function(dpArg)
-                -- Defer to next frame via C_Timer to cleanse addon taint.
-                -- hooksecurefunc hooks always run in the addon's (tainted)
-                -- execution context.  PostProcessWorldQuestPins calls
-                -- dp:AddWorldQuest() and pin:SetPosition() which taint pin
-                -- geometry.  When Blizzard later clones tainted pins for the
-                -- QuestHub tooltip (FrameCloneManager:Clone -> GetSize()),
-                -- the SECRET values cause "attempt to compare a secret number
-                -- value" errors in LayoutFrame:GetExtents(). (issue #156)
-                C_Timer.After(0, function()
-                    PostProcessWorldQuestPins(dpArg)
-                end)
-            end)
-        end
+        -- NOTE: there is deliberately no hooksecurefunc on RefreshAllData here.
+        -- RefreshAllData is called from inside Blizzard's map canvas
+        -- secureexecuterange (MapCanvas OnEvent -> data provider SignalEvent);
+        -- a post-hook on it runs our Lua frames inside that range, tainting
+        -- every protected call Blizzard makes afterwards in the same range,
+        -- e.g. Button:SetPassThroughButtons() during pin acquisition
+        -- (ADDON_ACTION_BLOCKED, issue #168).  Pin post-processing is instead
+        -- triggered from our own event frame and a mirror ticker, which run in
+        -- isolated game-dispatched contexts after Blizzard's refresh completes.
     end
 
     function QuestFrameModule:ApplyWorkarounds()
@@ -1578,26 +1686,30 @@ do
 
         titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
 
-        -- Create awqContainer and headerButton inside the QuestLog upvalue scope,
-        -- and register the SetFrameLayoutIndex hook there too (the hook closure must
-        -- capture awqContainer from that scope). Must happen after titleFramePool is
-        -- created (headerButton references it).
+        -- Create awqContainer and headerButton inside the QuestLog upvalue scope.
+        -- Must happen after titleFramePool is created (headerButton references it).
         self:InitQuestLogFrames()
 
-        hooksecurefunc("QuestLogQuests_Update", function()
-            self:RequestQuestLogUpdate()
-        end)
-
-        -- Refresh the quest list when the user navigates between maps
-        -- (e.g. right-clicking to zoom into a zone) so stale entries from
-        -- the previous map are removed and the correct quests are shown.
-        hooksecurefunc(WorldMapFrame, "OnMapChanged", function()
-            self:RequestQuestLogUpdate()
-        end)
-
-        hooksecurefunc(C_SuperTrack, "SetSuperTrackedQuestID", function()
-            self:RequestFullRefresh("SUPER_TRACKED_QUEST")
-        end)
+        -- TAINT-SAFE REFRESH TRIGGERS (issue #168).
+        --
+        -- All refresh work is now driven by our own event frame and a C_Timer
+        -- mirror ticker instead of hooksecurefunc hooks on Blizzard functions.
+        -- Blizzard invokes the hooked functions (QuestLogQuests_Update,
+        -- RefreshAllData, OnMapChanged, SetSuperTrackedQuestID) from inside its
+        -- own protected chains — the map canvas secureexecuterange and the map
+        -- pin hover/tooltip chains.  Addon hooks there placed our Lua frames
+        -- inside those chains, so the remainder of the chain executed tainted:
+        -- protected calls (e.g. Button:SetPassThroughButtons during pin
+        -- acquisition) were blocked, and UIWidget geometry reads returned SECRET
+        -- values that errored Blizzard's widget Setup code on POI hover (#168).
+        --
+        -- The event frame covers every trigger the provider itself uses
+        -- (QUEST_LOG_UPDATE / SUPER_TRACKING_CHANGED, WorldQuestDataProvider.lua:106/166)
+        -- plus quest-POI, map-open and quest-log events; the mirror ticker covers
+        -- the provider's own 0.5s refresh ticker (line 178), search-box changes,
+        -- and map display changes (GetMapID() diff, since no WORLD_MAP_UPDATE
+        -- event exists); all outgoing mutations run inside securecallfunction.
+        QuestFrameModule:InitializeRefreshTriggers()
 
         self:RegisterCallbacks()
     end
@@ -1612,13 +1724,16 @@ function QuestFrameModule:RequestQuestLogUpdate()
     listRefreshPending = true
     C_Timer.After(0.05, function()
         listRefreshPending = false
-        -- Skip when any tooltip is shown.  QuestLog_Update hides/shows quest
-        -- log buttons (children of WorldMapFrame) from tainted code; this can
-        -- trigger a canvas mouse-focus recalculation and fire Area POI OnEnter
-        -- in our tainted context, causing UIWidget SECRET errors (issue #161).
-        -- The next QuestLogQuests_Update event reschedules naturally.
+        -- Skip when any tooltip is shown.  QuestLog_Update shows/hides quest log
+        -- buttons (children of WorldMapFrame); from tainted code this can fire a
+        -- canvas mouse-focus recalculation and Area POI OnEnter in the addon's
+        -- context, permanently tainting UIWidget FontString values (issue #161).
+        -- The next QUEST_LOG_UPDATE event reschedules naturally.
         if QuestMapFrame and QuestMapFrame:IsShown() and not GameTooltip:IsShown() then
-            QuestFrameModule:QuestLog_Update()
+            -- Render our list in a clean execution context (issue #168).
+            securecallfunction(function()
+                QuestFrameModule:QuestLog_Update()
+            end)
         end
     end)
 end
@@ -1666,29 +1781,22 @@ function QuestFrameModule:RequestFullRefresh(reason)
 
         DebugLog(string.format("Applying full refresh (%s)", reasonText))
 
-        -- Refresh the filter-decision cache before QuestLogQuests_Update() kicks off
-        -- the WorldQuestDataProvider RefreshAllData -> PostProcessWorldQuestPins
-        -- cycle, so the secure pin hook reads up-to-date hide-filtered decisions
-        -- for the current map without recomputing them itself (issue #156).
-        RebuildFilterDecisionCache(QuestMapFrame and QuestMapFrame:GetParent():GetMapID())
+        -- Rebuild the filter-decision cache and re-render the quest log in a
+        -- clean execution context: reward-money reads (GetQuestLogRewardMoney via
+        -- DataModule:IsQuestFiltered) stay unstamped for Blizzard's gold tooltip
+        -- (issue #156), and Blizzard's own re-render runs untainted (issue #168).
+        -- Pin state is refreshed afterwards by the event frame / mirror ticker,
+        -- after the data provider's own RefreshAllData has run for this change.
+        securecallfunction(function()
+            RebuildFilterDecisionCache(QuestMapFrame and QuestMapFrame:GetParent():GetMapID())
+            QuestLogQuests_Update()
+        end)
 
-        QuestLogQuests_Update()
-
-        -- Do NOT call dataProvider:RefreshAllData() directly from addon code.
-        -- Addon code is tainted; calling RefreshAllData() from here taints the
-        -- entire synchronous call-chain including any OnMouseEnter handlers for
-        -- Area POI pins that may fire while pins are being recreated.  This causes
-        -- UIWidget C APIs (e.g. GetWidth) to return SECRET values and triggers the
-        -- "attempt to perform arithmetic on a secret number value" error (#161).
-        --
-        -- Instead we rely on Blizzard's own event-driven refresh cycle.
-        -- When QuestLogQuests_Update() runs it fires QUEST_LOG_UPDATE and similar
-        -- events that cause the WorldQuestDataProvider to call RefreshAllData()
-        -- from its own (untainted) Lua context.  Our hooksecurefunc post-hook on
-        -- RefreshAllData then defers PostProcessWorldQuestPins via C_Timer.After(0)
-        -- as normal.
-        -- if dataProvider and dataProvider.RefreshAllData then
-        --     dataProvider:RefreshAllData()
-        -- end
+        -- Do NOT call dataProvider:RefreshAllData() directly.  It fires pin
+        -- OnMouseEnter handlers synchronously while pins are recreated; called
+        -- from addon code it taints those chains, and UIWidget C APIs then
+        -- return SECRET values (#161).  Blizzard's own event cycle (our event
+        -- frame + the provider's 0.5s ticker, mirrored by our own) performs the
+        -- refresh instead, after which RunPinPostProcessing is scheduled.
     end)
 end
