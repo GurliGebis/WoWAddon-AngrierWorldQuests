@@ -140,15 +140,15 @@ do
 
     local function FilterMenu_ApplySelection(filterKey, value)
         if filterKey == "EMISSARY" then
-            ConfigModule:Set("filterEmissary", value, true)
+            ConfigModule:Set("filterEmissary", value)
         elseif filterKey == "LOOT" then
-            ConfigModule:Set("filterLoot", value, true)
+            ConfigModule:Set("filterLoot", value)
         elseif filterKey == "FACTION" then
-            ConfigModule:Set("filterFaction", value, true)
+            ConfigModule:Set("filterFaction", value)
         elseif filterKey == "ZONE" then
-            ConfigModule:Set("filterZone", value, true)
+            ConfigModule:Set("filterZone", value)
         elseif filterKey == "TIME" then
-            ConfigModule:Set("filterTime", value, true)
+            ConfigModule:Set("filterTime", value)
         end
 
         if filterKey == "SORT" then
@@ -595,11 +595,13 @@ do
         local tasksOnMap = C_TaskQuest.GetQuestsOnMap(mapID)
         if (ConfigModule:Get("onlyCurrentZone")) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) and (mapID ~= MAPID_ARGUS) then
             QuestFrameModule:HideWorldQuestsHeader()
+            QuestFrameModule.lastRenderedMapID = mapID
             return
         end
 
         if (ConfigModule:Get("hideQuestList")) then
             QuestFrameModule:HideWorldQuestsHeader()
+            QuestFrameModule.lastRenderedMapID = mapID
             return
         end
 
@@ -668,6 +670,7 @@ do
         if questCount == 0 and ConfigModule:HasFilters() == false then
             -- No quests available and no active filters — hide the header entirely.
             QuestFrameModule:HideWorldQuestsHeader()
+            QuestFrameModule.lastRenderedMapID = mapID
             return
         end
 
@@ -744,6 +747,7 @@ do
         -- Layout now that the container's index is final.  Runs after Blizzard's
         -- own layout pass, so the separator.layoutIndex read above was current.
         QuestScrollFrame.Contents:Layout()
+        QuestFrameModule.lastRenderedMapID = mapID
     end
 
     function QuestFrameModule:QuestLog_AddQuestButton(questInfo, searchBoxText)
@@ -970,38 +974,35 @@ end
 
 --region Taint-safe refresh triggers
 --
--- Blizzard invokes its map/quest-log functions from inside its own protected
--- chains: data provider RefreshAllData runs within the map canvas
--- secureexecuterange, and QuestLogQuests_Update is called from the map pin
--- hover chains (QuestMapFrame OnMapCanvasPinEnter).  Any addon hook on those
--- functions places addon Lua frames inside the chains, which in 12.1 makes the
--- rest of the chain execute tainted — protected calls are then blocked
--- (Button:SetPassThroughButtons -> ADDON_ACTION_BLOCKED) and UIWidget geometry
--- reads return SECRET values, erroring Blizzard's own widget Setup code on the
--- next POI hover (issue #168).
+-- EVERYTHING here runs from a single C_Timer ticker.  There are deliberately
+-- NO event registrations: the game fires quest/map events (QUEST_LOG_UPDATE,
+-- QUEST_POI_UPDATE, ...) synchronously from inside Blizzard's own protected
+-- chains — the map canvas secureexecuterange during map open, and the pin
+-- hover/tooltip chains during POI hover.  An addon event frame handler running
+-- in such a chain taints the remainder of it: protected calls are then blocked
+-- (Button:SetPropagateMouseClicks -> ADDON_ACTION_BLOCKED, #173) and UIWidget
+-- geometry reads return SECRET values that error Blizzard's widget Setup
+-- (#174).  C_Timer callbacks are dispatched by the game in isolation, never
+-- nested inside a Blizzard chain, so all refresh work is driven by polling
+-- cheap state diffs here instead of events.
 --
--- Instead, all refresh work is triggered from contexts the game dispatches
--- cleanly and in isolation, never nested inside a Blizzard chain:
---   * our own event frame (events are delivered to every registered frame in
---     separate calls),
---   * C_Timer callbacks (fire from the game's timer processing, outside any
---     Blizzard chain),
---   * and every outgoing mutation runs inside securecallfunction so nothing is
---     attributed to the addon.
+-- The world quest provider refreshes its pins on its own 0.5s ticker and on
+-- its own event registrations; our ticker re-applies pin post-processing and
+-- detects every state change the old event hooks covered:
+--   * map opened (shown-transition)              (was WORLD_MAP_OPEN)
+--   * map display change (GetMapID diff)         (was OnMapChanged)
+--   * search-box text change                     (was QuestLogQuests_Update)
+--   * supertracked quest change (diff)           (was SUPER_TRACKING_CHANGED)
+--   * quest log entry count change               (was QUEST_LOG_UPDATE / UNIT_QUEST_LOG_CHANGED / QUEST_POI_UPDATE)
+--   * combat end: refreshes skipped during combat (CanApplyFullRefresh guard)
+--     recover once combat ends, without needing an event.
 do
-    local QUEST_REFRESH_EVENTS = {
-        "QUEST_LOG_UPDATE",       -- world quest data provider refresh (WorldQuestDataProvider.lua:166)
-        "SUPER_TRACKING_CHANGED", -- the provider's other refresh event (line 106)
-        "QUEST_POI_UPDATE",       -- dynamic quest / POI updates (e.g. Void Assaults)
-        "UNIT_QUEST_LOG_CHANGED", -- quest log additions/removals
-        "WORLD_MAP_OPEN",         -- map opened; the provider's OnShow starts its own ticker
-        "PLAYER_ENTERING_WORLD",  -- zone-in refresh
-    }
-
-    local questLogEventFrame
-    local pinRefreshScheduled = false
-    local lastSearchText
+    local lastMapShown = false
     local lastMapID
+    local lastSearchText
+    local lastSuperTrackedQuestID
+    local lastNumQuestLogEntries
+    local lastInCombat
 
     -- Runs Blizzard-facing pin work with a clean execution context, so pin
     -- geometry/alpha written here can never surface as SECRET to Blizzard's own
@@ -1016,71 +1017,71 @@ do
         end)
     end
 
-    -- Post-processes pins one frame after a quest/map event.  Blizzard's own
-    -- RefreshAllData for the event completes during the event dispatch; this
-    -- runs right after it, in an isolated context.
-    local function SchedulePinRefresh()
-        if pinRefreshScheduled then
-            return
-        end
-
-        pinRefreshScheduled = true
-        C_Timer.After(0, function()
-            pinRefreshScheduled = false
-            RunPinPostProcessing()
-        end)
-    end
-
-    function QuestFrameModule:OnMapEvent(event)
-        SchedulePinRefresh()
-
-        if event == "SUPER_TRACKING_CHANGED" or event == "QUEST_LOG_UPDATE" or event == "QUEST_POI_UPDATE" then
-            self:RequestQuestLogUpdate()
-            self:RequestFullRefresh(event)
-        elseif event == "WORLD_MAP_OPEN" then
-            self:RequestQuestLogUpdate()
-            self:RequestFullRefresh(event)
-        elseif event == "UNIT_QUEST_LOG_CHANGED" or event == "PLAYER_ENTERING_WORLD" then
-            self:RequestQuestLogUpdate()
-        end
-    end
-
     function QuestFrameModule:InitializeRefreshTriggers()
-        questLogEventFrame = CreateFrame("Frame")
-        questLogEventFrame:Hide()
-        questLogEventFrame:SetScript("OnEvent", function(_, event)
-            QuestFrameModule:OnMapEvent(event)
-        end)
-        for _, event in ipairs(QUEST_REFRESH_EVENTS) do
-            questLogEventFrame:RegisterEvent(event)
-        end
-        questLogEventFrame:Show()
-
-        -- Mirror of the world quest provider's own 0.5s RefreshAllData ticker
-        -- (WorldQuestDataProvider.lua:178): it re-acquires pins (resetting their
-        -- alpha and position), so event triggers alone would let our filtered
-        -- pins flicker back to visible between refetches.  Also detects search
-        -- box text changes, which trigger a QuestLogQuests_Update without any
-        -- quest/map event (search parity with the old QuestLogQuests_Update hook).
-        -- And it detects map display changes via GetMapID() diff (parity with the
-        -- old OnMapChanged hook; there is no WORLD_MAP_UPDATE event).
         C_Timer.NewTicker(0.5, function()
-            RunPinPostProcessing()
+            local inCombat = InCombatLockdown()
 
-            if QuestMapFrame and QuestMapFrame:IsShown() then
-                local mapID = WorldMapFrame:GetMapID()
-                if mapID ~= lastMapID then
-                    lastMapID = mapID
-                    QuestFrameModule:RequestQuestLogUpdate()
-                end
+            if inCombat then
+                lastInCombat = true
+                return
             end
 
-            if QuestMapFrame and QuestMapFrame:IsShown() and QuestScrollFrame and QuestScrollFrame.SearchBox then
-                local searchText = QuestScrollFrame.SearchBox:GetText()
-                if searchText ~= lastSearchText then
-                    lastSearchText = searchText
-                    QuestFrameModule:RequestQuestLogUpdate()
-                end
+            if lastInCombat then
+                -- Combat just ended: re-request everything so the map shows a
+                -- fresh list even if it was opened mid-combat (when the open
+                -- could not be serviced).
+                lastInCombat = false
+                QuestFrameModule:RequestQuestLogUpdate()
+                QuestFrameModule:RequestFullRefresh("COMBAT_ENDED")
+            end
+
+            RunPinPostProcessing()
+
+            local mapShown = QuestMapFrame and QuestMapFrame:IsShown()
+            if not mapShown then
+                lastMapShown = false
+                return
+            end
+
+            if not lastMapShown then
+                -- Map just opened: baseline the diffs and run the same refresh
+                -- the old WORLD_MAP_OPEN event triggered.
+                lastMapShown = true
+                lastMapID = WorldMapFrame:GetMapID()
+                lastSearchText = QuestScrollFrame and QuestScrollFrame.SearchBox and QuestScrollFrame.SearchBox:GetText() or ""
+                lastSuperTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID()
+                lastNumQuestLogEntries = C_QuestLog.GetNumQuestLogEntries()
+                QuestFrameModule:RequestQuestLogUpdate()
+                QuestFrameModule:RequestFullRefresh("MAP_OPEN")
+                return
+            end
+
+            local mapID = WorldMapFrame:GetMapID()
+            -- Also re-request while the shown map has no definitive render yet
+            -- (lastRenderedMapID): a render skipped or failed on the open
+            -- transition self-heals here instead of leaving a stale list up.
+            if mapID ~= lastMapID or mapID ~= QuestFrameModule.lastRenderedMapID then
+                lastMapID = mapID
+                QuestFrameModule:RequestQuestLogUpdate()
+            end
+
+            local searchText = QuestScrollFrame and QuestScrollFrame.SearchBox and QuestScrollFrame.SearchBox:GetText() or ""
+            if searchText ~= lastSearchText then
+                lastSearchText = searchText
+                QuestFrameModule:RequestQuestLogUpdate()
+            end
+
+            local superTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID()
+            if superTrackedQuestID ~= lastSuperTrackedQuestID then
+                lastSuperTrackedQuestID = superTrackedQuestID
+                QuestFrameModule:RequestQuestLogUpdate()
+            end
+
+            local numEntries = C_QuestLog.GetNumQuestLogEntries()
+            if numEntries ~= lastNumQuestLogEntries then
+                lastNumQuestLogEntries = numEntries
+                QuestFrameModule:RequestQuestLogUpdate()
+                QuestFrameModule:RequestFullRefresh("QUEST_LOG_CHANGED")
             end
         end)
     end
@@ -1550,6 +1551,7 @@ do
                         end
                     end
                     lastTrackedQuestID = questID
+                    QuestFrameModule:RequestQuestLogUpdate()
                     QuestFrameModule:RequestFullRefresh("TRACK_WORLD_QUEST")
                 end
 
@@ -1564,6 +1566,7 @@ do
                     if lastTrackedQuestID == questID then
                         lastTrackedQuestID = nil
                     end
+                    QuestFrameModule:RequestQuestLogUpdate()
                     QuestFrameModule:RequestFullRefresh("UNTRACK_WORLD_QUEST")
                 end
                 -- Don't call ObjectiveTrackerManager:UpdateAll() here, see issue #67.
@@ -1671,6 +1674,7 @@ do
         end)
 
         ConfigModule:RegisterCallback({ "hideUntrackedPOI", "hideFilteredPOI", "showContinentPOI", "onlyCurrentZone", "sortMethod", "selectedFilters","disabledFilters", "filterEmissary", "filterLoot", "filterFaction", "filterZone", "filterTime", "lootFilterUpgrades", "lootUpgradesLevel", "timeFilterDuration" }, function(key)
+            QuestFrameModule:RequestQuestLogUpdate()
             self:RequestFullRefresh(key)
         end)
     end
@@ -1690,25 +1694,18 @@ do
         -- Must happen after titleFramePool is created (headerButton references it).
         self:InitQuestLogFrames()
 
-        -- TAINT-SAFE REFRESH TRIGGERS (issue #168).
+        -- TAINT-SAFE REFRESH TRIGGERS (#168, #173, #174).
         --
-        -- All refresh work is now driven by our own event frame and a C_Timer
-        -- mirror ticker instead of hooksecurefunc hooks on Blizzard functions.
-        -- Blizzard invokes the hooked functions (QuestLogQuests_Update,
-        -- RefreshAllData, OnMapChanged, SetSuperTrackedQuestID) from inside its
-        -- own protected chains — the map canvas secureexecuterange and the map
-        -- pin hover/tooltip chains.  Addon hooks there placed our Lua frames
-        -- inside those chains, so the remainder of the chain executed tainted:
-        -- protected calls (e.g. Button:SetPassThroughButtons during pin
-        -- acquisition) were blocked, and UIWidget geometry reads returned SECRET
-        -- values that errored Blizzard's widget Setup code on POI hover (#168).
-        --
-        -- The event frame covers every trigger the provider itself uses
-        -- (QUEST_LOG_UPDATE / SUPER_TRACKING_CHANGED, WorldQuestDataProvider.lua:106/166)
-        -- plus quest-POI, map-open and quest-log events; the mirror ticker covers
-        -- the provider's own 0.5s refresh ticker (line 178), search-box changes,
-        -- and map display changes (GetMapID() diff, since no WORLD_MAP_UPDATE
-        -- event exists); all outgoing mutations run inside securecallfunction.
+        -- All refresh work is driven by a single 0.5s C_Timer ticker instead of
+        -- hooks or event frames.  Blizzard invokes its map/quest-log functions
+        -- from inside its own protected chains (the map canvas secureexecuterange
+        -- and the pin hover/tooltip chains), and the game fires quest/map events
+        -- synchronously from within those chains.  Any addon hook or event frame
+        -- handler there places addon Lua frames inside the chains, tainting the
+        -- remainder: protected calls are blocked (e.g. SetPropagateMouseClicks
+        -- during pin acquisition, #173) and UIWidget geometry reads return SECRET
+        -- values (#174).  The ticker runs isolated (C_Timer dispatch) and polls
+        -- cheap state diffs; every outgoing mutation runs inside securecallfunction.
         QuestFrameModule:InitializeRefreshTriggers()
 
         self:RegisterCallbacks()
@@ -1728,12 +1725,30 @@ function QuestFrameModule:RequestQuestLogUpdate()
         -- buttons (children of WorldMapFrame); from tainted code this can fire a
         -- canvas mouse-focus recalculation and Area POI OnEnter in the addon's
         -- context, permanently tainting UIWidget FontString values (issue #161).
-        -- The next QUEST_LOG_UPDATE event reschedules naturally.
-        if QuestMapFrame and QuestMapFrame:IsShown() and not GameTooltip:IsShown() then
-            -- Render our list in a clean execution context (issue #168).
+        -- Also skip while in combat: the map can be opened in combat, and the
+        -- WORLD_MAP_OPEN dispatch runs inside Blizzard's own chain — nothing of
+        -- ours should ever execute there (issues #173/#174).  The ticker's
+        -- combat-end diff re-requests this update after combat ends.
+        if QuestMapFrame and QuestMapFrame:IsShown() and not InCombatLockdown() and not GameTooltip:IsShown() then
+            -- Render our list in a clean execution context (issue #168): the
+            -- Blizzard closures QuestLog_Update calls must not get tainted by
+            -- us, or Blizzard's own later chains hit them tainted.  A failing
+            -- render is logged instead of swallowed so it can never silently
+            -- leave a stale list; the ticker re-requests it until
+            -- QuestFrameModule.lastRenderedMapID matches the shown map.
             securecallfunction(function()
-                QuestFrameModule:QuestLog_Update()
+                local ok, err = pcall(QuestFrameModule.QuestLog_Update, QuestFrameModule)
+                if not ok then
+                    DebugLog(string.format("QuestLog_Update failed: %s", tostring(err)))
+                end
             end)
+        elseif QuestMapFrame and QuestMapFrame:IsShown() and not InCombatLockdown() then
+            -- Blocked only by a tooltip.  The state diff that requested this
+            -- render was already consumed, so mark the render as not-yet-applied;
+            -- the refresh ticker then re-requests QuestLog_Update until it
+            -- succeeds (once the tooltip clears) instead of leaving a stale
+            -- checkbox / list until a map change or reopen.
+            QuestFrameModule.lastRenderedMapID = nil
         end
     end)
 end
@@ -1784,9 +1799,11 @@ function QuestFrameModule:RequestFullRefresh(reason)
         -- Rebuild the filter-decision cache and re-render the quest log in a
         -- clean execution context: reward-money reads (GetQuestLogRewardMoney via
         -- DataModule:IsQuestFiltered) stay unstamped for Blizzard's gold tooltip
-        -- (issue #156), and Blizzard's own re-render runs untainted (issue #168).
-        -- Pin state is refreshed afterwards by the event frame / mirror ticker,
-        -- after the data provider's own RefreshAllData has run for this change.
+        -- (issue #156), and the Blizzard closures QuestLogQuests_Update calls
+        -- must not get tainted by us, or Blizzard's own later chains hit them
+        -- tainted (issue #168).  Pin state is refreshed afterwards by the event
+        -- frame / mirror ticker, after the data provider's own RefreshAllData
+        -- has run for this change.
         securecallfunction(function()
             RebuildFilterDecisionCache(QuestMapFrame and QuestMapFrame:GetParent():GetMapID())
             QuestLogQuests_Update()

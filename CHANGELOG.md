@@ -1,3 +1,6 @@
+# 12.1.0-20260819-1
+* Improve stability by moving things behind C_Timer logic.
+
 # 12.1.0-20260817-1
 * Fix "attempt to perform arithmetic on a secret number value" taints when hovering map POIs.
 

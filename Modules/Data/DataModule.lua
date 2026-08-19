@@ -617,12 +617,12 @@ end
 
 --region Initialization
 do
-    function DataModule:QuestLogChanged(arg1)
-        if arg1 == "player" then
-            wipe(cachedItems)
-            wipe(questTagInfoCache)
-            wipe(rewardPreloadRequested)
-        end
+    local lastNumQuestLogEntries
+
+    function DataModule:QuestLogChanged()
+        wipe(cachedItems)
+        wipe(questTagInfoCache)
+        wipe(rewardPreloadRequested)
     end
 
     function DataModule:EnteringWorld()
@@ -632,12 +632,25 @@ do
     end
 
     function DataModule:RegisterEventHandlers()
-        self:RegisterEvent("UNIT_QUEST_LOG_CHANGED", "QuestLogChanged")
         self:RegisterEvent("PLAYER_ENTERING_WORLD", "EnteringWorld")
     end
 
     function DataModule:OnInitialize()
         self:RegisterEventHandlers()
+
+        C_Timer.NewTicker(0.5, function()
+            if InCombatLockdown() then
+                return
+            end
+
+            if QuestMapFrame and QuestMapFrame:IsShown() then
+                local numEntries = C_QuestLog.GetNumQuestLogEntries()
+                if numEntries ~= lastNumQuestLogEntries then
+                    lastNumQuestLogEntries = numEntries
+                    DataModule:QuestLogChanged()
+                end
+            end
+        end)
     end
 end
 --endregion
