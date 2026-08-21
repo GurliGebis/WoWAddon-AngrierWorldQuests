@@ -25,3 +25,4 @@ externals:
 ignore:
 - CHANGELOG.md
 - README.md
+- Modules/QuestFrame/ARCHITECTURE.md

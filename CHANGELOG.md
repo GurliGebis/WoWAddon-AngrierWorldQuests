@@ -1,3 +1,6 @@
+# 12.1.0-20260821-1
+* Move world quest list into its own docked panel next to the map instead of the shared collapsible quest log.
+
 # 12.1.0-20260819-1
 * Improve stability by moving things behind C_Timer logic.
 

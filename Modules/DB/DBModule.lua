@@ -34,7 +34,6 @@ local DBModule = AngrierWorldQuests:NewModule("DBModule")
 local defaultOptions = {
     profile = {
         collapsed = "false",
-        showAtTop = "true",
         showHoveredPOI = "false",
         onlyCurrentZone = "true",
         selectedFilters = 0,

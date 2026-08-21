@@ -27,6 +27,9 @@
     ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 ]]
 
+-- For the reasoning behind the taint workarounds in this module (and the
+-- rest of QuestFrame), see ARCHITECTURE.md instead of scattered inline comments.
+
 local addonName, _ = ...
 local AngrierWorldQuests = LibStub("AceAddon-3.0"):GetAddon(addonName)
 local QuestFrameModule = AngrierWorldQuests:GetModule("QuestFrameModule")

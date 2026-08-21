@@ -27,6 +27,9 @@
     ADVISED OF THE POSSIBILITY OF SUCH DAMAGE
 ]]
 
+-- For the reasoning behind the taint workarounds in this module (and the
+-- rest of QuestFrame), see ARCHITECTURE.md instead of scattered inline comments.
+
 local addonName, _ = ...
 local AngrierWorldQuests = LibStub("AceAddon-3.0"):GetAddon(addonName)
 local QuestFrameModule = AngrierWorldQuests:NewModule("QuestFrameModule", "AceConsole-3.0")
@@ -38,27 +41,26 @@ local L = LibStub("AceLocale-3.0"):GetLocale(addonName)
 --region Variables
 
 local dataProvider
--- Hoisted out of the QuestLog region so the taint-safe refresh triggers
--- (defined after it) can schedule pin post-processing (issues #161/#168).
-local PostProcessWorldQuestPins
-local hoveredQuestID
 local titleFramePool
-local listRefreshPending = false
-local fullRefreshPending = false
+local listRefreshDirty = false
 local fullRefreshDirty = false
-local fullRefreshRetryCount = 0
 local fullRefreshReason
 local addonAddedPins = {}
 
+-- The quest whose row is currently hovered in the list. Written by the
+-- QuestLog region below (QuestButton_OnEnter/OnLeave), read by the pin
+-- post-processing below (ShouldFilterQuest, for the "showHoveredPOI" option).
+QuestFrameModule.hoveredQuestID = nil
+
 -- Cache of per-quest filter decisions, populated by QuestLog_Update in a
--- non-secure context and read back by PostProcessWorldQuestPins.  This keeps
+-- non-secure context and read back by PostProcessWorldQuestPins. This keeps
 -- the reward-money read (GetQuestLogRewardMoney, via DataModule:IsQuestFiltered)
 -- OUT of Blizzard's secure RefreshAllData execution range, where it would taint
 -- the quest's money value and break the gold-reward tooltip on hover (issue #156).
-local filterDecisionCache = {}
-local filterDecisionMapID
+QuestFrameModule.filterDecisionCache = {}
+QuestFrameModule.filterDecisionMapID = nil
 
-local function DebugLog(message)
+function QuestFrameModule:DebugLog(message)
     if not ConfigModule:Get("enableDebugging") then
         return
     end
@@ -73,21 +75,39 @@ local function CanApplyFullRefresh()
         return false
     end
 
-    if InCombatLockdown and InCombatLockdown() then
+    return true
+end
+
+-- True when it is safe for us to create, show or move a map pin.
+-- See ARCHITECTURE.md (#174).
+local function CanMutateMapPins()
+    if not WorldMapFrame then
+        return false
+    end
+
+    -- A tooltip is up, which means the cursor is sitting on a POI right now.
+    if GameTooltip and GameTooltip:IsShown() then
+        return false
+    end
+
+    -- Cursor anywhere over the canvas.
+    local canvas = WorldMapFrame.ScrollContainer
+
+    if canvas and canvas.IsMouseOver and canvas:IsMouseOver() then
         return false
     end
 
     return true
 end
 
--- Recompute the per-quest filter-decision cache for the given map.  The reward
+-- Recompute the per-quest filter-decision cache for the given map. The reward
 -- reads inside DataModule:IsQuestFiltered (GetQuestLogRewardMoney) run here, in a
 -- non-secure context, so PostProcessWorldQuestPins can apply hide-filtered from
 -- the cache without re-reading reward money inside Blizzard's secure
 -- RefreshAllData range (which taints the money and breaks gold tooltips, #156).
-local function RebuildFilterDecisionCache(mapID)
-    wipe(filterDecisionCache)
-    filterDecisionMapID = mapID
+function QuestFrameModule:RebuildFilterDecisionCache(mapID)
+    wipe(self.filterDecisionCache)
+    self.filterDecisionMapID = mapID
 
     if not mapID then
         return
@@ -102,7 +122,7 @@ local function RebuildFilterDecisionCache(mapID)
             for _, info in ipairs(taskInfo) do
                 if HaveQuestData(info.questID) and QuestUtils_IsQuestWorldQuest(info.questID) then
                     if WorldMap_DoesWorldQuestInfoPassFilters(info) then
-                        filterDecisionCache[info.questID] = DataModule:IsQuestFiltered(info, mapID) or false
+                        self.filterDecisionCache[info.questID] = DataModule:IsQuestFiltered(info, mapID) or false
                     end
                 end
             end
@@ -122,9 +142,23 @@ do
         ITEMS = 5
     }
 
+    local PANEL_WIDTH = 340
+    local CONTAINER_WIDTH = 304 -- matches the fixed width defined in QuestMapFrame.xml; avoids tainting the value via GetWidth()
+
+    local awqPanel
+    local awqScrollFrame
     local awqContainer
     local headerButton
     local filterButtons = {}
+
+    -- QuestMapFrame.QuestsTab and .MapLegendTab are the side tabs that stick
+    -- out from the edge of the quest log frame. With awqPanel docked next to
+    -- the map they end up visually behind/underneath our panel, so we move
+    -- them onto awqPanel's edge while it is shown and put them back exactly
+    -- where they came from when it's hidden.
+    local SIDE_TAB_KEYS = { "QuestsTab", "MapLegendTab" }
+    local sideTabOriginal = {}
+    local sideTabsMoved = false
 
     local QuestButton_RarityColorTable = { [Enum.WorldQuestQuality.Common] = 0, [Enum.WorldQuestQuality.Rare] = 3, [Enum.WorldQuestQuality.Epic] = 10 }
 
@@ -160,6 +194,15 @@ do
         end
     end
 
+    -- Shared by every branch of FilterMenu_Generator below: builds the
+    -- IsSelected/SetSelected radio-button predicate pair for a given filter
+    -- key and its currently selected value.
+    local function MakeFilterRadioHandlers(filterKey, currentValue)
+        local function IsSelected(value) return value == currentValue end
+        local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+        return IsSelected, SetSelected
+    end
+
     local function FilterMenu_Generator(owner, rootDescription)
         local filterKey = owner.filter
 
@@ -167,8 +210,7 @@ do
             local currentValue = ConfigModule:Get("filterEmissary")
             if not C_QuestLog.IsOnQuest(currentValue) then currentValue = 0 end
 
-            local function IsSelected(value) return value == currentValue end
-            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+            local IsSelected, SetSelected = MakeFilterRadioHandlers(filterKey, currentValue)
 
             rootDescription:CreateRadio(ALL, IsSelected, SetSelected, 0)
 
@@ -196,8 +238,7 @@ do
             local currentValue = ConfigModule:Get("filterLoot")
             if currentValue == 0 then currentValue = ConfigModule:Get("lootFilterUpgrades") and _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES or _AngrierWorldQuests.Constants.FILTERS.LOOT_ALL end
 
-            local function IsSelected(value) return value == currentValue end
-            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+            local IsSelected, SetSelected = MakeFilterRadioHandlers(filterKey, currentValue)
 
             rootDescription:CreateRadio(ALL, IsSelected, SetSelected, _AngrierWorldQuests.Constants.FILTERS.LOOT_ALL)
             rootDescription:CreateRadio(L["UPGRADES"], IsSelected, SetSelected, _AngrierWorldQuests.Constants.FILTERS.LOOT_UPGRADES)
@@ -205,16 +246,14 @@ do
         elseif filterKey == "ZONE" then
             local currentValue = ConfigModule:Get("filterZone")
 
-            local function IsSelected(value) return value == currentValue end
-            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+            local IsSelected, SetSelected = MakeFilterRadioHandlers(filterKey, currentValue)
 
             rootDescription:CreateRadio(L["CURRENT_ZONE"], IsSelected, SetSelected, 0)
 
         elseif filterKey == "FACTION" then
             local currentValue = ConfigModule:Get("filterFaction")
 
-            local function IsSelected(value) return value == currentValue end
-            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+            local IsSelected, SetSelected = MakeFilterRadioHandlers(filterKey, currentValue)
 
             local mapID = QuestMapFrame:GetParent():GetMapID()
             local factions = DataModule:GetFactionsByMapID(mapID)
@@ -229,8 +268,7 @@ do
             local timeFilterDuration = ConfigModule:Get("timeFilterDuration")
             local currentValue = filterTime ~= 0 and filterTime or timeFilterDuration
 
-            local function IsSelected(value) return value == currentValue end
-            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+            local IsSelected, SetSelected = MakeFilterRadioHandlers(filterKey, currentValue)
 
             for _, hours in ipairs(ConfigModule.Filters.TIME.values) do
                 rootDescription:CreateRadio(string.format(FORMATED_HOURS, hours), IsSelected, SetSelected, hours)
@@ -239,8 +277,7 @@ do
         elseif filterKey == "SORT" then
             local currentValue = ConfigModule:Get("sortMethod")
 
-            local function IsSelected(value) return value == currentValue end
-            local function SetSelected(value) FilterMenu_ApplySelection(filterKey, value) end
+            local IsSelected, SetSelected = MakeFilterRadioHandlers(filterKey, currentValue)
 
             rootDescription:CreateTitle(ConfigModule.Filters[filterKey].name)
 
@@ -308,6 +345,26 @@ do
         MenuUtil.CreateContextMenu(self, FilterMenu_Generator)
     end
 
+    -- Resets every filter-value config key that gets zeroed whenever a
+    -- different filter button becomes the "only" active filter (or when all
+    -- filters are cleared), except the one owned by exceptFilter (pass nil
+    -- to reset all of them, e.g. when clearing every filter).
+    local function ResetOtherFilterValues(exceptFilter)
+        local resettableFilterValues = {
+            { filter = "FACTION", key = "filterFaction" },
+            { filter = "EMISSARY", key = "filterEmissary" },
+            { filter = "LOOT", key = "filterLoot" },
+            { filter = "ZONE", key = "filterZone" },
+            { filter = "TIME", key = "filterTime" },
+        }
+
+        for _, entry in ipairs(resettableFilterValues) do
+            if entry.filter ~= exceptFilter then
+                ConfigModule:Set(entry.key, 0, true)
+            end
+        end
+    end
+
     local function FilterButton_OnClick(self, button)
         PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
         if (button == "RightButton" and (self.filter == "EMISSARY" or self.filter == "LOOT" or self.filter == "FACTION" or self.filter == "TIME"))
@@ -321,18 +378,10 @@ do
                 ConfigModule:ToggleFilter(self.filter)
             else
                 if ConfigModule:IsOnlyFilter(self.filter) then
-                    ConfigModule:Set("filterFaction", 0, true)
-                    ConfigModule:Set("filterEmissary", 0, true)
-                    ConfigModule:Set("filterLoot", 0, true)
-                    ConfigModule:Set("filterZone", 0, true)
-                    ConfigModule:Set("filterTime", 0, true)
+                    ResetOtherFilterValues(nil)
                     ConfigModule:SetNoFilter()
                 else
-                    if self.filter ~= "FACTION" then ConfigModule:Set("filterFaction", 0, true) end
-                    if self.filter ~= "EMISSARY" then ConfigModule:Set("filterEmissary", 0, true) end
-                    if self.filter ~= "LOOT" then ConfigModule:Set("filterLoot", 0, true) end
-                    if self.filter ~= "ZONE" then ConfigModule:Set("filterZone", 0, true) end
-                    if self.filter ~= "TIME" then ConfigModule:Set("filterTime", 0, true) end
+                    ResetOtherFilterValues(self.filter)
                     ConfigModule:SetOnlyFilter(self.filter)
                 end
             end
@@ -376,17 +425,6 @@ do
         return filterButtons[index]
     end
 
-    local function HeaderButton_OnClick(_, button)
-        local questsCollapsed = ConfigModule:Get("collapsed")
-        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-
-        if ( button == "LeftButton" ) then
-            questsCollapsed = not questsCollapsed
-            ConfigModule:Set("collapsed", questsCollapsed)
-            QuestFrameModule:RequestQuestLogUpdate()
-        end
-    end
-
     local function ShouldQuestBeBonusColored(questID)
         if not ConfigModule:Get("colorWarbandBonus") then
             return false
@@ -406,7 +444,7 @@ do
         end
 
         self.Text:SetTextColor(color.r, color.g, color.b)
-        hoveredQuestID = self.questID
+        QuestFrameModule.hoveredQuestID = self.questID
         self.HighlightTexture:SetShown(true)
         QuestFrameModule.Tooltip_BuildSafe(self)
     end
@@ -422,15 +460,13 @@ do
         end
 
         self.Text:SetTextColor(color.r, color.g, color.b)
-        hoveredQuestID = nil
+        QuestFrameModule.hoveredQuestID = nil
         self.HighlightTexture:SetShown(false)
         QuestFrameModule.Tooltip_Hide(self)
     end
 
-    -- Executes a deferred tracking action with a clean execution context:
-    -- TrackWorldQuest/UntrackWorldQuest and SetSuperTrackedQuestID kick off
-    -- Blizzard's objective-tracker and quest-log chains; run from the addon's
-    -- C_Timer attribution they tainted those chains (#67, #168).
+    -- Executes a deferred tracking action with a clean execution context.
+    -- See ARCHITECTURE.md (#67, #168).
     local function RunTrackingDeferred(action)
         C_Timer.After(0, function()
             securecallfunction(action)
@@ -501,10 +537,7 @@ do
         button.StorylineTexture:Hide()
 
         -- Disable word wrap so long titles truncate to "..." instead of
-        -- wrapping to a second line. Wrapping also causes a layout loop:
-        -- the taller button changes available width, which in turn changes
-        -- whether the text fits, oscillating between wrapped and truncated
-        -- states and producing visible flicker.
+        -- wrapping. See ARCHITECTURE.md (#161).
         button.Text:SetWordWrap(false)
 
         button.TagText = button:CreateFontString(nil, nil, "GameFontNormalLeft")
@@ -565,16 +598,75 @@ do
         DataModule:ClearQuestTagInfoCache()
     end
 
-    function QuestFrameModule:HideWorldQuestsHeader()
-        for i = 1, #filterButtons do
-            filterButtons[i]:Hide()
+    -- Moves QuestMapFrame.QuestsTab / .MapLegendTab onto awqPanel, stacked the
+    -- same way they are stacked on QuestMapFrame. Idempotent: safe to call
+    -- every time the panel is shown.
+    local function MoveSideTabsToPanel()
+        if sideTabsMoved or not awqPanel then
+            return
         end
 
-        if awqContainer then
-            awqContainer:Hide()
+        local prevTab
+
+        for _, key in ipairs(SIDE_TAB_KEYS) do
+            local tab = QuestMapFrame[key]
+
+            if tab then
+                if not sideTabOriginal[key] then
+                    local point, relativeTo, relativePoint, xOfs, yOfs = tab:GetPoint(1)
+                    sideTabOriginal[key] = {
+                        parent = tab:GetParent(),
+                        point = point,
+                        relativeTo = relativeTo,
+                        relativePoint = relativePoint,
+                        xOfs = xOfs,
+                        yOfs = yOfs,
+                    }
+                end
+
+                tab:SetParent(awqPanel)
+                tab:ClearAllPoints()
+
+                if prevTab then
+                    tab:SetPoint("TOP", prevTab, "BOTTOM", 0, -3)
+                else
+                    tab:SetPoint("TOPLEFT", awqPanel, "TOPRIGHT", -2, -28)
+                end
+
+                prevTab = tab
+            end
         end
 
-        QuestScrollFrame.Contents:Layout()
+        sideTabsMoved = true
+    end
+
+    -- Restores the side tabs to their original parent/anchor on QuestMapFrame.
+    -- Idempotent: safe to call every time the panel is hidden.
+    local function RestoreSideTabs()
+        if not sideTabsMoved then
+            return
+        end
+
+        for _, key in ipairs(SIDE_TAB_KEYS) do
+            local tab = QuestMapFrame[key]
+            local original = sideTabOriginal[key]
+
+            if tab and original then
+                tab:SetParent(original.parent)
+                tab:ClearAllPoints()
+                tab:SetPoint(original.point, original.relativeTo, original.relativePoint, original.xOfs, original.yOfs)
+            end
+        end
+
+        sideTabsMoved = false
+    end
+
+    function QuestFrameModule:HideWorldQuestWindow()
+        if awqPanel then
+            awqPanel:Hide()
+        end
+
+        RestoreSideTabs()
     end
 
     function QuestFrameModule:QuestLog_Update()
@@ -582,7 +674,7 @@ do
             return
         end
 
-        if QuestFrameModule:IsLockedDown() then
+        if QuestFrameModule:IsQuestListLockedDown() then
             return
         end
 
@@ -594,52 +686,41 @@ do
 
         local tasksOnMap = C_TaskQuest.GetQuestsOnMap(mapID)
         if (ConfigModule:Get("onlyCurrentZone")) and (not displayLocation or lockedQuestID) and not (tasksOnMap and #tasksOnMap > 0) and (mapID ~= MAPID_ARGUS) then
-            QuestFrameModule:HideWorldQuestsHeader()
+            QuestFrameModule:HideWorldQuestWindow()
             QuestFrameModule.lastRenderedMapID = mapID
             return
         end
 
         if (ConfigModule:Get("hideQuestList")) then
-            QuestFrameModule:HideWorldQuestsHeader()
+            QuestFrameModule:HideWorldQuestWindow()
             QuestFrameModule.lastRenderedMapID = mapID
             return
         end
 
-        local questsCollapsed = ConfigModule:Get("collapsed")
-        local showAtTop = ConfigModule:Get("showAtTop")
-
-        -- Blizzard assigned the separator's layoutIndex in its own
-        -- QuestLogQuests_Update, which ran before this deferred update; place the
-        -- container right after the separator (the 0.5 fallback sorts it to the
-        -- very top, e.g. when no separator is displayed).  Previously a
-        -- SetFrameLayoutIndex post-hook did this, but that hook ran inside
-        -- Blizzard's own chains, tainting everything that followed (issue #168).
-        if showAtTop then
-            local separatorIndex = QuestScrollFrame.Contents.Separator.layoutIndex
-            awqContainer.layoutIndex = (separatorIndex or 0) + 0.5
-        else
-            awqContainer.layoutIndex = 9999.5
+        if awqPanel then
+            awqPanel:Show()
         end
 
-        awqContainer:Show()
+        MoveSideTabsToPanel()
 
-        headerButton:Show()
         local prevButton = headerButton
 
         local usedButtons = {}
         local filtersOwnRow = false
 
-        -- Always gather available world quests, even when collapsed, so we can
-        -- hide the header entirely if there are no quests in the current zone.
-        -- When collapsed, just count quests without acquiring pool buttons.
+        -- The list has its own scroll frame in its own panel now, so there's
+        -- no reason to offer collapsing it to save space the way Blizzard's
+        -- shared quest log needed to. Always gather and show every available
+        -- world quest.
         local addedQuests = {}
         local questCount = 0
         local displayMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
         local searchBoxText = QuestScrollFrame.SearchBox:GetText():lower()
 
         -- Compute filter decisions once, into the shared cache, so the list below
-        -- and the secure pin hook both read the same non-secure result (issue #156).
-        RebuildFilterDecisionCache(mapID)
+        -- and the pin-processing hook below both read the same non-secure result.
+        -- See ARCHITECTURE.md (#156).
+        QuestFrameModule:RebuildFilterDecisionCache(mapID)
 
         for mID in pairs(displayMapIDs) do
             local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
@@ -648,16 +729,14 @@ do
                 for _, info in ipairs(taskInfo) do
                     if HaveQuestData(info.questID) and QuestUtils_IsQuestWorldQuest(info.questID) then
                         if WorldMap_DoesWorldQuestInfoPassFilters(info) then
-                            local isFiltered = filterDecisionCache[info.questID]
+                            local isFiltered = QuestFrameModule.filterDecisionCache[info.questID]
                             if not isFiltered then
                                 if addedQuests[info.questID] == nil then
                                     addedQuests[info.questID] = true
                                     questCount = questCount + 1
-                                    if not questsCollapsed then
-                                        local button = QuestFrameModule:QuestLog_AddQuestButton(info, searchBoxText)
-                                        if button ~= nil then
-                                            table.insert(usedButtons, button)
-                                        end
+                                    local button = QuestFrameModule:QuestLog_AddQuestButton(info, searchBoxText)
+                                    if button ~= nil then
+                                        table.insert(usedButtons, button)
                                     end
                                 end
                             end
@@ -668,17 +747,13 @@ do
         end
 
         if questCount == 0 and ConfigModule:HasFilters() == false then
-            -- No quests available and no active filters — hide the header entirely.
-            QuestFrameModule:HideWorldQuestsHeader()
+            -- No quests available and no active filters — hide the window entirely.
+            QuestFrameModule:HideWorldQuestWindow()
             QuestFrameModule.lastRenderedMapID = mapID
             return
         end
 
-        if questsCollapsed then
-            for i = 1, #filterButtons do
-                filterButtons[i]:Hide()
-            end
-        else
+        do
             local selectedFilters = ConfigModule:GetFilterTable()
             local prevFilter
 
@@ -704,7 +779,10 @@ do
                         filterButton:SetPoint("RIGHT", prevFilter, "LEFT", 5, 0)
                         filterButton:SetPoint("TOP", prevButton, "TOP", 0, 2)
                     else
-                        filterButton:SetPoint("LEFT", prevButton.CollapseButton, "LEFT", -22, 0)
+                        -- CollapseButton is hidden now (see QuestLog_Update), so
+                        -- anchor straight off the header's right edge instead of
+                        -- leaving room for it.
+                        filterButton:SetPoint("RIGHT", prevButton, "RIGHT", -6, 0)
                         filterButton:SetPoint("TOP", prevButton, "TOP", 0, 2)
                     end
 
@@ -719,15 +797,6 @@ do
                 end
             end
 
-            if #usedButtons > 0 then
-                -- In the situation where the normal quest log is empty, but we have world quests.
-                -- We shouldn't show the empty quest log text.
-                QuestScrollFrame.EmptyText:Hide()
-
-                -- We need to also make sure the "No search results" text is hidden.
-                QuestScrollFrame.NoSearchResultsText:Hide()
-            end
-
             table.sort(usedButtons, QuestSorter)
 
             for i, button in ipairs(usedButtons) do
@@ -735,18 +804,15 @@ do
                 button.layoutIndex = i + 1
                 button:Show()
 
-                if hoveredQuestID == button.questID then
+                if QuestFrameModule.hoveredQuestID == button.questID then
                     QuestButton_OnEnter(button)
                 end
             end
         end
 
-        headerButton.CollapseButton:UpdateCollapsedState(ConfigModule:Get("collapsed"))
-        headerButton.CollapseButton:Show()
+        headerButton.CollapseButton:Hide()
 
-        -- Layout now that the container's index is final.  Runs after Blizzard's
-        -- own layout pass, so the separator.layoutIndex read above was current.
-        QuestScrollFrame.Contents:Layout()
+        awqContainer:Layout()
         QuestFrameModule.lastRenderedMapID = mapID
     end
 
@@ -783,7 +849,7 @@ do
         button.infoX = questInfo.x
         button.infoY = questInfo.y
         -- Store title as awqTitle so Tooltip_BuildSafe can read it without
-        -- calling GetText() on a FontString (issue #161).
+        -- calling GetText() on a FontString. See ARCHITECTURE.md (#161).
         button.awqTitle = title
         button.Text:SetText(title)
 
@@ -797,8 +863,7 @@ do
 
         button.Text:SetTextColor(color.r, color.g, color.b)
 
-        -- Hard-coded line height: avoids GetFont/GetHeight/GetStringHeight which
-        -- return SECRET in WoW 11.x when called from a tainted coroutine (issue #161).
+        -- Hard-coded line height. See ARCHITECTURE.md (#161).
         totalHeight = totalHeight + 14  -- 12pt rendered line height ≈ 14px
 
         if (WorldMap_IsWorldQuestEffectivelyTracked(questID)) then
@@ -933,7 +998,7 @@ do
         end
 
         -- fixedHeight lets VerticalLayoutFrame read height without calling
-        -- GetHeight() (which returns SECRET from a tainted coroutine — issue #161).
+        -- GetHeight(). See ARCHITECTURE.md (#161).
         button.fixedHeight = totalHeight
         button:SetHeight(totalHeight)
         button:Show()
@@ -942,29 +1007,60 @@ do
     end
 
     function QuestFrameModule:InitQuestLogFrames()
-        awqContainer = CreateFrame("Frame", "AngrierWorldQuestsContainer", QuestScrollFrame.Contents, "VerticalLayoutFrame")
-        awqContainer.fixedWidth = 304 -- matches the fixed width defined in QuestMapFrame.xml; avoids tainting the value via GetWidth()
+        awqPanel = CreateFrame("Frame", "AngrierWorldQuestsPanel", QuestMapFrame, "BackdropTemplate")
+        awqPanel:SetFrameStrata(QuestScrollFrame:GetFrameStrata())
+        awqPanel:SetFrameLevel(QuestScrollFrame:GetFrameLevel())
+        awqPanel:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", 4, 0)
+        awqPanel:SetSize(PANEL_WIDTH, WorldMapFrame:GetHeight())
+        awqPanel:SetBackdrop({
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            edgeSize = 16,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 },
+        })
+        awqPanel:SetBackdropColor(0, 0, 0, 1)
+        awqPanel:SetBackdropBorderColor(1, 1, 1, 1)
+        awqPanel:Hide()
+
+        awqScrollFrame = CreateFrame("ScrollFrame", "AngrierWorldQuestsScrollFrame", awqPanel, "UIPanelScrollFrameTemplate")
+        awqScrollFrame:SetPoint("TOPLEFT", awqPanel, "TOPLEFT", 8, -8)
+        awqScrollFrame:SetPoint("BOTTOMRIGHT", awqPanel, "BOTTOMRIGHT", -28, 8)
+
+        awqContainer = CreateFrame("Frame", "AngrierWorldQuestsContainer", awqScrollFrame, "VerticalLayoutFrame")
+        awqContainer.fixedWidth = CONTAINER_WIDTH
         awqContainer.bottomPadding = 2
-        awqContainer:Hide()
+        awqScrollFrame:SetScrollChild(awqContainer)
+
+        titleFramePool = CreateFramePool("BUTTON", awqContainer, "QuestLogTitleTemplate")
 
         headerButton = CreateFrame("BUTTON", "AngrierWorldQuestsHeader", awqContainer, "QuestLogHeaderTemplate")
-        headerButton:SetScript("OnClick", HeaderButton_OnClick)
         headerButton:SetText(TRACKER_HEADER_WORLD_QUESTS)
         headerButton.topPadding = 6
         headerButton.titleFramePool = titleFramePool
         headerButton.layoutIndex = 1
-
-        -- The container's layoutIndex is now assigned directly in QuestLog_Update
-        -- (read separator.layoutIndex after Blizzard's own QuestLogQuests_Update
-        -- finished).  The old SetFrameLayoutIndex post-hook ran inside Blizzard's
-        -- quest-log render chains and tainted them (issue #168).
+        headerButton.CollapseButton:Hide()
     end
 
-    function QuestFrameModule:IsLockedDown()
-        if InCombatLockdown and InCombatLockdown() then
-            return true
+    function QuestFrameModule:UpdatePanelGeometry(mapShown)
+        if not awqPanel then
+            return
         end
 
+        if not mapShown then
+            awqPanel:Hide()
+            RestoreSideTabs()
+            return
+        end
+
+        local width, height = WorldMapFrame:GetSize()
+        if width ~= awqPanel.lastWorldMapWidth or height ~= awqPanel.lastWorldMapHeight then
+            awqPanel.lastWorldMapWidth = width
+            awqPanel.lastWorldMapHeight = height
+            awqPanel:SetSize(PANEL_WIDTH, height)
+        end
+    end
+
+    function QuestFrameModule:IsQuestListLockedDown()
         local inInstance, instanceType = IsInInstance()
 
         return inInstance and (instanceType == "pvp" or instanceType == "arena")
@@ -972,30 +1068,23 @@ do
 end
 --endregion
 
---region Taint-safe refresh triggers
+-- True when it is unsafe to touch map pins (combat, or a pvp/arena instance).
+-- See ARCHITECTURE.md (#173).
+function QuestFrameModule:IsLockedDown()
+    if InCombatLockdown and InCombatLockdown() then
+        return true
+    end
+
+    local inInstance, instanceType = IsInInstance()
+
+    return inInstance and (instanceType == "pvp" or instanceType == "arena")
+end
+
+--region Taint-safe list refresh trigger
 --
--- EVERYTHING here runs from a single C_Timer ticker.  There are deliberately
--- NO event registrations: the game fires quest/map events (QUEST_LOG_UPDATE,
--- QUEST_POI_UPDATE, ...) synchronously from inside Blizzard's own protected
--- chains — the map canvas secureexecuterange during map open, and the pin
--- hover/tooltip chains during POI hover.  An addon event frame handler running
--- in such a chain taints the remainder of it: protected calls are then blocked
--- (Button:SetPropagateMouseClicks -> ADDON_ACTION_BLOCKED, #173) and UIWidget
--- geometry reads return SECRET values that error Blizzard's widget Setup
--- (#174).  C_Timer callbacks are dispatched by the game in isolation, never
--- nested inside a Blizzard chain, so all refresh work is driven by polling
--- cheap state diffs here instead of events.
---
--- The world quest provider refreshes its pins on its own 0.5s ticker and on
--- its own event registrations; our ticker re-applies pin post-processing and
--- detects every state change the old event hooks covered:
---   * map opened (shown-transition)              (was WORLD_MAP_OPEN)
---   * map display change (GetMapID diff)         (was OnMapChanged)
---   * search-box text change                     (was QuestLogQuests_Update)
---   * supertracked quest change (diff)           (was SUPER_TRACKING_CHANGED)
---   * quest log entry count change               (was QUEST_LOG_UPDATE / UNIT_QUEST_LOG_CHANGED / QUEST_POI_UPDATE)
---   * combat end: refreshes skipped during combat (CanApplyFullRefresh guard)
---     recover once combat ends, without needing an event.
+-- Driven entirely by a C_Timer ticker, deliberately with NO event
+-- registrations. See ARCHITECTURE.md (#168) for why, and for what state this
+-- ticker polls in place of the events it replaces.
 do
     local lastMapShown = false
     local lastMapID
@@ -1004,40 +1093,26 @@ do
     local lastNumQuestLogEntries
     local lastInCombat
 
-    -- Runs Blizzard-facing pin work with a clean execution context, so pin
-    -- geometry/alpha written here can never surface as SECRET to Blizzard's own
-    -- later reads (pin pool recycling, QuestHub tooltip cloning).
-    local function RunPinPostProcessing()
-        if not dataProvider or not QuestMapFrame or not QuestMapFrame:IsShown() then
-            return
-        end
-
-        securecallfunction(function()
-            PostProcessWorldQuestPins(dataProvider)
-        end)
-    end
-
-    function QuestFrameModule:InitializeRefreshTriggers()
+    function QuestFrameModule:InitializeListRefreshTriggers()
         C_Timer.NewTicker(0.5, function()
             local inCombat = InCombatLockdown()
 
             if inCombat then
                 lastInCombat = true
-                return
-            end
-
-            if lastInCombat then
-                -- Combat just ended: re-request everything so the map shows a
-                -- fresh list even if it was opened mid-combat (when the open
-                -- could not be serviced).
+            elseif lastInCombat then
+                -- Combat just ended: force one extra full refresh in case
+                -- nothing else changed while we were in combat.
                 lastInCombat = false
-                QuestFrameModule:RequestQuestLogUpdate()
                 QuestFrameModule:RequestFullRefresh("COMBAT_ENDED")
             end
 
-            RunPinPostProcessing()
-
             local mapShown = QuestMapFrame and QuestMapFrame:IsShown()
+
+            -- Panel visibility/size follow the quest log the same way the list
+            -- itself does: polled here, never via a Show/Hide hook on
+            -- WorldMapFrame/QuestMapFrame.
+            QuestFrameModule:UpdatePanelGeometry(mapShown)
+
             if not mapShown then
                 lastMapShown = false
                 return
@@ -1083,50 +1158,118 @@ do
                 QuestFrameModule:RequestQuestLogUpdate()
                 QuestFrameModule:RequestFullRefresh("QUEST_LOG_CHANGED")
             end
+
+            -- Safety net: a dirty flag can be left set if a tooltip was
+            -- shown when it was requested. See ARCHITECTURE.md (misc self-healing notes).
+            QuestFrameModule:TryApplyFullRefresh()
+            QuestFrameModule:TryApplyQuestLogUpdate()
         end)
+    end
+
+    function QuestFrameModule:RequestQuestLogUpdate()
+        listRefreshDirty = true
+        QuestFrameModule:TryApplyQuestLogUpdate()
+    end
+
+    function QuestFrameModule:TryApplyQuestLogUpdate()
+        if not listRefreshDirty then
+            return
+        end
+
+        if not (QuestMapFrame and QuestMapFrame:IsShown()) then
+            return
+        end
+
+        if GameTooltip:IsShown() then
+            -- Leave lastRenderedMapID unset so the ticker's own mapID-diff check
+            -- re-requests this until the tooltip clears, instead of leaving a
+            -- stale list/checkbox up.
+            QuestFrameModule.lastRenderedMapID = nil
+            return
+        end
+
+        listRefreshDirty = false
+
+        -- Render in a clean execution context. See ARCHITECTURE.md (misc self-healing
+        -- notes) for why the render is wrapped in pcall/DebugLog instead of left
+        -- to error silently.
+        securecallfunction(function()
+            local ok, err = pcall(QuestFrameModule.QuestLog_Update, QuestFrameModule)
+            if not ok then
+                QuestFrameModule:DebugLog(string.format("QuestLog_Update failed: %s", tostring(err)))
+            end
+        end)
+    end
+
+    function QuestFrameModule:RequestFullRefresh(reason)
+        fullRefreshDirty = true
+        fullRefreshReason = reason or fullRefreshReason or "unknown"
+        QuestFrameModule:TryApplyFullRefresh()
+    end
+
+    function QuestFrameModule:TryApplyFullRefresh()
+        if not fullRefreshDirty then
+            return
+        end
+
+        -- Also defer if any tooltip is currently shown. See ARCHITECTURE.md (#161).
+        if not CanApplyFullRefresh() or GameTooltip:IsShown() then
+            return
+        end
+
+        local reasonText = fullRefreshReason or "unknown"
+        fullRefreshDirty = false
+        fullRefreshReason = nil
+
+        QuestFrameModule:DebugLog(string.format("Applying full refresh (%s)", reasonText))
+
+        -- Rebuild the filter-decision cache in a clean execution context. See
+        -- ARCHITECTURE.md (#156).
+        securecallfunction(function()
+            QuestFrameModule:RebuildFilterDecisionCache(QuestMapFrame and QuestMapFrame:GetParent():GetMapID())
+        end)
+
+        QuestFrameModule:RequestQuestLogUpdate()
     end
 end
 --endregion
 
 --region Initialization
 do
+    -- Shared tail of AddFilter/AddCurrencyFilter: registers the filter under
+    -- its key and appends it to the display order.
+    local function RegisterFilter(filter)
+        ConfigModule.Filters[filter.key] = filter
+        table.insert(ConfigModule.FiltersOrder, filter.key)
+
+        return filter
+    end
+
     local function AddFilter(key, name, icon, default)
-        local filter = {
+        return RegisterFilter({
             key = key,
             name = name,
             icon = "Interface\\Icons\\" .. icon,
             default = default,
             index = #ConfigModule.FiltersOrder + 1,
-        }
-
-        ConfigModule.Filters[key] = filter
-        table.insert(ConfigModule.FiltersOrder, key)
-
-        return filter
+        })
     end
 
     local function AddCurrencyFilter(key, currencyID, default)
         local currencyInfo = C_CurrencyInfo.GetCurrencyInfo(currencyID)
-        local name = currencyInfo.name
-        local icon = currencyInfo.iconFileID
 
-        local filter = {
+        return RegisterFilter({
             key = key,
-            name = name,
-            icon = icon,
+            name = currencyInfo.name,
+            icon = currencyInfo.iconFileID,
             default = default,
             index = #ConfigModule.FiltersOrder + 1,
             preset = _AngrierWorldQuests.Constants.FILTERS.CURRENCY,
             currencyID = currencyID,
-        }
-
-        ConfigModule.Filters[key] = filter
-        table.insert(ConfigModule.FiltersOrder, key)
-
-        return filter
+        })
     end
 
-    local function InitializeFilterLists()
+    function QuestFrameModule:InitializeFilterLists()
         AddFilter("EMISSARY", BOUNTY_BOARD_LOCKED_TITLE, "achievement_reputation_01")
         AddFilter("TIME", CLOSES_IN, "ability_bossmagistrix_timewarp2")
         AddFilter("TRACKED", TRACKING, "icon_treasuremap")
@@ -1164,12 +1307,168 @@ do
 
     local printedLockdownMessage = false
 
-    -- Post-processes pins after Blizzard's data provider refreshed them.  Does
-    -- NOT use Hide()/EnableMouse() on pins — SetAlpha(0) is the only safe way to
-    -- filter pins; every hit-test-affecting API fires synchronous OnEnter/OnLeave
-    -- that, if fired from addon-triggered code while the cursor is over a POI,
-    -- permanently taints UIWidget FontString geometry (issues #161/#168).
-    PostProcessWorldQuestPins = function(dp)
+    -- ShouldFilterQuest/AddTrackedWorldQuestPin/GetChildMapQuests/
+    -- GetCachedChildQuests/GetCachedChildQuestByID/IsAddonPinExpected all take
+    -- a per-call "ctx" table instead of being closures. See ARCHITECTURE.md
+    -- (misc self-healing notes).
+    local function ShouldFilterQuest(ctx, info)
+        if ctx.showHoveredPOI and QuestFrameModule.hoveredQuestID == info.questID then
+            return false
+        end
+
+        -- Read the filter decision from the cache RebuildFilterDecisionCache
+        -- populated above. See ARCHITECTURE.md (#156).
+        if ctx.hideFilteredPOI and QuestFrameModule.filterDecisionMapID == ctx.mapID and QuestFrameModule.filterDecisionCache[info.questID] then
+            return true
+        end
+
+        if ctx.hideUntrackedPOI and not WorldMap_IsWorldQuestEffectivelyTracked(info.questID) then
+            return true
+        end
+
+        return false
+    end
+
+    local function AddTrackedWorldQuestPin(ctx, info)
+        -- See ARCHITECTURE.md (#174).
+        if not CanMutateMapPins() then
+            return nil
+        end
+
+        local mapID = ctx.mapID
+        local cx, cy
+
+        if info.mapID == mapID then
+            -- info came from GetQuestsOnMap(continentMapID): coordinates are
+            -- already in continent-normalised space (cold-continent fallback).
+            cx, cy = C_TaskQuest.GetQuestLocation(info.questID, mapID)
+        else
+            -- info came from GetQuestsOnMap(childMapID): project zone-space
+            -- coordinates onto the continent via GetMapRectOnMap. See
+            -- ARCHITECTURE.md (#147).
+            local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
+
+            if x and y and C_Map.GetMapRectOnMap then
+                local minX, maxX, minY, maxY = C_Map.GetMapRectOnMap(info.mapID, mapID)
+
+                if minX and maxX > minX and maxY > minY then
+                    cx = minX + x * (maxX - minX)
+                    cy = minY + y * (maxY - minY)
+                end
+            end
+        end
+
+        if not cx or not cy then
+            return nil
+        end
+
+        local pin = ctx.dp:AddWorldQuest(info)
+
+        if pin then
+            -- A pin reclaimed from Blizzard's pool may still be alpha-hidden
+            -- from a previous map. See ARCHITECTURE.md (#166). Tag the pin with
+            -- the map/quest it was placed for; PostProcessWorldQuestPins
+            -- uses these to re-hide our pins once they are no longer valid.
+            pin:SetAlpha(1)
+            pin.awqAlphaHidden = nil
+            pin.awqMapID = mapID
+            pin.awqQuestID = info.questID
+
+            pin:SetPosition(cx, cy)
+            table.insert(addonAddedPins, pin)
+        end
+
+        return pin
+    end
+
+    -- Collects quest info tables from child zones of the given continent map.
+    -- Returns a flat list. See ARCHITECTURE.md (cold-continent quest data).
+    local function GetChildMapQuests(ctx)
+        local mapID = ctx.mapID
+        local quests = {}
+        local seen = {}
+        local childMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
+
+        for mID in pairs(childMapIDs) do
+            if mID ~= mapID then
+                local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
+                if taskInfo then
+                    for _, info in ipairs(taskInfo) do
+                        if not seen[info.questID] then
+                            seen[info.questID] = true
+                            table.insert(quests, info)
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Fallback: continent-mapID query. See ARCHITECTURE.md
+        -- (cold-continent quest data).
+        local continentTaskInfo = C_TaskQuest.GetQuestsOnMap(mapID)
+        if continentTaskInfo then
+            for _, info in ipairs(continentTaskInfo) do
+                if not seen[info.questID] then
+                    seen[info.questID] = true
+                    table.insert(quests, info)
+                end
+            end
+        end
+
+        return quests
+    end
+
+    local function GetCachedChildQuests(ctx)
+        if not ctx.childQuests then
+            ctx.childQuests = GetChildMapQuests(ctx)
+        end
+
+        return ctx.childQuests
+    end
+
+    local function GetCachedChildQuestByID(ctx)
+        if not ctx.childQuestByID then
+            ctx.childQuestByID = {}
+
+            for _, info in ipairs(GetCachedChildQuests(ctx)) do
+                ctx.childQuestByID[info.questID] = info
+            end
+        end
+
+        return ctx.childQuestByID
+    end
+
+    local function IsAddonPinExpected(ctx, pin)
+        if pin.awqMapID ~= ctx.mapID then
+            return false
+        end
+
+        if not ctx.mapInfo or ctx.mapInfo.mapType ~= Enum.UIMapType.Continent then
+            return false
+        end
+
+        if ctx.superTrackedQuestID and ctx.superTrackedQuestID > 0 and pin.awqQuestID == ctx.superTrackedQuestID then
+            return true
+        end
+
+        if not ctx.showContinentPOI then
+            return false
+        end
+
+        local info = GetCachedChildQuestByID(ctx)[pin.awqQuestID]
+
+        return info
+            and HaveQuestData(info.questID)
+            and QuestUtils_IsQuestWorldQuest(info.questID)
+            and WorldMap_DoesWorldQuestInfoPassFilters(info)
+            and (info.mapID == ctx.mapID or DataModule:GetContentMapIDFromMapID(info.mapID) == ctx.mapID)
+            and not ShouldFilterQuest(ctx, info)
+    end
+
+    -- Post-processes pins after Blizzard's data provider refreshed them.
+    -- See ARCHITECTURE.md (#161, #168) for why this never calls Hide()/
+    -- EnableMouse() on pins, only SetAlpha().
+    local function PostProcessWorldQuestPins(dp)
         local map = dp:GetMap()
 
         if not map then
@@ -1188,125 +1487,23 @@ do
         end
 
         local mapID = map:GetMapID()
-        local hideFilteredPOI = ConfigModule:Get("hideFilteredPOI")
-        local hideUntrackedPOI = ConfigModule:Get("hideUntrackedPOI")
-        local showHoveredPOI = ConfigModule:Get("showHoveredPOI")
-        local showContinentPOI = ConfigModule:Get("showContinentPOI")
 
-        local function ShouldFilterQuest(info)
-            if showHoveredPOI and hoveredQuestID == info.questID then
-                return false
-            end
-
-            -- Read the filter decision from the cache QuestLog_Update populated in
-            -- a non-secure context.  Calling DataModule:IsQuestFiltered() here would
-            -- run GetQuestLogRewardMoney inside Blizzard's secure RefreshAllData
-            -- range, tainting the quest's reward money and killing the gold tooltip
-            -- on hover (issue #156).  A cache miss or stale map defaults to "not
-            -- filtered" (pin shown) until the next QuestLog_Update refreshes it.
-            if hideFilteredPOI and filterDecisionMapID == mapID and filterDecisionCache[info.questID] then
-                return true
-            end
-
-            if hideUntrackedPOI and not WorldMap_IsWorldQuestEffectivelyTracked(info.questID) then
-                return true
-            end
-
-            return false
-        end
-
-        local function AddTrackedWorldQuestPin(info)
-            local cx, cy
-
-            if info.mapID == mapID then
-                -- info came from GetQuestsOnMap(continentMapID): coordinates are
-                -- already in continent-normalised space (cold-continent fallback).
-                cx, cy = C_TaskQuest.GetQuestLocation(info.questID, mapID)
-            else
-                -- info came from GetQuestsOnMap(childMapID): project zone-space
-                -- coordinates onto the continent via GetMapRectOnMap (issue #147).
-                local x, y = C_TaskQuest.GetQuestLocation(info.questID, info.mapID)
-
-                if x and y and C_Map.GetMapRectOnMap then
-                    local minX, maxX, minY, maxY = C_Map.GetMapRectOnMap(info.mapID, mapID)
-
-                    if minX and maxX > minX and maxY > minY then
-                        cx = minX + x * (maxX - minX)
-                        cy = minY + y * (maxY - minY)
-                    end
-                end
-            end
-
-            if not cx or not cy then
-                return nil
-            end
-
-            local pin = dp:AddWorldQuest(info)
-
-            if pin then
-                -- A pin reclaimed from Blizzard's pool may still be alpha-hidden
-                -- from when it belonged to a previous map (issue #166), so make
-                -- sure pins we actively add are visible.  Tag the pin with the map
-                -- and quest it was placed for; PostProcessWorldQuestPins uses these
-                -- to re-hide our pins once they are no longer valid.
-                pin:SetAlpha(1)
-                pin.awqAlphaHidden = nil
-                pin.awqMapID = mapID
-                pin.awqQuestID = info.questID
-
-                pin:SetPosition(cx, cy)
-                table.insert(addonAddedPins, pin)
-            end
-
-            return pin
-        end
-
-        -- Collects quest info tables from child zones of the given continent map.
-        -- Returns a flat list.
-        --
-        -- On a cold continent open, C_TaskQuest.GetQuestsOnMap(childMapID) returns
-        -- nothing because Blizzard's data provider only loads child-zone quest data
-        -- after the player has opened that zone map.  However,
-        -- C_TaskQuest.GetQuestsOnMap(continentMapID) is always populated by
-        -- Blizzard's RefreshAllData when on the continent.  We query both: child
-        -- zones first (so info.mapID is the zone mapID for accurate projection),
-        -- then fall back to the continent query for any quests not yet found.
-        local function GetChildMapQuests()
-            local quests = {}
-            local seen = {}
-            local childMapIDs = DataModule:GetMapIDsToGetQuestsFrom(mapID)
-
-            for mID in pairs(childMapIDs) do
-                if mID ~= mapID then
-                    local taskInfo = C_TaskQuest.GetQuestsOnMap(mID)
-                    if taskInfo then
-                        for _, info in ipairs(taskInfo) do
-                            if not seen[info.questID] then
-                                seen[info.questID] = true
-                                table.insert(quests, info)
-                            end
-                        end
-                    end
-                end
-            end
-
-            -- Fallback: continent-mapID query.  info.mapID will be the continent
-            -- mapID, so AddTrackedWorldQuestPin uses GetQuestLocation(questID,
-            -- continentMapID) which works even before child-zone data is loaded.
-            local continentTaskInfo = C_TaskQuest.GetQuestsOnMap(mapID)
-            if continentTaskInfo then
-                for _, info in ipairs(continentTaskInfo) do
-                    if not seen[info.questID] then
-                        seen[info.questID] = true
-                        table.insert(quests, info)
-                    end
-                end
-            end
-
-            return quests
-        end
+        -- Per-tick state shared by the helper functions above; kept in one
+        -- small table instead of upvalues so those helpers don't need to be
+        -- recreated as closures every tick.
+        local ctx = {
+            dp = dp,
+            mapID = mapID,
+            hideFilteredPOI = ConfigModule:Get("hideFilteredPOI"),
+            hideUntrackedPOI = ConfigModule:Get("hideUntrackedPOI"),
+            showHoveredPOI = ConfigModule:Get("showHoveredPOI"),
+            showContinentPOI = ConfigModule:Get("showContinentPOI"),
+            superTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID(),
+        }
 
         local mapInfo = C_Map.GetMapInfo(mapID)
+        ctx.mapInfo = mapInfo
+
         local pinTemplate = dp.GetPinTemplate and dp:GetPinTemplate() or dp.pinTemplate
         local isContinent = mapInfo and mapInfo.mapType == Enum.UIMapType.Continent
 
@@ -1314,55 +1511,31 @@ do
             return
         end
 
-        -- On a cold continent open the pin pool doesn't exist yet: Blizzard's
-        -- data provider adds no WQ pins natively on continent maps (child-zone
-        -- quests only appear via our own AddTrackedWorldQuestPin calls).  The
-        -- alpha-hide passes are no-ops with no active pins, so skip the pool
-        -- guard and let dp:AddWorldQuest() create the pool on first use.
+        -- See ARCHITECTURE.md (cold-continent quest data).
         local hasPool = map.pinPools and map.pinPools[pinTemplate]
         if not hasPool and not isContinent then
             return
         end
 
-        -- TAINT-SAFE FILTERING (issue #161)
+        -- TAINT-SAFE FILTERING: never call Hide() on pins, only SetAlpha().
+        -- See ARCHITECTURE.md (#161).
         --
-        -- pin:Hide() fires synchronous OnLeave/OnEnter mouse events.  If called
-        -- from our tainted C_Timer callback while the cursor is near an Area POI
-        -- pin, the Area POI's OnMouseEnter runs tainted.  Inside that chain,
-        -- Blizzard calls self.Text:SetText() (tainted) on a UIWidget FontString.
-        -- Once tainted, self.Text:GetStringHeight() permanently returns SECRET,
-        -- causing arithmetic errors every time that widget is rendered or its
-        -- timer fires — even from fully untainted Blizzard code.
-        --
-        -- The fix: NEVER call Hide() on pins.  Instead use:
-        --   pin:SetAlpha(0)       — makes pin invisible (pure render, no events)
-        --   pin:EnableMouse(false) — removes it from mouse hit-testing (no events)
-        --
-        -- Neither API fires OnEnter/OnLeave synchronously, so Area POI
-        -- OnMouseEnter can never run in our tainted context.
-        --
-        -- Pass 1: restore alpha on any pins we previously hidden.
-        -- SetAlpha(1) is purely visual and fires NO mouse events, so this is
-        -- always safe regardless of cursor position.
+        -- Pass 1: restore alpha on any pins we previously hidden, and build
+        -- the active-pin set used below to prune stale addon-pin references.
+        local activeSet = {}
         if hasPool then
             for pin in map.pinPools[pinTemplate]:EnumerateActive() do
                 if pin.awqAlphaHidden then
                     pin:SetAlpha(1)
                     pin.awqAlphaHidden = nil
                 end
+                activeSet[pin] = true
             end
         end
 
         -- Clean up stale addon-pin references (pins released by Blizzard's
         -- pool:ReleaseAll on the previous RefreshAllData are no longer active).
         -- We do NOT call map:RemovePin — that calls pin:Hide() internally.
-        -- Blizzard's own pool management will release them on the next refresh.
-        local activeSet = {}
-        if hasPool then
-            for pin in map.pinPools[pinTemplate]:EnumerateActive() do
-                activeSet[pin] = true
-            end
-        end
         local remainingAddonPins = {}
         for _, pin in ipairs(addonAddedPins) do
             if activeSet[pin] then
@@ -1371,98 +1544,22 @@ do
         end
         addonAddedPins = remainingAddonPins
 
-        local childQuests
-        local childQuestByID
-        local superTrackedQuestID = C_SuperTrack.GetSuperTrackedQuestID()
-
-        local function GetCachedChildQuests()
-            if not childQuests then
-                childQuests = GetChildMapQuests()
-            end
-
-            return childQuests
-        end
-
-        local function GetCachedChildQuestByID()
-            if not childQuestByID then
-                childQuestByID = {}
-
-                for _, info in ipairs(GetCachedChildQuests()) do
-                    childQuestByID[info.questID] = info
-                end
-            end
-
-            return childQuestByID
-        end
-
-        local function IsAddonPinExpected(pin)
-            if pin.awqMapID ~= mapID then
-                return false
-            end
-
-            if not mapInfo or mapInfo.mapType ~= Enum.UIMapType.Continent then
-                return false
-            end
-
-            if superTrackedQuestID and superTrackedQuestID > 0 and pin.awqQuestID == superTrackedQuestID then
-                return true
-            end
-
-            if not showContinentPOI then
-                return false
-            end
-
-            local info = GetCachedChildQuestByID()[pin.awqQuestID]
-
-            return info
-                and HaveQuestData(info.questID)
-                and QuestUtils_IsQuestWorldQuest(info.questID)
-                and WorldMap_DoesWorldQuestInfoPassFilters(info)
-                and (info.mapID == mapID or DataModule:GetContentMapIDFromMapID(info.mapID) == mapID)
-                and not ShouldFilterQuest(info)
-        end
-
-        -- Pass 1b: re-hide pins we added that are no longer valid for this map.
-        --
-        -- AWQ borrows pins from Blizzard's WorldQuest pool to show child-zone
-        -- quests on continent maps.  Blizzard normally releases them via
-        -- pool:ReleaseAll on the next RefreshAllData, but on some maps (e.g. the
-        -- Eastern Kingdoms continent) its data provider returns without refreshing
-        -- its pins, so ours stay active and linger at their previous map's
-        -- coordinates — out in the ocean (issue #166).  Pass 1 above just restored
-        -- their alpha, so re-hide them here on every refresh.  The same guard also
-        -- covers same-map stale pins, such as a super-tracked WQ pin after the
-        -- quest is untracked while continent POIs are disabled.
-        --
-        -- Keying on our own tracking list is safe: those pins are always active
-        -- (Blizzard only recycles inactive pins), and the questID guard skips any
-        -- pin Blizzard has meanwhile reclaimed for a different quest.
+        -- Pass 1b: re-hide addon-added pins that are no longer valid for
+        -- this map. See ARCHITECTURE.md (#166).
         for _, pin in ipairs(addonAddedPins) do
-            if pin.questID == pin.awqQuestID and not IsAddonPinExpected(pin) then
+            if pin.questID == pin.awqQuestID and not IsAddonPinExpected(ctx, pin) then
                 pin:SetAlpha(0)
                 pin.awqAlphaHidden = true
             end
         end
 
-        -- Pass 2: alpha-hide filtered pins.
-        --
-        -- ONLY SetAlpha(0) is used — no Hide(), EnableMouse(false), or
-        -- SetHitRectInsets().  Every other API that affects mouse hit-testing
-        -- (Hide, EnableMouse, SetHitRectInsets) fires a synchronous mouse-focus
-        -- recalculation.  If the cursor is over the affected pin, that
-        -- recalculation fires OnEnter on the Area POI beneath in our tainted
-        -- C_Timer context, permanently tainting UIWidget FontString geometry
-        -- values (issue #161).
-        --
-        -- SetAlpha(0) is purely visual: it makes the pin invisible but leaves
-        -- it in the hit-test system.  No synchronous mouse events fire.
-        -- Trade-off: invisible pins still intercept mouse input at their exact
-        -- pixel positions, so Area POI tooltips may not appear directly under a
-        -- filtered quest pin.  This is acceptable vs. permanent SECRET errors.
+        -- Pass 2: alpha-hide filtered pins. See ARCHITECTURE.md (#161) for why
+        -- only SetAlpha(0) is used here (never Hide/EnableMouse/
+        -- SetHitRectInsets).
         if hasPool then
             for pin in map.pinPools[pinTemplate]:EnumerateActive() do
                 if pin.questID and C_QuestLog.IsWorldQuest(pin.questID) then
-                    if ShouldFilterQuest({ questID = pin.questID, mapID = pin.mapID or mapID }) then
+                    if ShouldFilterQuest(ctx, { questID = pin.questID, mapID = pin.mapID or mapID }) then
                         pin:SetAlpha(0)
                         pin.awqAlphaHidden = true
                     end
@@ -1470,10 +1567,13 @@ do
             end
         end
 
-        if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent then
-            local childQuests = GetCachedChildQuests()
+        -- Pass 3: place our own pins for child-zone quests on continent maps.
+        -- This is the only pass that shows or moves pins, so it is gated on
+        -- CanMutateMapPins(). See ARCHITECTURE.md (#174).
+        if mapInfo and mapInfo.mapType == Enum.UIMapType.Continent and CanMutateMapPins() then
+            local childQuests = GetCachedChildQuests(ctx)
 
-            if showContinentPOI then
+            if ctx.showContinentPOI then
                 -- Collect already-shown questIDs to avoid duplicates
                 local shownQuests = {}
                 if hasPool then
@@ -1490,14 +1590,15 @@ do
                         and QuestUtils_IsQuestWorldQuest(info.questID)
                         and WorldMap_DoesWorldQuestInfoPassFilters(info)
                         and (info.mapID == mapID or DataModule:GetContentMapIDFromMapID(info.mapID) == mapID)
-                        and not ShouldFilterQuest(info) then
+                        and not ShouldFilterQuest(ctx, info) then
 
-                        AddTrackedWorldQuestPin(info)
+                        AddTrackedWorldQuestPin(ctx, info)
                         shownQuests[info.questID] = true
                     end
                 end
             end
 
+            local superTrackedQuestID = ctx.superTrackedQuestID
             if superTrackedQuestID and superTrackedQuestID > 0 then
                 local hasPin = false
                 if hasPool then
@@ -1512,7 +1613,7 @@ do
                 if not hasPin and QuestUtils_IsQuestWorldQuest(superTrackedQuestID) then
                     for _, info in ipairs(childQuests) do
                         if info.questID == superTrackedQuestID then
-                            AddTrackedWorldQuestPin(info)
+                            AddTrackedWorldQuestPin(ctx, info)
                             break
                         end
                     end
@@ -1524,22 +1625,31 @@ do
     function QuestFrameModule:InitializeProvider()
         dataProvider = GetDataProvider()
 
-        -- NOTE: there is deliberately no hooksecurefunc on RefreshAllData here.
-        -- RefreshAllData is called from inside Blizzard's map canvas
-        -- secureexecuterange (MapCanvas OnEvent -> data provider SignalEvent);
-        -- a post-hook on it runs our Lua frames inside that range, tainting
-        -- every protected call Blizzard makes afterwards in the same range,
-        -- e.g. Button:SetPassThroughButtons() during pin acquisition
-        -- (ADDON_ACTION_BLOCKED, issue #168).  Pin post-processing is instead
-        -- triggered from our own event frame and a mirror ticker, which run in
-        -- isolated game-dispatched contexts after Blizzard's refresh completes.
+        -- NOTE: there is deliberately no hooksecurefunc on RefreshAllData
+        -- here. See ARCHITECTURE.md (#168). Pin post-processing is instead
+        -- triggered from our own ticker below.
     end
+
+    --region Taint-safe pin refresh trigger
+    --
+    -- Driven entirely by a C_Timer ticker, deliberately with NO event
+    -- registrations. See ARCHITECTURE.md (#168, #174).
+    function QuestFrameModule:InitializePinRefreshTriggers()
+        C_Timer.NewTicker(0.5, function()
+            if not dataProvider or not QuestMapFrame or not QuestMapFrame:IsShown() then
+                return
+            end
+
+            securecallfunction(function()
+                PostProcessWorldQuestPins(dataProvider)
+            end)
+        end)
+    end
+    --endregion
 
     function QuestFrameModule:ApplyWorkarounds()
         -- Override QuestUtil.TrackWorldQuest/UntrackWorldQuest to remove the
-        -- ObjectiveTrackerManager:UpdateAll() call that Blizzard's code calls.
-        -- When called from addon code the taint propagates into the objective tracker,
-        -- blocking protected actions like UseQuestLogSpecialItem(). See issue #67.
+        -- ObjectiveTrackerManager:UpdateAll() call. See ARCHITECTURE.md (#67).
         do
             local lastTrackedQuestID = nil
 
@@ -1569,8 +1679,7 @@ do
                     QuestFrameModule:RequestQuestLogUpdate()
                     QuestFrameModule:RequestFullRefresh("UNTRACK_WORLD_QUEST")
                 end
-                -- Don't call ObjectiveTrackerManager:UpdateAll() here, see issue #67.
-                --ObjectiveTrackerManager:UpdateAll();
+                --ObjectiveTrackerManager:UpdateAll(); -- see ARCHITECTURE.md (#67)
             end
         end
     end
@@ -1669,10 +1778,6 @@ do
     end
 
     function QuestFrameModule:RegisterCallbacks()
-        ConfigModule:RegisterCallback("showAtTop", function()
-            QuestFrameModule:RequestQuestLogUpdate()
-        end)
-
         ConfigModule:RegisterCallback({ "hideUntrackedPOI", "hideFilteredPOI", "showContinentPOI", "onlyCurrentZone", "sortMethod", "selectedFilters","disabledFilters", "filterEmissary", "filterLoot", "filterFaction", "filterZone", "filterTime", "lootFilterUpgrades", "lootUpgradesLevel", "timeFilterDuration" }, function(key)
             QuestFrameModule:RequestQuestLogUpdate()
             self:RequestFullRefresh(key)
@@ -1680,7 +1785,7 @@ do
     end
 
     function QuestFrameModule:OnInitialize()
-        InitializeFilterLists()
+        self:InitializeFilterLists()
     end
 
     function QuestFrameModule:OnEnable()
@@ -1688,132 +1793,15 @@ do
         self:ApplyWorkarounds()
         self:ExtendMapMenu()
 
-        titleFramePool = CreateFramePool("BUTTON", QuestScrollFrame.Contents, "QuestLogTitleTemplate")
-
-        -- Create awqContainer and headerButton inside the QuestLog upvalue scope.
-        -- Must happen after titleFramePool is created (headerButton references it).
+        -- Create awqPanel, awqContainer, titleFramePool and headerButton.
         self:InitQuestLogFrames()
 
-        -- TAINT-SAFE REFRESH TRIGGERS (#168, #173, #174).
-        --
-        -- All refresh work is driven by a single 0.5s C_Timer ticker instead of
-        -- hooks or event frames.  Blizzard invokes its map/quest-log functions
-        -- from inside its own protected chains (the map canvas secureexecuterange
-        -- and the pin hover/tooltip chains), and the game fires quest/map events
-        -- synchronously from within those chains.  Any addon hook or event frame
-        -- handler there places addon Lua frames inside the chains, tainting the
-        -- remainder: protected calls are blocked (e.g. SetPropagateMouseClicks
-        -- during pin acquisition, #173) and UIWidget geometry reads return SECRET
-        -- values (#174).  The ticker runs isolated (C_Timer dispatch) and polls
-        -- cheap state diffs; every outgoing mutation runs inside securecallfunction.
-        QuestFrameModule:InitializeRefreshTriggers()
+        -- Taint-safe refresh triggers: see ARCHITECTURE.md (#168, #173, #174) for
+        -- why these are C_Timer tickers instead of hooks or event frames.
+        self:InitializeListRefreshTriggers()
+        self:InitializePinRefreshTriggers()
 
         self:RegisterCallbacks()
     end
 end
 --endregion
-
-function QuestFrameModule:RequestQuestLogUpdate()
-    if listRefreshPending then
-        return
-    end
-
-    listRefreshPending = true
-    C_Timer.After(0.05, function()
-        listRefreshPending = false
-        -- Skip when any tooltip is shown.  QuestLog_Update shows/hides quest log
-        -- buttons (children of WorldMapFrame); from tainted code this can fire a
-        -- canvas mouse-focus recalculation and Area POI OnEnter in the addon's
-        -- context, permanently tainting UIWidget FontString values (issue #161).
-        -- Also skip while in combat: the map can be opened in combat, and the
-        -- WORLD_MAP_OPEN dispatch runs inside Blizzard's own chain — nothing of
-        -- ours should ever execute there (issues #173/#174).  The ticker's
-        -- combat-end diff re-requests this update after combat ends.
-        if QuestMapFrame and QuestMapFrame:IsShown() and not InCombatLockdown() and not GameTooltip:IsShown() then
-            -- Render our list in a clean execution context (issue #168): the
-            -- Blizzard closures QuestLog_Update calls must not get tainted by
-            -- us, or Blizzard's own later chains hit them tainted.  A failing
-            -- render is logged instead of swallowed so it can never silently
-            -- leave a stale list; the ticker re-requests it until
-            -- QuestFrameModule.lastRenderedMapID matches the shown map.
-            securecallfunction(function()
-                local ok, err = pcall(QuestFrameModule.QuestLog_Update, QuestFrameModule)
-                if not ok then
-                    DebugLog(string.format("QuestLog_Update failed: %s", tostring(err)))
-                end
-            end)
-        elseif QuestMapFrame and QuestMapFrame:IsShown() and not InCombatLockdown() then
-            -- Blocked only by a tooltip.  The state diff that requested this
-            -- render was already consumed, so mark the render as not-yet-applied;
-            -- the refresh ticker then re-requests QuestLog_Update until it
-            -- succeeds (once the tooltip clears) instead of leaving a stale
-            -- checkbox / list until a map change or reopen.
-            QuestFrameModule.lastRenderedMapID = nil
-        end
-    end)
-end
-
-function QuestFrameModule:RequestFullRefresh(reason)
-    fullRefreshDirty = true
-    fullRefreshReason = reason or fullRefreshReason or "unknown"
-
-    if fullRefreshPending then
-        return
-    end
-
-    fullRefreshPending = true
-    C_Timer.After(0.1, function()
-        fullRefreshPending = false
-
-        if not fullRefreshDirty then
-            return
-        end
-
-        -- Also defer if any tooltip is currently shown.  QuestLogQuests_Update
-        -- hides/shows WorldMapFrame children from tainted code; if the user is
-        -- hovering over an Area POI at that instant the mouse-focus
-        -- recalculation fires Area POI OnEnter tainted, permanently tainting
-        -- UIWidget FontString values (issue #161).
-        if not CanApplyFullRefresh() or GameTooltip:IsShown() then
-            fullRefreshRetryCount = fullRefreshRetryCount + 1
-
-            if fullRefreshRetryCount <= 20 then
-                QuestFrameModule:RequestFullRefresh(fullRefreshReason or "retry")
-            else
-                DebugLog(string.format("Skipped map refresh after %d retries (%s)", fullRefreshRetryCount, fullRefreshReason or "unknown"))
-                fullRefreshDirty = false
-                fullRefreshRetryCount = 0
-                fullRefreshReason = nil
-            end
-
-            return
-        end
-
-        local reasonText = fullRefreshReason or "unknown"
-        fullRefreshDirty = false
-        fullRefreshRetryCount = 0
-        fullRefreshReason = nil
-
-        DebugLog(string.format("Applying full refresh (%s)", reasonText))
-
-        -- Rebuild the filter-decision cache and re-render the quest log in a
-        -- clean execution context: reward-money reads (GetQuestLogRewardMoney via
-        -- DataModule:IsQuestFiltered) stay unstamped for Blizzard's gold tooltip
-        -- (issue #156), and the Blizzard closures QuestLogQuests_Update calls
-        -- must not get tainted by us, or Blizzard's own later chains hit them
-        -- tainted (issue #168).  Pin state is refreshed afterwards by the event
-        -- frame / mirror ticker, after the data provider's own RefreshAllData
-        -- has run for this change.
-        securecallfunction(function()
-            RebuildFilterDecisionCache(QuestMapFrame and QuestMapFrame:GetParent():GetMapID())
-            QuestLogQuests_Update()
-        end)
-
-        -- Do NOT call dataProvider:RefreshAllData() directly.  It fires pin
-        -- OnMouseEnter handlers synchronously while pins are recreated; called
-        -- from addon code it taints those chains, and UIWidget C APIs then
-        -- return SECRET values (#161).  Blizzard's own event cycle (our event
-        -- frame + the provider's 0.5s ticker, mirrored by our own) performs the
-        -- refresh instead, after which RunPinPostProcessing is scheduled.
-    end)
-end

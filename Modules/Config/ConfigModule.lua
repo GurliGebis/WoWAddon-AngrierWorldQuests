@@ -359,7 +359,6 @@ do
             filterCheckboxes = {}
 
             local checkboxes_order = {
-                 "showAtTop",
                  "onlyCurrentZone",
                  "showContinentPOI",
                  "hideFilteredPOI",
