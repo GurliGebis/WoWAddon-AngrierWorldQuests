@@ -182,6 +182,7 @@ do
         2699, -- The Singularity
         2704, -- Hara'ti
         2710, -- Silvermoon Court
+        2772, -- Zul'jarra's Forces
     }
     local MAPS_MIDNIGHT = {
         [2395] = true, -- Eversong Woods
@@ -189,6 +190,7 @@ do
         [2413] = true, -- Harandar
         [2424] = true, -- Isle of Quel'Danas
         [2437] = true, -- Zul'Aman
+        [2512] = true, -- The Coiled Isle
     }
     --endregion
 

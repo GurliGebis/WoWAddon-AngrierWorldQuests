@@ -1,3 +1,7 @@
+# 12.1.0-20260825-1
+* Added missing factions and maps added in 12.1, patch provided by JAC-Sam on github.
+* Added a "hide while moving" option for the world quest panel, which hides the panel while the player is moving and shows it again when movement stops (if it should be shown).
+
 # 12.1.0-20260821-1
 * Move world quest list into its own docked panel next to the map instead of the shared collapsible quest log.
 

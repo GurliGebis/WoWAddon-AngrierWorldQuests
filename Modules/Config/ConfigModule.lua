@@ -364,6 +364,7 @@ do
                  "hideFilteredPOI",
                  "hideUntrackedPOI",
                  "hideQuestList",
+                 "hideWhenMoving",
                  "showHoveredPOI",
                  "lootFilterUpgrades",
                  "colorWarbandBonus",

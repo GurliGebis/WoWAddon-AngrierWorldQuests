@@ -50,6 +50,7 @@ local defaultOptions = {
         hideUntrackedPOI = "false",
         hideFilteredPOI = "true",
         hideQuestList = "false",
+        hideWhenMoving = "false",
         showContinentPOI = "true",
         colorWarbandBonus = "false",
         enableDebugging = "false",
