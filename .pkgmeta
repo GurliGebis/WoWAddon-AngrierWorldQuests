@@ -23,6 +23,6 @@ externals:
   Libs/LibStub: https://repos.curseforge.com/wow/libstub/trunk
 
 ignore:
-- CHANGELOG.md
-- README.md
-- Modules/QuestFrame/ARCHITECTURE.md
+  - CHANGELOG.md
+  - README.md
+  - Modules/QuestFrame/ARCHITECTURE.md
