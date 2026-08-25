@@ -52,6 +52,13 @@ local addonAddedPins = {}
 -- post-processing below (ShouldFilterQuest, for the "showHoveredPOI" option).
 QuestFrameModule.hoveredQuestID = nil
 
+-- Set while the player character is moving (PLAYER_STARTED_MOVING/
+-- PLAYER_STOPPED_MOVING, see the player-movement show/hide trigger region).
+-- While set - and the "hideWhenMoving" option is on - QuestLog_Update keeps
+-- the AWQ panel hidden no matter who requested the update, so nothing can
+-- flash it back up mid-run.
+QuestFrameModule.playerIsMoving = nil
+
 -- Cache of per-quest filter decisions, populated by QuestLog_Update in a
 -- non-secure context and read back by PostProcessWorldQuestPins. This keeps
 -- the reward-money read (GetQuestLogRewardMoney, via DataModule:IsQuestFiltered)
@@ -678,6 +685,18 @@ do
             return
         end
 
+        -- Player is moving (and hideWhenMoving is enabled): the panel stays
+        -- hidden, and this is the one place that decides that.
+        -- PLAYER_STOPPED_MOVING re-runs this whole update (with all the checks
+        -- below) instead of the event showing it directly, so the panel only
+        -- returns when it actually should. See the player-movement show/hide
+        -- trigger region.
+        if self.playerIsMoving and ConfigModule:Get("hideWhenMoving") then
+            self:HideWorldQuestWindow()
+            self.lastRenderedMapID = QuestMapFrame:GetParent():GetMapID()
+            return
+        end
+
         titleFramePool:ReleaseAll()
 
         local mapID = QuestMapFrame:GetParent():GetMapID()
@@ -1230,6 +1249,54 @@ do
         end)
 
         QuestFrameModule:RequestQuestLogUpdate()
+    end
+end
+--endregion
+
+--region Player-movement show/hide trigger
+--
+-- The one deliberate exception to the no-event-registrations rule from #168:
+-- PLAYER_STARTED_MOVING/PLAYER_STOPPED_MOVING are dispatched by the engine,
+-- never from inside Blizzard's secure RefreshAllData/hover chains, so running
+-- addon code here cannot taint anything. The handlers also only touch
+-- AWQ-owned state (the flag + our panel), never pins or tooltips.
+do
+    function QuestFrameModule:InitializeMovementTriggers()
+        local function OnEvent(_, event)
+            if event == "PLAYER_STARTED_MOVING" then
+                -- The flag always tracks the real movement state (regardless
+                -- of the option), so toggling the option mid-move is picked
+                -- up by the QuestLog_Update guard immediately.
+                QuestFrameModule.playerIsMoving = true
+
+                if ConfigModule:Get("hideWhenMoving") and QuestMapFrame and QuestMapFrame:IsShown() then
+                    QuestFrameModule:HideWorldQuestWindow()
+                end
+            else
+                local wasMoving = QuestFrameModule.playerIsMoving == true
+                QuestFrameModule.playerIsMoving = nil
+
+                -- Only refresh when movement was actually controlling the
+                -- panel; PLAYER_STOPPED_MOVING fires constantly during normal
+                -- play. Never Show() directly: route through the normal update
+                -- so its hide conditions (onlyCurrentZone, hideQuestList, no
+                -- quests, lockdown, map closed) still decide the outcome.
+                if wasMoving then
+                    QuestFrameModule:RequestQuestLogUpdate()
+                end
+            end
+        end
+
+        local movementEventFrame = CreateFrame("Frame")
+        movementEventFrame:SetScript("OnEvent", OnEvent)
+        movementEventFrame:RegisterEvent("PLAYER_STARTED_MOVING")
+        movementEventFrame:RegisterEvent("PLAYER_STOPPED_MOVING")
+
+        -- Re-evaluate the panel the moment the option is toggled, so it takes
+        -- effect immediately instead of waiting for the next movement change.
+        ConfigModule:RegisterCallback("hideWhenMoving", function()
+            QuestFrameModule:RequestQuestLogUpdate()
+        end)
     end
 end
 --endregion
@@ -1800,6 +1867,10 @@ do
         -- why these are C_Timer tickers instead of hooks or event frames.
         self:InitializeListRefreshTriggers()
         self:InitializePinRefreshTriggers()
+
+        -- The one event-driven trigger (player movement); see the
+        -- player-movement show/hide trigger region for why it is safe.
+        self:InitializeMovementTriggers()
 
         self:RegisterCallbacks()
     end

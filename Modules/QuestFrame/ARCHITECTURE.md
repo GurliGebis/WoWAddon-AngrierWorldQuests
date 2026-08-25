@@ -22,6 +22,8 @@ are referenced from the code via their issue number (e.g. `#161`).
     panel (`awqPanel`) and its quest/filter buttons.
   - **Taint-safe list refresh trigger** — the ticker that decides when the
     quest list needs to redraw.
+  - **Player-movement show/hide trigger** — the event frame that hides the
+    panel while the player is moving and brings it back when they stop.
   - **Initialization** — filter list setup, world-quest map-pin
     post-processing (`PostProcessWorldQuestPins` and its helpers), the
     taint-safe pin refresh ticker, and the Ace3 `OnInitialize`/`OnEnable`
@@ -168,6 +170,46 @@ registrations at all:
 The two tickers are independent (they used to share one) because, since the
 quest list panel is fully addon-owned, it never touches a protected call and
 so never needs to check combat lockdown, while the pin code still does.
+
+The one deliberate exception is the player-movement trigger (see its own
+section below), which registers real events instead of polling.
+
+## Player-movement panel visibility (no issue number)
+
+While the player character is moving, the AWQ panel next to the map can be
+hidden (opt-in via the `hideWhenMoving` option); when they stop, it comes
+back — but only if it should be shown. Unlike the refresh triggers in issue
+#168, this registers `PLAYER_STARTED_MOVING`/`PLAYER_STOPPED_MOVING` on a
+hidden event frame, because those two events are dispatched by the engine
+itself and are never raised inside any of Blizzard's secure execution ranges
+(`RefreshAllData`, pin hover chains), so running addon code in their handlers
+carries none of the taint risk #168 works around. The handlers also only
+touch AWQ-owned state — the `playerIsMoving` flag and the panel — never pins
+or tooltips.
+
+Design:
+
+- The flag always mirrors the real movement state, even when
+  `hideWhenMoving` is off; the option is only consulted where the flag is
+  *used*, so toggling the option mid-move takes effect on the very next
+  update.
+- `PLAYER_STARTED_MOVING` sets `QuestFrameModule.playerIsMoving` and, when
+  the option is on, hides the panel immediately for instant feedback.
+- The "should it be visible" decision lives in exactly one place:
+  `QuestLog_Update`. A guard near its top keeps the panel hidden whenever
+  `playerIsMoving` is set *and* the option is on, so any *other* refresh that
+  lands mid-run (ticker diffs, filter changes, combat ending) cannot flash
+  the panel back up while the player is still moving.
+- `PLAYER_STOPPED_MOVING` clears the flag and — but only if it was actually
+  set, since the event fires constantly during normal play — calls
+  `RequestQuestLogUpdate()` instead of showing the panel directly, so the
+  ordinary hide conditions (`onlyCurrentZone`, `hideQuestList`, zero quests
+  with no filters, pvp/arena lockdown, map closed) still decide whether the
+  panel returns — including cases where those conditions became true *while*
+  the player was moving.
+- A config callback on `hideWhenMoving` re-runs the update when the option is
+  toggled, so enabling it while moving hides the panel right away and
+  disabling it brings the panel back without waiting for a movement change.
 
 ## Issue #173 — pin acquisition blocked in combat
 
