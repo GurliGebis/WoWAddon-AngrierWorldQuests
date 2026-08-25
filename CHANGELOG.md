@@ -1,3 +1,6 @@
+# 12.1.0-20260825-1
+* Added missing factions and maps added in 12.1, patch provided by JAC-Sam on github.
+
 # 12.1.0-20260821-1
 * Move world quest list into its own docked panel next to the map instead of the shared collapsible quest log.
 
