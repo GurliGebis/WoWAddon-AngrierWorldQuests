@@ -1544,7 +1544,10 @@ do
 
         if QuestFrameModule:IsLockedDown() then
             if not printedLockdownMessage then
-                QuestFrameModule:Print(L["Skipping world quest pin update because player is in combat."])
+                if ConfigModule:Get("enableDebugging") then
+                    QuestFrameModule:Print(L["Skipping world quest pin update because player is in combat."])
+                end
+
                 printedLockdownMessage = true
             end
 
