@@ -1,3 +1,6 @@
+# 12.1.0-20260826-2
+* Moved the world quest list into the quest log as its own tab.
+
 # 12.1.0-20260826-1
 * Only print "Skipping world quest pin update because player is in combat" if debugging is enabled.
 

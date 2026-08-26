@@ -9,9 +9,9 @@ are referenced from the code via their issue number (e.g. `#161`).
 ## Files
 
 - `QuestFrameModule.lua` — the whole module: the AWQ-owned quest list panel
-  next to the world map, world-quest map-pin post-processing, and the Ace3
-  lifecycle glue between them. It's kept as a single file (rather than split
-  across several) because the two halves share state (`hoveredQuestID`,
+  embedded as a quest log tab, world-quest map-pin post-processing, and the
+  Ace3 lifecycle glue between them. It's kept as a single file (rather than
+  split across several) because the two halves share state (`hoveredQuestID`,
   `filterDecisionCache`/`filterDecisionMapID`) and the taint-safety rules
   documented below apply uniformly across both — splitting it made that
   shared context and ordering harder to follow, not easier. Internally it's
@@ -19,11 +19,10 @@ are referenced from the code via their issue number (e.g. `#161`).
   - **Variables** — module-wide shared state and small helpers used by more
     than one region.
   - **QuestLog** — everything about building/laying out the AWQ quest list
-    panel (`awqPanel`) and its quest/filter buttons.
+    panel (`awqPanel`) and its quest/filter buttons. The panel is embedded in
+    the quest log as its own tab — see the quest log tab section below.
   - **Taint-safe list refresh trigger** — the ticker that decides when the
     quest list needs to redraw.
-  - **Player-movement show/hide trigger** — the event frame that hides the
-    panel while the player is moving and brings it back when they stop.
   - **Initialization** — filter list setup, world-quest map-pin
     post-processing (`PostProcessWorldQuestPins` and its helpers), the
     taint-safe pin refresh ticker, and the Ace3 `OnInitialize`/`OnEnable`
@@ -171,46 +170,6 @@ The two tickers are independent (they used to share one) because, since the
 quest list panel is fully addon-owned, it never touches a protected call and
 so never needs to check combat lockdown, while the pin code still does.
 
-The one deliberate exception is the player-movement trigger (see its own
-section below), which registers real events instead of polling.
-
-## Player-movement panel visibility (no issue number)
-
-While the player character is moving, the AWQ panel next to the map can be
-hidden (opt-in via the `hideWhenMoving` option); when they stop, it comes
-back — but only if it should be shown. Unlike the refresh triggers in issue
-#168, this registers `PLAYER_STARTED_MOVING`/`PLAYER_STOPPED_MOVING` on a
-hidden event frame, because those two events are dispatched by the engine
-itself and are never raised inside any of Blizzard's secure execution ranges
-(`RefreshAllData`, pin hover chains), so running addon code in their handlers
-carries none of the taint risk #168 works around. The handlers also only
-touch AWQ-owned state — the `playerIsMoving` flag and the panel — never pins
-or tooltips.
-
-Design:
-
-- The flag always mirrors the real movement state, even when
-  `hideWhenMoving` is off; the option is only consulted where the flag is
-  *used*, so toggling the option mid-move takes effect on the very next
-  update.
-- `PLAYER_STARTED_MOVING` sets `QuestFrameModule.playerIsMoving` and, when
-  the option is on, hides the panel immediately for instant feedback.
-- The "should it be visible" decision lives in exactly one place:
-  `QuestLog_Update`. A guard near its top keeps the panel hidden whenever
-  `playerIsMoving` is set *and* the option is on, so any *other* refresh that
-  lands mid-run (ticker diffs, filter changes, combat ending) cannot flash
-  the panel back up while the player is still moving.
-- `PLAYER_STOPPED_MOVING` clears the flag and — but only if it was actually
-  set, since the event fires constantly during normal play — calls
-  `RequestQuestLogUpdate()` instead of showing the panel directly, so the
-  ordinary hide conditions (`onlyCurrentZone`, `hideQuestList`, zero quests
-  with no filters, pvp/arena lockdown, map closed) still decide whether the
-  panel returns — including cases where those conditions became true *while*
-  the player was moving.
-- A config callback on `hideWhenMoving` re-runs the update when the option is
-  toggled, so enabling it while moving hides the panel right away and
-  disabling it brings the panel back without waiting for a movement change.
-
 ## Issue #173 — pin acquisition blocked in combat
 
 Acquiring a pin from Blizzard's pool can call protected APIs internally
@@ -253,6 +212,143 @@ regardless of cursor position — `Hide()`, `EnableMouse(false)` and
 (`QuestLog_Update`) and after a full refresh request (`TryApplyFullRefresh`),
 so the reward-money reads inside it happen in a clean execution context
 rather than Blizzard's secure `RefreshAllData` range.
+
+## Quest log tab (no issue number)
+
+`awqPanel` is registered as a `QuestMapFrame` content frame behind its own
+side tab, using Blizzard's generic display-mode system, rather than being a
+separate window:
+
+- `QuestLogDisplayMode` is a plain table from `EnumUtil.MakeEnum` (a
+  value->key invert, so it has *no array part* — `#` is always 0), so we add
+  a `WorldQuests` key with a value higher than every existing one instead of
+  hooking or overriding anything. Scanning for max (rather than assuming a
+  fixed slot) keeps us compatible with other addons that register their own
+  tabs, however they picked their values.
+- The tab is an anonymous frame inheriting `LargeSideTabButtonTemplate`,
+  appended to `QuestMapFrame.TabButtons`; the panel is appended to
+  `QuestMapFrame.ContentFrames` with a matching `.displayMode`.
+  `QuestLogMixin:SetDisplayMode` iterates both arrays with plain equality
+  checks, so no other registration is needed. Both are set up once, from
+  `QuestFrameModule:InitQuestLogTab` (called from `OnEnable` via
+  `InitQuestLogFrames`) — there is no user-facing way to switch the panel
+  back to a separate window.
+- Since `QuestMapFrame_OnLoad`'s tab-wiring loop has already run by the time
+  addons load, the tab gets its own `SetCustomOnMouseUpHandler`, which also
+  requests a list update immediately on selection (no polling lag).
+- After switching modes we re-run SetDisplayMode's show/hide loop ourselves
+  (`SyncContentFrames`): SetDisplayMode early-outs when the mode is
+  unchanged, which would silently skip its ContentFrames loop and leave two
+  panes overlapping. Mirroring the loop makes our pane switches
+  self-healing, including for other addons' frames.
+- Anchoring rule: the tab anchors below whichever tab is currently last in
+  `TabButtons`. `ValidateTabs` only touches the built-in chain by parentKey,
+  and other addons' tabs may already be chained after `MapLegendTab`, so
+  following the array tail stacks every custom tab without overlap.
+- Layout (`LayoutAwqPanel`): spans `QuestMapFrame.ContentsAnchor` (right edge
+  22px in, matching every built-in pane's gutter), but the pane itself starts
+  29px down rather than filling ContentsAnchor the way `QuestsFrame` does —
+  mirroring `EventsFrame`/`MapLegendFrame` instead, since that reserves the
+  same 29px band (still inside `QuestMapFrame`) that the relocated search box
+  needs (see search box relocation below). The scroll frame fills the pane
+  flush, so the `MinimalScrollBar` floats outside it in the gutter, same as
+  every built-in pane. `ContentsAnchor` moving (e.g. via
+  `QuestSessionManagement`) carries the pane along for free.
+- Unsupported client fallback: if `QuestMapFrame.TabButtons`,
+  `QuestMapFrame.ContentFrames` or `QuestLogDisplayMode` don't exist,
+  `RegisterQuestLogTab` returns false and `InitQuestLogTab` just logs a debug
+  message — `awqPanel` is never shown. There is no docked-window fallback to
+  drop back to.
+
+Deliberate consequences of this design:
+
+- **`SetDisplayMode` owns `awqPanel:Show`/`Hide`.** `QuestLog_Update` never
+  touches panel visibility itself; hide conditions (zero quests,
+  `onlyCurrentZone`, `hideQuestList`) show an empty-state text inside the
+  pane instead (`SetEmptyStateVisible`/`DeactivateListPane`).
+- **No taint surface added.** Registration happens once from clean
+  `OnEnable` context, by inserting array entries and setting plain table
+  keys — no hooks into Blizzard functions, consistent with #168. This is why
+  the earlier "embed into `QuestScrollFrame.Contents`" experiment was
+  abandoned but this tab approach is viable: rendering stays fully inside
+  AWQ-owned widgets and never shares Blizzard's render chain.
+- **Refresh gating.** Both the ticker diffs and `TryApplyQuestLogUpdate`
+  skip work while our display mode isn't selected; switching back to the
+  tab re-renders immediately via its mouse handler.
+- Known limitation: `QuestMapFrame_OpenToQuestDetails` force-switches to the
+  Quests display mode (Blizzard-hardcoded), e.g. when opening the log via a
+  quest alert — users land on the Quests tab in that case.
+- **Search box relocation.** In place of a "World Quests" title, `awqPanel`
+  relocates Blizzard's own `QuestScrollFrame.SearchBox` onto itself
+  (`MoveSearchBoxToPanel`) while our tab is the active display mode, and
+  hands it back to `QuestScrollFrame` (`RestoreSearchBox`) otherwise. It's
+  the literal same `EditBox` instance, not a new one, so:
+  - `QuestLog_Update`'s existing `QuestScrollFrame.SearchBox:GetText()` read
+    needed no changes: since that function only filters/renders while our
+    tab is the active mode, the box is guaranteed (by the relocation) to
+    already be sitting on our pane with "our" text at that point.
+  - It's a deliberately shared instance: whatever is typed filters
+    whichever list (Quests or World Quests) happens to be showing, and the
+    same text is still there when you switch back. This was a user choice,
+    not an oversight — an alternative was saving/restoring independent text
+    per tab, but full sharing was picked for simplicity.
+  - **Move/restore trigger: `awqPanel`'s own `OnShow`/`OnHide` scripts**
+    (set in `InitQuestLogFrames`) are the real, synchronous mechanism.
+    `awqPanel` is a genuine member of `QuestMapFrame.ContentFrames`, so both
+    Blizzard's `SetDisplayMode` and our own `SyncContentFrames` mirror call
+    `awqPanel:SetShown()` *directly* on it (it's not merely a descendant of
+    some other frame that gets shown/hidden) — meaning `OnShow`/`OnHide`
+    fire reliably the instant our display mode is (de)selected, no matter
+    what triggered the change (our tab, another tab, another addon,
+    `QuestMapFrame_OpenToQuestDetails`). This is what actually fixed an
+    earlier version of this feature where switching *away* from our tab
+    visibly hid the search box for up to half a second: `awqPanel` was
+    hidden immediately by `SetDisplayMode`, but with the box still parented
+    to it, and the polled ticker fallback (below) didn't restore it until
+    its next 0.5s tick. `OnShow`/`OnHide` are plain script handlers on an
+    addon-owned frame, not a hook into any Blizzard function, so this adds
+    no taint surface (unlike hooking `SetDisplayMode` itself would).
+  - Both functions are also called from a redundant, harmless-if-it-races
+    fallback path: immediately from the tab's own `SetCustomOnMouseUpHandler`
+    (belt-and-suspenders — `SetDisplayMode`/`SyncContentFrames` right above it
+    already trigger the `OnShow` path in the same call), and from a
+    `lastDisplayMode` diff check added to the `InitializeListRefreshTriggers`
+    ticker (a slower, independent safety net in case the `OnShow`/`OnHide`
+    mechanism is ever bypassed — polled rather than hooked, per #168).
+    `MoveSearchBoxToPanel`/`RestoreSearchBox` are both idempotent, so any of
+    these racing each other (or firing more than once) is harmless.
+  - Blizzard's `QuestLogQuests_Update` calls `SearchBox:UpdateState()` on
+    every `QUEST_LOG_UPDATE` *regardless of which tab is showing*, which
+    `:Disable()`s the box whenever the normal Quests list is empty with no
+    active search — a very plausible state for players who mainly do world
+    quests. The ticker force-`:Enable()`s it back on every tick while our
+    tab is active, so it never gets stuck uninteractable while relocated.
+  - Because it's Blizzard's real box, its other native behavior still
+    applies as-is: `QuestMapFrame_OnHide` clears it (and thus the world
+    quest search term) whenever the map closes, and typing it still feeds
+    Blizzard's own `QuestSearcher` for the Quests tab in the background.
+
+- **Pitfall: `useAtlasSize` textures need a clipping parent.**
+  `awqPaneBackground` uses the `QuestLog-main-background` atlas with
+  `useAtlasSize=true` (its own fixed native pixel size) anchored by a single
+  `TOPLEFT` point, exactly like Blizzard's real `QuestScrollFrame.Background`.
+  Blizzard gets away with the single anchor point because that texture is a
+  layer directly on `QuestScrollFrame`, a `ScrollFrame` widget, and
+  `ScrollFrame`s auto-clip everything they own (own layers included, not
+  just scroll-child content) to their own rect. It was first written parented
+  to `awqPanel` (a plain `Frame`, which has no such clipping), so the
+  texture rendered at its full native height, unclipped, past awqPanel's
+  real bottom edge. Fix: parent `awqPaneBackground` to `awqScrollFrame`
+  instead, so the same clipping Blizzard relies on applies here too.
+
+- **Pitfall: tab icon dimming.** `SidePanelTabButtonMixin:SetChecked` swaps
+  `activeAtlas`/`inactiveAtlas` KeyValues, but no ready-made world quest atlas
+  pair exists, so `awqTab.SetChecked` is overridden per-instance to use the
+  addon's own icon instead. Blizzard's own `-inactive` atlas variants aren't
+  desaturated — they keep their native hue, just dimmed a notch — so an
+  initial attempt using `SetDesaturated()` looked flat grey while unselected
+  instead of matching the other tabs. Fix: a uniform `SetVertexColor`
+  brightness multiplier, which fades the icon without touching its hue.
 
 ## Misc self-healing notes
 
