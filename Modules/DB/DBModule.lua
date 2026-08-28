@@ -55,7 +55,8 @@ local defaultOptions = {
         enableDebugging = "false",
         sortMethod = 2,
         extendedInfo = "false",
-        saveFilters = "false"
+        saveFilters = "false",
+        panelDisplayMode = "tab"
     }
 }
 

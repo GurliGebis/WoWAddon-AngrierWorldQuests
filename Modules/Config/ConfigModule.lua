@@ -307,6 +307,10 @@ do
                 end
                 rootDescription:CreateRadio(text, IsSelected, SetSelected, ilvl)
             end
+        elseif key == 'panelDisplayMode' then
+            rootDescription:CreateRadio(L["config_panelDisplayMode_tab"], IsSelected, SetSelected, "tab")
+            rootDescription:CreateRadio(L["config_panelDisplayMode_window"], IsSelected, SetSelected, "window")
+            rootDescription:CreateRadio(L["config_panelDisplayMode_windowHideMoving"], IsSelected, SetSelected, "windowHideMoving")
         end
     end
 
@@ -382,7 +386,7 @@ do
                 end
             end
 
-            local dropdowns_order = { "timeFilterDuration", "sortMethod", "lootUpgradesLevel" }
+            local dropdowns_order = { "panelDisplayMode", "timeFilterDuration", "sortMethod", "lootUpgradesLevel" }
 
             for i, key in ipairs(dropdowns_order) do
                 dropdowns[i] = DropDown_Create(self)
