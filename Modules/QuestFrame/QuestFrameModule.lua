@@ -147,26 +147,48 @@ do
     }
 
     local CONTAINER_WIDTH = 304 -- matches the fixed width defined in QuestMapFrame.xml; avoids tainting the value via GetWidth()
+    local PANEL_WIDTH = 340 -- used by the standalone-window display mode only
 
-    local awqPanel
+    -- Two host frames, kept alive for the whole session. See ARCHITECTURE.md
+    -- (standalone window).
+    local awqTabPanel -- QuestMapFrame content frame, behind its own side tab
+    local awqWindowPanel -- docked beside WorldMapFrame instead
+
+    -- Shared list, reparented between the two host frames by SetDisplayMode.
     local awqScrollFrame
     local awqContainer
     local headerButton
     local filterButtons = {}
+
+    -- Quest-log-tab-only chrome, parented to awqTabPanel.
     local emptyStateText
     local awqPaneBackground
     local awqPaneBackgroundAtlasHeight
     local awqPaneBorder
 
-    -- awqPanel doubles as a QuestMapFrame content frame. See ARCHITECTURE.md
-    -- (quest log tab).
+    -- Set by SetDisplayMode; mirrored onto QuestFrameModule.isWindowMode for
+    -- the refresh-trigger region outside this do-block.
+    local isWindowMode
+
+    -- awqTabPanel doubles as a QuestMapFrame content frame. See
+    -- ARCHITECTURE.md (quest log tab).
     local awqTab
     local awqDisplayMode
 
-    -- QuestScrollFrame.SearchBox is relocated onto awqPanel while our tab is
-    -- active. See ARCHITECTURE.md (quest log tab).
+    -- Side tabs relocated onto awqWindowPanel while it's shown. See
+    -- ARCHITECTURE.md (standalone window).
+    local SIDE_TAB_KEYS = { "QuestsTab", "MapLegendTab" }
+    local sideTabOriginal = {}
+    local sideTabsMoved = false
+
+    -- QuestScrollFrame.SearchBox relocated onto awqTabPanel. See
+    -- ARCHITECTURE.md (search box relocation).
     local searchBoxOriginal
     local searchBoxMoved = false
+
+    -- Forward declarations: referenced by ActivateListPane/DeactivateListPane
+    -- above their definitions in the "Standalone window" region below.
+    local MoveSideTabsToPanel, RestoreSideTabs
 
     local QuestButton_RarityColorTable = { [Enum.WorldQuestQuality.Common] = 0, [Enum.WorldQuestQuality.Rare] = 3, [Enum.WorldQuestQuality.Epic] = 10 }
 
@@ -618,16 +640,16 @@ do
         return false
     end
 
-    -- Hide conditions show an empty pane instead of hiding awqPanel itself.
-    -- See ARCHITECTURE.md (quest log tab).
+    -- Hide conditions show an empty pane instead of hiding awqTabPanel
+    -- itself. See ARCHITECTURE.md (quest log tab).
     local function SetEmptyStateVisible(visible)
-        if not awqPanel then
+        if not awqTabPanel then
             return
         end
 
         if visible then
             awqScrollFrame:Hide()
-            emptyStateText:SetText(L["No world quests to display."] or "No world quests to display.")
+            emptyStateText:SetText(L["No world quests to display."])
             emptyStateText:Show()
         else
             emptyStateText:Hide()
@@ -637,14 +659,32 @@ do
 
     -- Shared tail of every hide condition in QuestLog_Update.
     local function DeactivateListPane(mapID)
-        SetEmptyStateVisible(true)
+        if isWindowMode then
+            QuestFrameModule:HideWorldQuestWindow()
+        else
+            SetEmptyStateVisible(true)
+        end
+
         QuestFrameModule.lastRenderedMapID = mapID
+    end
+
+    -- Shared head of QuestLog_Update once every hide condition has passed.
+    local function ActivateListPane()
+        if isWindowMode then
+            if awqWindowPanel then
+                awqWindowPanel:Show()
+            end
+
+            MoveSideTabsToPanel()
+        else
+            SetEmptyStateVisible(false)
+        end
     end
 
     -- Crops awqPaneBackground to the scroll frame's real height. See
     -- ARCHITECTURE.md (useAtlasSize clipping pitfall).
     local function ResizeAwqPaneBackground()
-        if not awqPaneBackgroundAtlasHeight then
+        if not awqPaneBackgroundAtlasHeight or isWindowMode then
             return
         end
 
@@ -659,20 +699,13 @@ do
         end
     end
 
-    -- Anchors/sizes awqPanel as a QuestMapFrame content pane. See
-    -- ARCHITECTURE.md (quest log tab) for why it mirrors
-    -- EventsFrame/MapLegendFrame's geometry rather than QuestsFrame's.
+    -- Anchors/sizes awqTabPanel as a QuestMapFrame content pane. See
+    -- ARCHITECTURE.md (quest log tab). Doesn't touch awqScrollFrame; that's
+    -- owned by SetDisplayMode. See ARCHITECTURE.md (standalone window).
     local function LayoutAwqPanel()
-        awqPanel:ClearAllPoints()
-        awqPanel:SetPoint("TOPLEFT", QuestMapFrame.ContentsAnchor, "TOPLEFT", 0, -29)
-        awqPanel:SetPoint("BOTTOMRIGHT", QuestMapFrame.ContentsAnchor, "BOTTOMRIGHT", -22, 0)
-
-        awqPaneBackground:Show()
-        awqPaneBorder:Show()
-
-        awqScrollFrame:ClearAllPoints()
-        awqScrollFrame:SetPoint("TOPLEFT", awqPanel, "TOPLEFT", 0, 0)
-        awqScrollFrame:SetPoint("BOTTOMRIGHT", awqPanel, "BOTTOMRIGHT", 0, 0)
+        awqTabPanel:ClearAllPoints()
+        awqTabPanel:SetPoint("TOPLEFT", QuestMapFrame.ContentsAnchor, "TOPLEFT", 0, -29)
+        awqTabPanel:SetPoint("BOTTOMRIGHT", QuestMapFrame.ContentsAnchor, "BOTTOMRIGHT", -22, 0)
     end
 
     -- Mirrors QuestLogMixin:SetDisplayMode's show/hide loop, which it skips
@@ -683,13 +716,13 @@ do
         end
     end
 
-    -- Relocates QuestScrollFrame.SearchBox onto awqPanel in place of a
+    -- Relocates QuestScrollFrame.SearchBox onto awqTabPanel in place of a
     -- "World Quests" title. Idempotent. See ARCHITECTURE.md (search box
     -- relocation).
     function MoveSearchBoxToPanel()
         local searchBox = QuestScrollFrame and QuestScrollFrame.SearchBox
 
-        if searchBoxMoved or not searchBox or not awqPanel then
+        if searchBoxMoved or not searchBox or not awqTabPanel then
             return
         end
 
@@ -705,7 +738,7 @@ do
             }
         end
 
-        searchBox:SetParent(awqPanel)
+        searchBox:SetParent(awqTabPanel)
         searchBox:ClearAllPoints()
         searchBox:SetPoint("BOTTOMLEFT", awqScrollFrame, "TOPLEFT", 6, 7)
 
@@ -779,7 +812,7 @@ do
                 -- early-returned on an unchanged mode.
                 SyncContentFrames(awqDisplayMode)
 
-                -- Belt-and-suspenders: awqPanel's own OnShow already does
+                -- Belt-and-suspenders: awqTabPanel's own OnShow already does
                 -- this once it actually becomes shown; harmless no-op
                 -- otherwise. See ARCHITECTURE.md (search box relocation).
                 MoveSearchBoxToPanel()
@@ -801,8 +834,8 @@ do
 
         if not ArrayContains(QuestMapFrame.TabButtons, awqTab) then
             table.insert(QuestMapFrame.TabButtons, awqTab)
-            table.insert(QuestMapFrame.ContentFrames, awqPanel)
-            awqPanel.displayMode = awqDisplayMode
+            table.insert(QuestMapFrame.ContentFrames, awqTabPanel)
+            awqTabPanel.displayMode = awqDisplayMode
 
             -- Initial paint: SetDisplayMode is the only thing that calls
             -- SetChecked, and it early-outs when the mode is unchanged.
@@ -812,8 +845,10 @@ do
         return true
     end
 
-    -- Registers awqPanel as a quest log tab and applies its layout. Called
-    -- once, from InitQuestLogFrames.
+    -- Registers awqTabPanel as a quest log tab and applies its layout.
+    -- Always run regardless of the active display mode, so switching back
+    -- to "tab" later is a live re-show. See ARCHITECTURE.md (standalone
+    -- window).
     function QuestFrameModule:InitQuestLogTab()
         if not RegisterQuestLogTab() then
             -- Unsupported client: nothing to fall back to, so the panel
@@ -823,12 +858,178 @@ do
         end
 
         LayoutAwqPanel()
+    end
 
-        -- Not yet the active display mode: stay hidden until our tab (or a
-        -- stale saved displayMode matching it) selects it.
-        if QuestMapFrame.displayMode ~= awqDisplayMode then
-            awqPanel:Hide()
+    --endregion
+
+    --region Standalone window
+
+    -- Moves QuestMapFrame.QuestsTab / .MapLegendTab onto awqWindowPanel.
+    -- Idempotent. See ARCHITECTURE.md (standalone window).
+    function MoveSideTabsToPanel()
+        if sideTabsMoved or not awqWindowPanel then
+            return
         end
+
+        local prevTab
+
+        for _, key in ipairs(SIDE_TAB_KEYS) do
+            local tab = QuestMapFrame[key]
+
+            if tab then
+                if not sideTabOriginal[key] then
+                    local point, relativeTo, relativePoint, xOfs, yOfs = tab:GetPoint(1)
+                    sideTabOriginal[key] = {
+                        parent = tab:GetParent(),
+                        point = point,
+                        relativeTo = relativeTo,
+                        relativePoint = relativePoint,
+                        xOfs = xOfs,
+                        yOfs = yOfs,
+                    }
+                end
+
+                tab:SetParent(awqWindowPanel)
+                tab:ClearAllPoints()
+
+                if prevTab then
+                    tab:SetPoint("TOP", prevTab, "BOTTOM", 0, -3)
+                else
+                    tab:SetPoint("TOPLEFT", awqWindowPanel, "TOPRIGHT", -2, -28)
+                end
+
+                prevTab = tab
+            end
+        end
+
+        sideTabsMoved = true
+    end
+
+    -- Restores the side tabs to their original parent/anchor. Idempotent.
+    function RestoreSideTabs()
+        if not sideTabsMoved then
+            return
+        end
+
+        for _, key in ipairs(SIDE_TAB_KEYS) do
+            local tab = QuestMapFrame[key]
+            local original = sideTabOriginal[key]
+
+            if tab and original then
+                tab:SetParent(original.parent)
+                tab:ClearAllPoints()
+                tab:SetPoint(original.point, original.relativeTo, original.relativePoint, original.xOfs, original.yOfs)
+            end
+        end
+
+        sideTabsMoved = false
+    end
+
+    function QuestFrameModule:HideWorldQuestWindow()
+        if awqWindowPanel then
+            awqWindowPanel:Hide()
+        end
+
+        RestoreSideTabs()
+    end
+
+    -- Keeps awqWindowPanel following WorldMapFrame's size. Polled from
+    -- InitializeListRefreshTriggers. See ARCHITECTURE.md (#168, standalone
+    -- window).
+    function QuestFrameModule:UpdatePanelGeometry(mapShown)
+        if not awqWindowPanel or not isWindowMode then
+            return
+        end
+
+        if not mapShown then
+            awqWindowPanel:Hide()
+            RestoreSideTabs()
+            return
+        end
+
+        local width, height = WorldMapFrame:GetSize()
+        if width ~= awqWindowPanel.lastWorldMapWidth or height ~= awqWindowPanel.lastWorldMapHeight then
+            awqWindowPanel.lastWorldMapWidth = width
+            awqWindowPanel.lastWorldMapHeight = height
+            awqWindowPanel:SetSize(PANEL_WIDTH, height)
+        end
+    end
+
+    -- Live-switches between the two display modes. See ARCHITECTURE.md
+    -- (standalone window).
+    function QuestFrameModule:SetDisplayMode(mode)
+        local newIsWindowMode = (mode == "window" or mode == "windowHideMoving")
+        local newHideWhenMoving = (mode == "windowHideMoving")
+
+        if newIsWindowMode == isWindowMode and newHideWhenMoving == QuestFrameModule.hideWhenMoving and QuestFrameModule.displayModeApplied then
+            return
+        end
+
+        QuestFrameModule.displayModeApplied = true
+        QuestFrameModule.hideWhenMoving = newHideWhenMoving
+
+        -- Tear down whatever the previous mode left active.
+        if isWindowMode then
+            QuestFrameModule:HideWorldQuestWindow()
+        elseif awqTabPanel then
+            RestoreSearchBox()
+            awqTabPanel:Hide()
+        end
+
+        isWindowMode = newIsWindowMode
+        QuestFrameModule.isWindowMode = isWindowMode
+
+        if isWindowMode then
+            if awqTab then
+                awqTab:Hide()
+            end
+
+            if awqDisplayMode and QuestMapFrame.displayMode == awqDisplayMode then
+                QuestMapFrame:SetDisplayMode(QuestLogDisplayMode.Quests)
+            end
+
+            awqScrollFrame:SetParent(awqWindowPanel)
+            awqScrollFrame:ClearAllPoints()
+            awqScrollFrame:SetPoint("TOPLEFT", awqWindowPanel, "TOPLEFT", 8, -8)
+            awqScrollFrame:SetPoint("BOTTOMRIGHT", awqWindowPanel, "BOTTOMRIGHT", -28, 8)
+            awqScrollFrame:Show()
+
+            if awqPaneBackground then
+                awqPaneBackground:Hide()
+            end
+
+            if awqPaneBorder then
+                awqPaneBorder:Hide()
+            end
+
+            if emptyStateText then
+                emptyStateText:Hide()
+            end
+
+            -- Force a fresh geometry read next tick.
+            awqWindowPanel.lastWorldMapWidth = nil
+            awqWindowPanel.lastWorldMapHeight = nil
+        else
+            if awqTab then
+                awqTab:Show()
+            end
+
+            awqScrollFrame:SetParent(awqTabPanel)
+            awqScrollFrame:ClearAllPoints()
+            awqScrollFrame:SetPoint("TOPLEFT", awqTabPanel, "TOPLEFT", 0, 0)
+            awqScrollFrame:SetPoint("BOTTOMRIGHT", awqTabPanel, "BOTTOMRIGHT", 0, 0)
+
+            if awqPaneBackground then
+                awqPaneBackground:Show()
+                ResizeAwqPaneBackground()
+            end
+
+            if awqPaneBorder then
+                awqPaneBorder:Show()
+            end
+        end
+
+        QuestFrameModule:RequestQuestLogUpdate()
     end
 
     --endregion
@@ -842,9 +1043,15 @@ do
             return
         end
 
-        -- Nothing to render while another tab is selected; see
-        -- SetEmptyStateVisible above.
-        if QuestMapFrame.displayMode ~= QuestFrameModule.awqDisplayMode then
+        -- Nothing to render while another tab is selected. Tab mode only.
+        if not isWindowMode and QuestMapFrame.displayMode ~= QuestFrameModule.awqDisplayMode then
+            return
+        end
+
+        -- "windowHideMoving" display mode: stays hidden while the player is
+        -- moving. See ARCHITECTURE.md (hide while moving).
+        if QuestFrameModule.hideWhenMoving and QuestFrameModule.playerIsMoving then
+            DeactivateListPane(QuestMapFrame:GetParent():GetMapID())
             return
         end
 
@@ -865,7 +1072,7 @@ do
             return
         end
 
-        SetEmptyStateVisible(false)
+        ActivateListPane()
 
         local prevButton = headerButton
 
@@ -1170,20 +1377,38 @@ do
     end
 
     function QuestFrameModule:InitQuestLogFrames()
-        awqPanel = CreateFrame("Frame", "AngrierWorldQuestsPanel", QuestMapFrame)
-        awqPanel:SetFrameStrata(QuestScrollFrame:GetFrameStrata())
-        awqPanel:SetFrameLevel(QuestScrollFrame:GetFrameLevel())
-        awqPanel:Hide()
+        -- Both host frames are created up front. See ARCHITECTURE.md
+        -- (standalone window).
+        awqTabPanel = CreateFrame("Frame", "AngrierWorldQuestsPanel", QuestMapFrame)
+        awqTabPanel:SetFrameStrata(QuestScrollFrame:GetFrameStrata())
+        awqTabPanel:SetFrameLevel(QuestScrollFrame:GetFrameLevel())
+        awqTabPanel:Hide()
 
-        -- awqPanel is a real ContentFrames member, so Show/Hide fire
+        -- awqTabPanel is a real ContentFrames member, so Show/Hide fire
         -- reliably the instant our display mode is (de)selected. See
         -- ARCHITECTURE.md (search box relocation).
-        awqPanel:SetScript("OnShow", MoveSearchBoxToPanel)
-        awqPanel:SetScript("OnHide", RestoreSearchBox)
+        awqTabPanel:SetScript("OnShow", MoveSearchBoxToPanel)
+        awqTabPanel:SetScript("OnHide", RestoreSearchBox)
 
-        -- Same scroll frame kind the built-in quest log panes use (gives us
-        -- a MinimalScrollBar) instead of the legacy UIPanelScrollFrameTemplate.
-        awqScrollFrame = CreateFrame("ScrollFrame", "AngrierWorldQuestsScrollFrame", awqPanel, "ScrollFrameTemplate")
+        awqWindowPanel = CreateFrame("Frame", "AngrierWorldQuestsWindowPanel", QuestMapFrame, "BackdropTemplate")
+        awqWindowPanel:SetFrameStrata(QuestScrollFrame:GetFrameStrata())
+        awqWindowPanel:SetFrameLevel(QuestScrollFrame:GetFrameLevel())
+        awqWindowPanel:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", 4, 0)
+        awqWindowPanel:SetSize(PANEL_WIDTH, WorldMapFrame:GetHeight())
+        awqWindowPanel:SetBackdrop({
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            edgeSize = 16,
+            insets = { left = 4, right = 4, top = 4, bottom = 4 },
+        })
+        awqWindowPanel:SetBackdropColor(0, 0, 0, 1)
+        awqWindowPanel:SetBackdropBorderColor(1, 1, 1, 1)
+        awqWindowPanel:Hide()
+
+        -- Shared between both display modes; reparented by SetDisplayMode.
+        -- Always uses ScrollFrameTemplate (can't switch templates on an
+        -- existing frame). See ARCHITECTURE.md (standalone window).
+        awqScrollFrame = CreateFrame("ScrollFrame", "AngrierWorldQuestsScrollFrame", awqTabPanel, "ScrollFrameTemplate")
 
         -- Runtime-created frames can't receive XML KeyValues before OnLoad,
         -- so mirror QuestScrollFrame's scrollBarX/TopY/BottomY afterwards
@@ -1209,16 +1434,17 @@ do
         headerButton.layoutIndex = 1
         headerButton.CollapseButton:Hide()
 
-        -- Shown instead of the list when a hide condition applies.
-        -- Positioned like QuestScrollFrame's own EmptyText.
-        emptyStateText = awqPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        emptyStateText:SetPoint("TOP", awqPanel, "TOP", 0, -30)
+        -- Shown instead of the list when a hide condition applies (tab mode
+        -- only). Positioned like QuestScrollFrame's own EmptyText.
+        emptyStateText = awqTabPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        emptyStateText:SetPoint("TOP", awqTabPanel, "TOP", 0, -30)
         emptyStateText:Hide()
 
         -- Mirrors the built-in quest log panes' chrome: background matches
         -- QuestScrollFrame's, border mirrors QuestLogBorderFrameTemplate.
-        -- Parented to awqScrollFrame (not awqPanel) so ScrollFrame clipping
-        -- applies. See ARCHITECTURE.md (useAtlasSize clipping pitfall).
+        -- Parented to awqScrollFrame (not awqTabPanel) so ScrollFrame
+        -- clipping applies. See ARCHITECTURE.md (useAtlasSize clipping
+        -- pitfall). Tab mode only.
         awqPaneBackground = awqScrollFrame:CreateTexture(nil, "BACKGROUND")
         awqPaneBackground:SetAtlas("QuestLog-main-background", true)
         awqPaneBackground:SetPoint("TOPLEFT", awqScrollFrame, "TOPLEFT", 0, 0)
@@ -1230,11 +1456,15 @@ do
         -- pitfall).
         awqScrollFrame:SetScript("OnSizeChanged", ResizeAwqPaneBackground)
 
-        awqPaneBorder = CreateFrame("Frame", nil, awqPanel, "QuestLogBorderFrameTemplate")
+        awqPaneBorder = CreateFrame("Frame", nil, awqTabPanel, "QuestLogBorderFrameTemplate")
         awqPaneBorder:Hide()
 
-        -- Registers awqPanel as a quest log tab and applies its layout.
+        -- Registers awqTabPanel as a quest log tab regardless of the active
+        -- display mode (see InitQuestLogTab).
         self:InitQuestLogTab()
+
+        -- Applies the configured display mode.
+        self:SetDisplayMode(ConfigModule:Get("panelDisplayMode"))
     end
 
     function QuestFrameModule:IsQuestListLockedDown()
@@ -1286,6 +1516,11 @@ do
 
             local mapShown = QuestMapFrame and QuestMapFrame:IsShown()
 
+            -- Polled since standalone-window visibility isn't display-mode
+            -- driven. No-op in tab mode. See ARCHITECTURE.md (standalone
+            -- window).
+            QuestFrameModule:UpdatePanelGeometry(mapShown)
+
             if not mapShown then
                 lastMapShown = false
                 return
@@ -1301,9 +1536,9 @@ do
                 lastNumQuestLogEntries = C_QuestLog.GetNumQuestLogEntries()
                 lastDisplayMode = QuestMapFrame.displayMode
 
-                -- Edge case: map reopened with our tab already active (e.g.
-                -- a reload mid-session) without a click to trigger this.
-                if lastDisplayMode == QuestFrameModule.awqDisplayMode then
+                -- Edge case: map reopened with our tab already active.
+                -- Tab mode only.
+                if not QuestFrameModule.isWindowMode and lastDisplayMode == QuestFrameModule.awqDisplayMode then
                     MoveSearchBoxToPanel()
                 end
 
@@ -1312,23 +1547,30 @@ do
                 return
             end
 
-            -- Redundant fallback: awqPanel's OnShow/OnHide (see
-            -- InitQuestLogFrames) are the real, synchronous mechanism for
-            -- this. See ARCHITECTURE.md (search box relocation).
-            if QuestMapFrame.displayMode ~= lastDisplayMode then
-                if QuestMapFrame.displayMode == QuestFrameModule.awqDisplayMode then
-                    MoveSearchBoxToPanel()
-                elseif lastDisplayMode == QuestFrameModule.awqDisplayMode then
-                    RestoreSearchBox()
+            -- Standalone-window mode: the list is visible whenever the map
+            -- is shown, no tab-selection gate. See ARCHITECTURE.md
+            -- (standalone window).
+            local listVisible = true
+
+            if not QuestFrameModule.isWindowMode then
+                -- Redundant fallback: awqTabPanel's OnShow/OnHide (see
+                -- InitQuestLogFrames) are the real, synchronous mechanism for
+                -- this. See ARCHITECTURE.md (search box relocation).
+                if QuestMapFrame.displayMode ~= lastDisplayMode then
+                    if QuestMapFrame.displayMode == QuestFrameModule.awqDisplayMode then
+                        MoveSearchBoxToPanel()
+                    elseif lastDisplayMode == QuestFrameModule.awqDisplayMode then
+                        RestoreSearchBox()
+                    end
+
+                    lastDisplayMode = QuestMapFrame.displayMode
                 end
 
-                lastDisplayMode = QuestMapFrame.displayMode
+                -- Only diff/poll for the list while our tab is the selected
+                -- display mode. Prevents a dirty-flag churn from re-requesting
+                -- every tick while another tab is active.
+                listVisible = QuestMapFrame.displayMode == QuestFrameModule.awqDisplayMode
             end
-
-            -- Only diff/poll for the list while our tab is the selected
-            -- display mode. Prevents a dirty-flag churn from re-requesting
-            -- every tick while another tab is active.
-            local listVisible = QuestMapFrame.displayMode == QuestFrameModule.awqDisplayMode
 
             if listVisible then
                 local mapID = WorldMapFrame:GetMapID()
@@ -1359,13 +1601,15 @@ do
                     QuestFrameModule:RequestFullRefresh("QUEST_LOG_CHANGED")
                 end
 
-                -- Blizzard's QuestLogQuests_Update disables the search box
-                -- whenever the Quests list is empty, regardless of which
-                -- tab is showing. Force it back on. See ARCHITECTURE.md
-                -- (search box relocation).
-                local searchBox = QuestScrollFrame and QuestScrollFrame.SearchBox
-                if searchBox and not searchBox:IsEnabled() then
-                    searchBox:Enable()
+                if not QuestFrameModule.isWindowMode then
+                    -- Blizzard's QuestLogQuests_Update disables the search box
+                    -- whenever the Quests list is empty, regardless of which
+                    -- tab is showing. Force it back on. See ARCHITECTURE.md
+                    -- (search box relocation).
+                    local searchBox = QuestScrollFrame and QuestScrollFrame.SearchBox
+                    if searchBox and not searchBox:IsEnabled() then
+                        searchBox:Enable()
+                    end
                 end
             end
 
@@ -1390,9 +1634,8 @@ do
             return
         end
 
-        -- Skip while another tab is selected (the tab's own mouse handler
-        -- re-requests the update the moment it is selected).
-        if QuestMapFrame.displayMode ~= QuestFrameModule.awqDisplayMode then
+        -- Skip while another tab is selected. Tab mode only.
+        if not QuestFrameModule.isWindowMode and QuestMapFrame.displayMode ~= QuestFrameModule.awqDisplayMode then
             return
         end
 
@@ -1446,6 +1689,41 @@ do
         end)
 
         QuestFrameModule:RequestQuestLogUpdate()
+    end
+end
+--endregion
+
+--region Player-movement show/hide trigger
+--
+-- Event-driven (not polled): PLAYER_STARTED_MOVING/PLAYER_STOPPED_MOVING are
+-- dispatched by the engine, never from inside Blizzard's secure execution
+-- chains, so this is safe unlike the rest of #168's polling rule. See
+-- ARCHITECTURE.md (hide while moving).
+do
+    QuestFrameModule.playerIsMoving = nil
+
+    function QuestFrameModule:InitializeMovementTriggers()
+        local function OnEvent(_, event)
+            if event == "PLAYER_STARTED_MOVING" then
+                QuestFrameModule.playerIsMoving = true
+
+                if QuestFrameModule.hideWhenMoving then
+                    QuestFrameModule:RequestQuestLogUpdate()
+                end
+            else
+                local wasMoving = QuestFrameModule.playerIsMoving == true
+                QuestFrameModule.playerIsMoving = nil
+
+                if wasMoving then
+                    QuestFrameModule:RequestQuestLogUpdate()
+                end
+            end
+        end
+
+        local movementEventFrame = CreateFrame("Frame")
+        movementEventFrame:SetScript("OnEvent", OnEvent)
+        movementEventFrame:RegisterEvent("PLAYER_STARTED_MOVING")
+        movementEventFrame:RegisterEvent("PLAYER_STOPPED_MOVING")
     end
 end
 --endregion
@@ -1971,25 +2249,25 @@ do
             awqMenu:CreateTitle(DISPLAY_OPTIONS or OPTIONS)
 
             awqMenu:CreateCheckbox(
-                L["config_hideFilteredPOI"] or "Hide Filtered POI",
+                L["config_hideFilteredPOI"],
                 function() return ConfigModule:Get("hideFilteredPOI") end,
                 function() ConfigModule:Set("hideFilteredPOI", tostring(not ConfigModule:Get("hideFilteredPOI"))) end
             )
 
             awqMenu:CreateCheckbox(
-                L["config_hideUntrackedPOI"] or "Hide Untracked POI",
+                L["config_hideUntrackedPOI"],
                 function() return ConfigModule:Get("hideUntrackedPOI") end,
                 function() ConfigModule:Set("hideUntrackedPOI", tostring(not ConfigModule:Get("hideUntrackedPOI"))) end
             )
 
             awqMenu:CreateCheckbox(
-                L["config_showContinentPOI"] or "Show Continent POI",
+                L["config_showContinentPOI"],
                 function() return ConfigModule:Get("showContinentPOI") end,
                 function() ConfigModule:Set("showContinentPOI", tostring(not ConfigModule:Get("showContinentPOI"))) end
             )
 
             awqMenu:CreateCheckbox(
-                L["config_onlyCurrentZone"] or "Only Current Zone",
+                L["config_onlyCurrentZone"],
                 function() return ConfigModule:Get("onlyCurrentZone") end,
                 function() ConfigModule:Set("onlyCurrentZone", tostring(not ConfigModule:Get("onlyCurrentZone"))) end
             )
@@ -2000,6 +2278,12 @@ do
         ConfigModule:RegisterCallback({ "hideUntrackedPOI", "hideFilteredPOI", "showContinentPOI", "onlyCurrentZone", "sortMethod", "selectedFilters","disabledFilters", "filterEmissary", "filterLoot", "filterFaction", "filterZone", "filterTime", "lootFilterUpgrades", "lootUpgradesLevel", "timeFilterDuration" }, function(key)
             QuestFrameModule:RequestQuestLogUpdate()
             self:RequestFullRefresh(key)
+        end)
+
+        -- Live switch, no reload needed. See ARCHITECTURE.md (standalone
+        -- window).
+        ConfigModule:RegisterCallback("panelDisplayMode", function(_, value)
+            QuestFrameModule:SetDisplayMode(value)
         end)
     end
 
@@ -2012,13 +2296,17 @@ do
         self:ApplyWorkarounds()
         self:ExtendMapMenu()
 
-        -- Create awqPanel, awqContainer, titleFramePool and headerButton.
+        -- Create awqTabPanel, awqWindowPanel, awqContainer, titleFramePool and headerButton.
         self:InitQuestLogFrames()
 
         -- Taint-safe refresh triggers: see ARCHITECTURE.md (#168, #173, #174) for
         -- why these are C_Timer tickers instead of hooks or event frames.
         self:InitializeListRefreshTriggers()
         self:InitializePinRefreshTriggers()
+
+        -- Event-driven (not polled); see the player-movement show/hide
+        -- trigger region.
+        self:InitializeMovementTriggers()
 
         self:RegisterCallbacks()
     end

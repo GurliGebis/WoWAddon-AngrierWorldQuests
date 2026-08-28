@@ -1,3 +1,6 @@
+# 12.1.0-20260828-1
+* Re-added the option to show the world quest list in its own separate window instead of the quest log tab, selectable from dropdown in configuration dialog.
+
 # 12.1.0-20260826-2
 * Moved the world quest list into the quest log as its own tab.
 

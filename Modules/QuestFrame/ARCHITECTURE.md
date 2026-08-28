@@ -257,8 +257,9 @@ separate window:
 - Unsupported client fallback: if `QuestMapFrame.TabButtons`,
   `QuestMapFrame.ContentFrames` or `QuestLogDisplayMode` don't exist,
   `RegisterQuestLogTab` returns false and `InitQuestLogTab` just logs a debug
-  message — `awqPanel` is never shown. There is no docked-window fallback to
-  drop back to.
+  message — `awqPanel` is never shown. There is no automatic docked-window
+  fallback; users on such a client have to switch `panelDisplayMode` to
+  `"window"` manually (see below).
 
 Deliberate consequences of this design:
 
@@ -349,6 +350,105 @@ Deliberate consequences of this design:
   initial attempt using `SetDesaturated()` looked flat grey while unselected
   instead of matching the other tabs. Fix: a uniform `SetVertexColor`
   brightness multiplier, which fades the icon without touching its hue.
+
+## Standalone window (`panelDisplayMode = "window"`, no issue number)
+
+Some users prefer the world quest list back as its own docked window next to
+the map (the layout used before the quest log tab was added) instead of a
+`QuestMapFrame` content pane, e.g. because they want both the built-in Quests
+tab and the world quest list visible at the same time. `panelDisplayMode`
+("tab" or "window") controls this, and — unlike most other options, which are
+read fresh on every render — it's a structural choice about which frame
+hosts the shared list, so it's applied through a dedicated
+`QuestFrameModule:SetDisplayMode(mode)` function instead of the generic
+`RequestQuestLogUpdate`/`RequestFullRefresh` config-callback path.
+
+- **Two host frames, always both created.** `InitQuestLogFrames` creates
+  *both* `awqTabPanel` (the `QuestMapFrame` content pane, registered as a
+  quest log tab exactly as before) and `awqWindowPanel` (a `BackdropTemplate`
+  frame docked beside `WorldMapFrame`) up front, every session, regardless of
+  the configured mode. Only one is ever shown at a time; the other just sits
+  hidden. Building both unconditionally is what makes switching later a live
+  operation — there is no lazy/on-demand creation to invoke mid-session.
+- **The list itself is a single shared instance.** `awqScrollFrame` (and
+  everything inside it: `awqContainer`, the filter buttons, the quest-row
+  `titleFramePool`, `headerButton`) is created exactly once, initially
+  parented to `awqTabPanel`. Switching modes reparents this same instance
+  onto whichever host frame is now active (`SetDisplayMode`) rather than
+  creating a second copy — quest rows, scroll position semantics, and filter
+  button state all carry over untouched.
+- **Live switching, no reload.** `SetDisplayMode` is called once from
+  `InitQuestLogFrames` (applying the saved config value) and again from the
+  `panelDisplayMode` config callback (see `RegisterCallbacks`) every time the
+  user changes the dropdown. It tears down whatever the previous mode left
+  active (`HideWorldQuestWindow`/`RestoreSideTabs` for window mode,
+  `RestoreSearchBox`/`awqTabPanel:Hide()` for tab mode), reparents
+  `awqScrollFrame` with mode-appropriate anchors, toggles `awqTab`'s
+  visibility, and force-switches `QuestMapFrame` off our display mode if it
+  was still selected when leaving tab mode for window mode (our tab button is
+  about to be hidden, so nothing must be left pointing at its now-empty
+  pane). `isWindowMode` (mirrored onto `QuestFrameModule.isWindowMode` for the
+  refresh-trigger region outside the `QuestLog` do-block) is the single
+  runtime flag every other mode-aware branch in this file reads.
+- **One scroll-frame template for both modes.** `CreateFrame`'s template
+  can't be changed after creation, so a single shared `awqScrollFrame` has to
+  pick one template for its whole lifetime. It always uses
+  `ScrollFrameTemplate` (the same one the built-in quest log panes use, with
+  a `MinimalScrollBar`) rather than switching to the older
+  `UIPanelScrollFrameTemplate` the pre-tab version used for the docked
+  window — a cosmetic difference from the original standalone window, traded
+  for not needing two separate scroll frames (and thus two separate
+  containers/button pools/quest-row-building passes) kept in sync.
+- **Geometry.** `awqWindowPanel` is anchored `TOPLEFT` off `WorldMapFrame`'s
+  `TOPRIGHT`, sized to `PANEL_WIDTH` x `WorldMapFrame`'s height, and given the
+  same tooltip-background/border `BackdropTemplate` look the pre-tab version
+  used (there is no `QuestLogBorderFrameTemplate`/`QuestLog-main-background`
+  chrome or empty-state text in this mode — both belong to `awqTabPanel` and
+  are simply hidden, never destroyed, while window mode is active). Since
+  `awqWindowPanel` is never a `ContentFrames` member, nothing else resizes it
+  automatically, so `QuestFrameModule:UpdatePanelGeometry` (polled from
+  `InitializeListRefreshTriggers`, same taint-safety rationale as the rest of
+  that ticker — see #168) keeps its size following `WorldMapFrame:GetSize()`.
+  `SetDisplayMode` clears the cached last-seen width/height when entering
+  window mode so the very next tick re-applies the size instead of trusting
+  a possibly-stale value from a previous window-mode session.
+- **Side tabs.** `QuestMapFrame.QuestsTab`/`.MapLegendTab` visually sit behind
+  a docked `awqWindowPanel`, so `MoveSideTabsToPanel`/`RestoreSideTabs`
+  relocate them onto its edge while it's shown and put them back when it's
+  hidden, exactly like the pre-tab implementation did.
+- **Visibility is direct, not display-mode-driven.** While `isWindowMode` is
+  true, every place that gates on `QuestLogDisplayMode` (`QuestLog_Update`'s
+  "another tab is selected" check, the ticker's `listVisible`/
+  `lastDisplayMode` bookkeeping, `TryApplyQuestLogUpdate`'s early-out) is
+  skipped instead. `QuestLog_Update`'s hide conditions
+  (`onlyCurrentZone`/`hideQuestList`/zero quests) call
+  `QuestFrameModule:HideWorldQuestWindow()` (`awqWindowPanel:Hide()` +
+  `RestoreSideTabs()`) through the shared `DeactivateListPane` helper, and
+  the "should render" path `Show()`s `awqWindowPanel` and calls
+  `MoveSideTabsToPanel()` through the shared `ActivateListPane` helper — the
+  same two helpers the quest-log-tab mode uses to show/hide its empty-state
+  pane instead.
+- **No search box relocation.** `QuestScrollFrame.SearchBox` stays exactly
+  where Blizzard put it; `MoveSearchBoxToPanel`/`RestoreSearchBox` and the
+  search-box-`:Enable()` workaround are both skipped for this mode, since
+  `awqWindowPanel` isn't occupying the built-in search box's usual home.
+- **Everything else is shared.** Filter buttons, quest-row building/sorting,
+  the taint-safe pin-refresh ticker (#168, #173, #174), and the
+  `RebuildFilterDecisionCache`/`ShouldFilterQuest` filtering pipeline (#156)
+  are unchanged between the two display modes — only panel
+  creation/placement and show/hide plumbing differ.
+
+## Hide while moving (`panelDisplayMode = "windowHideMoving"`, no issue number)
+
+A third `panelDisplayMode` value: the standalone window, but hidden while
+the player is moving and shown again once they stop. `QuestFrameModule.hideWhenMoving`
+(set by `SetDisplayMode`) and `QuestFrameModule.playerIsMoving` (set by the
+player-movement show/hide trigger region) are read together at the top of
+`QuestLog_Update`, which calls the same `DeactivateListPane` other hide
+conditions use. Movement events are the one exception to #168's
+polling-only rule — `PLAYER_STARTED_MOVING`/`PLAYER_STOPPED_MOVING` are
+engine-dispatched, never part of Blizzard's secure execution chains, so
+handling them directly can't taint anything.
 
 ## Misc self-healing notes
 
