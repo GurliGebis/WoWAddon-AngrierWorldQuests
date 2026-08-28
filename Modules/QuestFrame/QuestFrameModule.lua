@@ -627,7 +627,7 @@ do
 
         if visible then
             awqScrollFrame:Hide()
-            emptyStateText:SetText(L["No world quests to display."] or "No world quests to display.")
+            emptyStateText:SetText(L["No world quests to display."])
             emptyStateText:Show()
         else
             emptyStateText:Hide()
@@ -1971,25 +1971,25 @@ do
             awqMenu:CreateTitle(DISPLAY_OPTIONS or OPTIONS)
 
             awqMenu:CreateCheckbox(
-                L["config_hideFilteredPOI"] or "Hide Filtered POI",
+                L["config_hideFilteredPOI"],
                 function() return ConfigModule:Get("hideFilteredPOI") end,
                 function() ConfigModule:Set("hideFilteredPOI", tostring(not ConfigModule:Get("hideFilteredPOI"))) end
             )
 
             awqMenu:CreateCheckbox(
-                L["config_hideUntrackedPOI"] or "Hide Untracked POI",
+                L["config_hideUntrackedPOI"],
                 function() return ConfigModule:Get("hideUntrackedPOI") end,
                 function() ConfigModule:Set("hideUntrackedPOI", tostring(not ConfigModule:Get("hideUntrackedPOI"))) end
             )
 
             awqMenu:CreateCheckbox(
-                L["config_showContinentPOI"] or "Show Continent POI",
+                L["config_showContinentPOI"],
                 function() return ConfigModule:Get("showContinentPOI") end,
                 function() ConfigModule:Set("showContinentPOI", tostring(not ConfigModule:Get("showContinentPOI"))) end
             )
 
             awqMenu:CreateCheckbox(
-                L["config_onlyCurrentZone"] or "Only Current Zone",
+                L["config_onlyCurrentZone"],
                 function() return ConfigModule:Get("onlyCurrentZone") end,
                 function() ConfigModule:Set("onlyCurrentZone", tostring(not ConfigModule:Get("onlyCurrentZone"))) end
             )
