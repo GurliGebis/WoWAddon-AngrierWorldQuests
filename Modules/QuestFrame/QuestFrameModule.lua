@@ -290,7 +290,9 @@ do
 
             for _, factionID in ipairs(factions) do
                 local factionData = C_Reputation.GetFactionDataByID(factionID)
-                rootDescription:CreateRadio(factionData.name, IsSelected, SetSelected, factionID)
+                if factionData and factionData.name then
+                    rootDescription:CreateRadio(factionData.name, IsSelected, SetSelected, factionID)
+                end
             end
 
         elseif filterKey == "TIME" then
