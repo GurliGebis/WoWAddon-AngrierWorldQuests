@@ -290,7 +290,9 @@ do
 
             for _, factionID in ipairs(factions) do
                 local factionData = C_Reputation.GetFactionDataByID(factionID)
-                rootDescription:CreateRadio(factionData.name, IsSelected, SetSelected, factionID)
+                if factionData and factionData.name then
+                    rootDescription:CreateRadio(factionData.name, IsSelected, SetSelected, factionID)
+                end
             end
 
         elseif filterKey == "TIME" then
@@ -599,7 +601,7 @@ do
                 return (a.factionID or 0) < (b.factionID or 0)
             end
         elseif sortMethod == sortMethods.SORT_TIME then
-            if math.abs((a.timeLeftMinutes or 0) - (b.timeLeftMinutes or 0)) > 2 then
+            if (a.timeLeftMinutes or 0) ~= (b.timeLeftMinutes or 0) then
                 return (a.timeLeftMinutes or 0) < (b.timeLeftMinutes or 0)
             end
         elseif sortMethod == sortMethods.SORT_ZONE then
@@ -1197,7 +1199,7 @@ do
             return nil
         end
 
-        if searchBoxText ~= "" and not title:lower():find(searchBoxText, 1, true) then
+        if searchBoxText ~= "" and not (title or ""):lower():find(searchBoxText, 1, true) then
             return nil
         end
 
@@ -1266,6 +1268,7 @@ do
 
         if ( timeLeftMinutes and timeLeftMinutes > 0 and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
             button.TimeIcon:Show()
+            button.TimeIcon:ClearAllPoints()
 
             if hasIcon then
                 button.TimeIcon:SetSize(14, 14)

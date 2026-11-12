@@ -1,3 +1,11 @@
+# 12.1.5-20261112-1
+* Fix possible "invalid order function for sorting" error when sorting the world quest list by time.
+* Fix the time icon on world quest list rows being mispositioned after a row is reused.
+* Fix a Lua error when opening the faction filter menu if a faction's data is unavailable.
+* Fix a Lua error when a saved filter selection refers to a filter that is not registered.
+* Fix a Lua error when a quest has no map ID while resolving its continent.
+* Fix a Lua error when searching the world quest list and a quest title is not loaded yet.
+
 # 12.1.5-20261014-1
 * Updated Retail TOC to match 12.1.5
 

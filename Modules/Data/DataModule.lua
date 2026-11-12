@@ -297,6 +297,10 @@ do
     local continentMapID = {}
 
     function DataModule:GetContentMapIDFromMapID(mapID)
+        if not mapID then
+            return nil
+        end
+
         if continentMapID[mapID] == nil then
             local continentInfo = MapUtil.GetMapParentInfo(mapID, Enum.UIMapType.Continent)
 
@@ -340,7 +344,7 @@ do
 
         for key, _ in pairs(selectedFilters) do
             local filter = ConfigModule.Filters[key]
-            if filter.preset == _AngrierWorldQuests.Constants.FILTERS.CURRENCY then
+            if filter and filter.preset == _AngrierWorldQuests.Constants.FILTERS.CURRENCY then
                 hasCurrencyFilter = true
                 for k, currencyInfo in ipairs(rewardCurrencies) do
                     if filter.currencyID == currencyInfo.currencyID then
