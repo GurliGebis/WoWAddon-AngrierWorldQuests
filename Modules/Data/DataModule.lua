@@ -297,6 +297,10 @@ do
     local continentMapID = {}
 
     function DataModule:GetContentMapIDFromMapID(mapID)
+        if not mapID then
+            return nil
+        end
+
         if continentMapID[mapID] == nil then
             local continentInfo = MapUtil.GetMapParentInfo(mapID, Enum.UIMapType.Continent)
 
