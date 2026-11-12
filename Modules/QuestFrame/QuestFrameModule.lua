@@ -1199,7 +1199,7 @@ do
             return nil
         end
 
-        if searchBoxText ~= "" and not title:lower():find(searchBoxText, 1, true) then
+        if searchBoxText ~= "" and not (title or ""):lower():find(searchBoxText, 1, true) then
             return nil
         end
 
