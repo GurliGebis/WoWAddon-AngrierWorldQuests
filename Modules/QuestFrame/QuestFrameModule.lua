@@ -1266,6 +1266,7 @@ do
 
         if ( timeLeftMinutes and timeLeftMinutes > 0 and timeLeftMinutes <= WORLD_QUESTS_TIME_LOW_MINUTES ) then
             button.TimeIcon:Show()
+            button.TimeIcon:ClearAllPoints()
 
             if hasIcon then
                 button.TimeIcon:SetSize(14, 14)
