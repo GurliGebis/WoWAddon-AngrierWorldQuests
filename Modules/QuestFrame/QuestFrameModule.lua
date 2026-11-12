@@ -599,7 +599,7 @@ do
                 return (a.factionID or 0) < (b.factionID or 0)
             end
         elseif sortMethod == sortMethods.SORT_TIME then
-            if math.abs((a.timeLeftMinutes or 0) - (b.timeLeftMinutes or 0)) > 2 then
+            if (a.timeLeftMinutes or 0) ~= (b.timeLeftMinutes or 0) then
                 return (a.timeLeftMinutes or 0) < (b.timeLeftMinutes or 0)
             end
         elseif sortMethod == sortMethods.SORT_ZONE then

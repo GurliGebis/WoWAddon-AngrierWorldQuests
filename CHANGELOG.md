@@ -1,3 +1,6 @@
+# 12.1.5-20261112-1
+* Fix possible "invalid order function for sorting" error when sorting the world quest list by time.
+
 # 12.1.5-20261014-1
 * Updated Retail TOC to match 12.1.5
 
