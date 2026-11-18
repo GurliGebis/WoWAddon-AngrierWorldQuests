@@ -631,7 +631,6 @@ do
     function DataModule:QuestLogChanged()
         wipe(cachedItems)
         wipe(questTagInfoCache)
-        wipe(rewardPreloadRequested)
     end
 
     function DataModule:EnteringWorld()
