@@ -1,5 +1,6 @@
 # 12.1.5-20261118-1
 * Fix cancelling the options dialog not reverting changed settings.
+* Fix filter selection sometimes being out of date after toggling enabled filters or resetting to defaults.
 
 # 12.1.5-20261112-1
 * Fix possible "invalid order function for sorting" error when sorting the world quest list by time.

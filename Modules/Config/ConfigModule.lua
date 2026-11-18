@@ -94,6 +94,10 @@ do
         end
     end
 
+    function ConfigModule:InvalidateFilterTable()
+        filterTable = nil
+    end
+
     function ConfigModule:Set(key, newValue, silent)
         DBModule:SetValue(key, newValue)
 
@@ -249,7 +253,7 @@ do
             value = bit.bor(value, mask)
         end
 
-        DBModule:SetValue("selectedFilters", nil)
+        ConfigModule:Set("selectedFilters", nil, true)
 
         ConfigModule:Set(key, value)
     end
@@ -339,6 +343,7 @@ do
 
     local function Panel_OnDefaults(self)
         DBModule:Reset()
+        ConfigModule:InvalidateFilterTable()
 
         for key, callbacks_key in pairs(callbacks) do
             for _, func in ipairs(callbacks_key) do
