@@ -610,7 +610,7 @@ do
                 return (a.mapID or 0) < (b.mapID or 0)
             end
         elseif sortMethod == sortMethods.SORT_REWARDS then
-            local default_cat = #ConfigModule.Filters + 1
+            local default_cat = 100
             local acat = (a.rewardCategory and REWARDS_ORDER[a.rewardCategory]) or default_cat
             local bcat = (b.rewardCategory and REWARDS_ORDER[b.rewardCategory]) or default_cat
             if acat ~= bcat then
