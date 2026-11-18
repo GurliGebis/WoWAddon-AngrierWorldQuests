@@ -1160,10 +1160,10 @@ do
                     end
 
                     if optionKey ~= "SORT" then
-                        if selectedFilters[optionKey] then
-                            filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
-                        else
-                            filterButton:SetNormalAtlas("worldquest-tracker-ring")
+                        local sel = selectedFilters[optionKey] and true or false
+                        if filterButton.awqSelected ~= sel then
+                            filterButton.awqSelected = sel
+                            filterButton:SetNormalAtlas(sel and "worldquest-tracker-ring-selected" or "worldquest-tracker-ring")
                         end
                     end
                     prevFilter = filterButton

@@ -4,6 +4,7 @@
 * Fix Horde players getting the Alliance map set (including Mechagon) on Nazjatar.
 * Fix filters chosen from the world map menu leaving stale emissary/faction/loot/zone/time sub-filter values active.
 * Fix quests without a reward sorting first instead of last when sorting by rewards.
+* Only update filter button textures when their selection state changes.
 
 # 12.1.5-20261112-1
 * Fix possible "invalid order function for sorting" error when sorting the world quest list by time.
