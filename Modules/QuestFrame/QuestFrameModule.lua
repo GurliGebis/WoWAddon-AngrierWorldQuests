@@ -396,6 +396,7 @@ do
             end
         end
     end
+    QuestFrameModule.ResetOtherFilterValues = ResetOtherFilterValues
 
     local function FilterButton_OnClick(self, button)
         PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
@@ -609,7 +610,7 @@ do
                 return (a.mapID or 0) < (b.mapID or 0)
             end
         elseif sortMethod == sortMethods.SORT_REWARDS then
-            local default_cat = #ConfigModule.Filters + 1
+            local default_cat = 100
             local acat = (a.rewardCategory and REWARDS_ORDER[a.rewardCategory]) or default_cat
             local bcat = (b.rewardCategory and REWARDS_ORDER[b.rewardCategory]) or default_cat
             if acat ~= bcat then
@@ -624,10 +625,6 @@ do
         end
 
         return a.Text:GetText() < b.Text:GetText()
-    end
-
-    function QuestFrameModule:QuestLogClosed()
-        DataModule:ClearQuestTagInfoCache()
     end
 
     --region Quest log tab
@@ -1159,10 +1156,10 @@ do
                     end
 
                     if optionKey ~= "SORT" then
-                        if selectedFilters[optionKey] then
-                            filterButton:SetNormalAtlas("worldquest-tracker-ring-selected")
-                        else
-                            filterButton:SetNormalAtlas("worldquest-tracker-ring")
+                        local sel = selectedFilters[optionKey] and true or false
+                        if filterButton.awqSelected ~= sel then
+                            filterButton.awqSelected = sel
+                            filterButton:SetNormalAtlas(sel and "worldquest-tracker-ring-selected" or "worldquest-tracker-ring")
                         end
                     end
                     prevFilter = filterButton
@@ -2213,8 +2210,10 @@ do
                                     ConfigModule:ToggleFilter(optionKey)
                                 else
                                     if ConfigModule:IsOnlyFilter(optionKey) then
+                                        QuestFrameModule.ResetOtherFilterValues(nil)
                                         ConfigModule:SetNoFilter()
                                     else
+                                        QuestFrameModule.ResetOtherFilterValues(optionKey)
                                         ConfigModule:SetOnlyFilter(optionKey)
                                     end
                                 end
