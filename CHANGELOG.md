@@ -6,6 +6,7 @@
 * Fix quests without a reward sorting first instead of last when sorting by rewards.
 * Only update filter button textures when their selection state changes.
 * Stop re-requesting reward preload data for every quest after each quest log change.
+* Removed unused code.
 
 # 12.1.5-20261112-1
 * Fix possible "invalid order function for sorting" error when sorting the world quest list by time.

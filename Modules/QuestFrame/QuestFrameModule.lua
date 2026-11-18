@@ -627,10 +627,6 @@ do
         return a.Text:GetText() < b.Text:GetText()
     end
 
-    function QuestFrameModule:QuestLogClosed()
-        DataModule:ClearQuestTagInfoCache()
-    end
-
     --region Quest log tab
 
     local function ArrayContains(t, value)
