@@ -628,14 +628,17 @@ end
 do
     local lastNumQuestLogEntries
 
-    function DataModule:QuestLogChanged()
+    local function ClearQuestCaches()
         wipe(cachedItems)
         wipe(questTagInfoCache)
     end
 
+    function DataModule:QuestLogChanged()
+        ClearQuestCaches()
+    end
+
     function DataModule:EnteringWorld()
-        wipe(cachedItems)
-        wipe(questTagInfoCache)
+        ClearQuestCaches()
         wipe(rewardPreloadRequested)
     end
 

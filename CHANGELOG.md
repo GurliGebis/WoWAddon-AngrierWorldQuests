@@ -7,6 +7,7 @@
 * Only update filter button textures when their selection state changes.
 * Stop re-requesting reward preload data for every quest after each quest log change.
 * Removed unused code.
+* Moved the shared cache clearing logic into a single local function.
 
 # 12.1.5-20261112-1
 * Fix possible "invalid order function for sorting" error when sorting the world quest list by time.
