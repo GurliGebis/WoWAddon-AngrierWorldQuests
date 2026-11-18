@@ -275,10 +275,13 @@ do
                     return MAPS_LEGION
                 end
             elseif expansion == _AngrierWorldQuests.Enums.Expansion.BFA then
-                if MAPS_BFA_ALLIANCE[mapID] then
+                local isAlliance = UnitFactionGroup("player") == "Alliance"
+                if isAlliance and MAPS_BFA_ALLIANCE[mapID] then
                     return MAPS_BFA_ALLIANCE
                 elseif MAPS_BFA_HORDE[mapID] then
                     return MAPS_BFA_HORDE
+                elseif MAPS_BFA_ALLIANCE[mapID] then
+                    return MAPS_BFA_ALLIANCE
                 end
             elseif expansion == _AngrierWorldQuests.Enums.Expansion.SHADOWLANDS then
                 return MAPS_SHADOWLANDS
