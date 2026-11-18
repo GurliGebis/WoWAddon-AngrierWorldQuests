@@ -331,6 +331,9 @@ do
     end
 
     local function Panel_OnCancel(self)
+        for key, value in pairs(panelOriginalConfig) do
+            ConfigModule:Set(key, type(value) == "boolean" and tostring(value) or value)
+        end
         wipe(panelOriginalConfig)
     end
 

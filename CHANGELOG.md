@@ -1,3 +1,6 @@
+# 12.1.5-20261118-1
+* Fix cancelling the options dialog not reverting changed settings.
+
 # 12.1.5-20261112-1
 * Fix possible "invalid order function for sorting" error when sorting the world quest list by time.
 * Fix the time icon on world quest list rows being mispositioned after a row is reused.
