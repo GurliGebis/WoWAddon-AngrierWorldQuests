@@ -396,6 +396,7 @@ do
             end
         end
     end
+    QuestFrameModule.ResetOtherFilterValues = ResetOtherFilterValues
 
     local function FilterButton_OnClick(self, button)
         PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
@@ -2213,8 +2214,10 @@ do
                                     ConfigModule:ToggleFilter(optionKey)
                                 else
                                     if ConfigModule:IsOnlyFilter(optionKey) then
+                                        QuestFrameModule.ResetOtherFilterValues(nil)
                                         ConfigModule:SetNoFilter()
                                     else
+                                        QuestFrameModule.ResetOtherFilterValues(optionKey)
                                         ConfigModule:SetOnlyFilter(optionKey)
                                     end
                                 end
